@@ -20,7 +20,7 @@ struct QuotaSample {
 }
 
 @MainActor
-final class CodexClient {
+final class CodexClient: QuotaClient {
     private var process: Process?
     private var input: FileHandle?
     private var output: FileHandle?
@@ -97,7 +97,7 @@ final class CodexClient {
         }
         do {
             try child.run()
-            _ = try await request("initialize", params: ["clientInfo": ["name": "codex_quota_dock", "title": "Codex Quota Dock", "version": "0.2.0"]])
+            _ = try await request("initialize", params: ["clientInfo": ["name": "codex_quota_dock", "title": "Codex Quota Dock", "version": "0.4.0"]])
             try send(["method": "initialized", "params": [:]])
         } catch {
             stop()
@@ -148,7 +148,9 @@ final class CodexClient {
         pending.removeValue(forKey: id)?.resume(with: result)
     }
 
-    func stop(reason: String = "连接已关闭。") {
+    func stop() { stop(reason: "连接已关闭。") }
+
+    func stop(reason: String) {
         let child = process
         process = nil
         output?.readabilityHandler = nil

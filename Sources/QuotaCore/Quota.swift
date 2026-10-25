@@ -48,19 +48,22 @@ public struct QuotaWindow: Identifiable, Codable, Equatable {
     public let usedPercent: Double
     public let durationMinutes: Int?
     public let resetsAt: Date?
+    public let label: String?
 
-    public init(id: String, bucket: String = "codex", name: String = "Codex", usedPercent: Double, durationMinutes: Int? = nil, resetsAt: Date? = nil) {
+    public init(id: String, bucket: String = "codex", name: String = "Codex", usedPercent: Double, durationMinutes: Int? = nil, resetsAt: Date? = nil, label: String? = nil) {
         self.id = id
         self.bucket = bucket
         self.name = name
         self.usedPercent = usedPercent
         self.durationMinutes = durationMinutes
         self.resetsAt = resetsAt
+        self.label = label
     }
 
     public var remaining: Double { max(0, min(100, 100 - usedPercent)) }
     // 不把 99.9% 四舍五入成 100%，让显示和通知的含义一致。
     public var percentageText: String { "\(Int(remaining.rounded(.down)))%" }
+    public var displayLabel: String { label ?? periodText }
     public var periodText: String {
         guard let minutes = durationMinutes, minutes > 0 else { return "额度" }
         if minutes % 1440 == 0 { return "\(minutes / 1440) 天额度" }

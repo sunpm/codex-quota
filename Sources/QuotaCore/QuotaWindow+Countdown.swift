@@ -1,7 +1,7 @@
 import Foundation
 
 extension QuotaWindow {
-    /// 与悬浮面板保持紧凑：04:25:54 或 6d 13:25:36。
+    /// 菜单栏紧凑格式：04:25:54 或 6d 13:25:36。
     public func compactResetCountdown(at now: Date = Date()) -> String {
         guard let resetsAt else { return "--:--:--" }
         guard resetsAt > now else { return "等待重置" }

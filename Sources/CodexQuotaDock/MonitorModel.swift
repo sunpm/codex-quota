@@ -4,60 +4,111 @@ import UserNotifications
 import ServiceManagement
 import QuotaCore
 
+struct ServiceSnapshot {
+    var windows: [QuotaWindow] = []
+    var lastSuccess: Date?
+    var errorMessage: String?
+    var refreshing = false
+}
+
 @MainActor
 final class MonitorModel: ObservableObject {
-    @Published var windows: [QuotaWindow] = []
-    @Published var lastSuccess: Date?
-    @Published var errorMessage: String?
-    @Published var refreshing = false
+    static let refreshInterval: TimeInterval = 30
+    @Published private(set) var services: [QuotaService: ServiceSnapshot] = [:]
     @Published var notificationStatus = "正在检查通知权限…"
     @Published var notificationError: String?
     @Published var notificationsEnabled = false
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var launchError: String?
-    @Published var selectedWindowID: String {
-        didSet { defaults.set(selectedWindowID, forKey: "selectedWindowID"); updateDock() }
-    }
 
     private let defaults: UserDefaults
-    private let client = CodexClient()
-    private var tracker: RecoveryTracker
+    private let preferences: ServicePreferences
+    private let clients: [QuotaService: QuotaClient]
+    private var tracker: ServiceRecoveryTracker
     private var timer: Timer?
-    private var nextAttempt = Date.distantPast
-    private var failures = 0
+    private var schedules: [QuotaService: RefreshSchedule] = [:]
+    private var requiresManualRetry: Set<QuotaService> = []
     private var stopped = false
     private var wakeObserver: NSObjectProtocol?
+    private var sleepObserver: NSObjectProtocol?
     private var activity: NSObjectProtocol?
-    private let stateKey = "recoveryState.v1"
+    private let stateKey = "recoveryState.v2"
 
-    var selectedWindow: QuotaWindow? {
-        windows.first { $0.id == selectedWindowID }
-            ?? windows.filter { $0.bucket == "codex" }.min { $0.remaining < $1.remaining }
-            ?? windows.first
+    var enabledServices: [QuotaService] { QuotaService.allCases.filter { isEnabled($0) } }
+    var refreshing: Bool { enabledServices.contains { snapshot($0).refreshing } }
+    var lastSuccess: Date? { enabledServices.compactMap { snapshot($0).lastSuccess }.max() }
+    var errorMessage: String? {
+        let errors = enabledServices.compactMap { service in snapshot(service).errorMessage.map { "\(service.title)：\($0)" } }
+        return errors.isEmpty ? nil : errors.joined(separator: "\n")
+    }
+    var notificationServiceCount: Int { enabledServices.filter { notificationsEnabled(for: $0) }.count }
+    func snapshot(_ service: QuotaService) -> ServiceSnapshot { services[service] ?? ServiceSnapshot() }
+    func isEnabled(_ service: QuotaService) -> Bool { preferences.isEnabled(service) }
+    func notificationsEnabled(for service: QuotaService) -> Bool { preferences.notificationsEnabled(service) }
+
+    init(defaults: UserDefaults = .standard, clients: [QuotaService: QuotaClient]? = nil) {
+        self.defaults = defaults
+        preferences = ServicePreferences(defaults: defaults)
+        self.clients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
+        if let data = defaults.data(forKey: stateKey), let saved = try? JSONDecoder().decode(ServiceRecoveryTracker.self, from: data) {
+            tracker = saved
+        } else {
+            let legacy = defaults.data(forKey: "recoveryState.v1").flatMap { try? JSONDecoder().decode(RecoveryState.self, from: $0) }
+            tracker = ServiceRecoveryTracker(states: legacy.map { [QuotaService.codex.rawValue: $0] } ?? [:])
+        }
+        for service in QuotaService.allCases where !preferences.isEnabled(service) { tracker.clear(service) }
     }
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        selectedWindowID = defaults.string(forKey: "selectedWindowID") ?? ""
-        let saved = defaults.data(forKey: stateKey).flatMap { try? JSONDecoder().decode(RecoveryState.self, from: $0) }
-        tracker = RecoveryTracker(state: saved)
+    func setEnabled(_ enabled: Bool, for service: QuotaService) {
+        objectWillChange.send()
+        preferences.setEnabled(enabled, for: service)
+        // 停止监测时没有连续观测；再次开启先建立基线。
+        tracker.clear(service)
+        persistRecovery()
+        if service == .codex, !enabled { clients[service]?.stop() }
+        if enabled { Task { await refresh(service, force: true) } }
+    }
+
+    func setNotificationsEnabled(_ enabled: Bool, for service: QuotaService) {
+        objectWillChange.send()
+        preferences.setNotificationsEnabled(enabled, for: service)
+        if enabled { Task { await requestNotificationsIfNeeded() } }
+    }
+
+    private func persistRecovery() {
+        if let data = try? JSONEncoder().encode(tracker) { defaults.set(data, forKey: stateKey) }
     }
 
     func start() {
         stopped = false
         // 保持后台定时刷新，仍允许系统正常睡眠。
-        activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取 Codex 额度")
-        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取已启用服务的额度")
+        startPolling()
+        sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.timer?.invalidate()
+                self?.timer = nil
+            }
+        }
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                self?.startPolling()
+                await self?.refresh(force: true, retryCredentials: false)
+            }
+        }
+        Task { await refresh(force: true) }
+        Task { await requestNotificationsIfNeeded() }
+    }
+
+    private func startPolling() {
+        guard !stopped else { return }
+        timer?.invalidate()
+        let timer = Timer(timeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
-        timer?.tolerance = 1
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in await self?.refresh(force: true) }
-        }
-        Task {
-            await refresh(force: true)
-            await requestNotificationsIfNeeded()
-        }
+        timer.tolerance = 0.3
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     func stop() {
@@ -65,42 +116,48 @@ final class MonitorModel: ObservableObject {
         timer?.invalidate()
         timer = nil
         if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
+        if let sleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver) }
         if let activity { ProcessInfo.processInfo.endActivity(activity) }
         activity = nil
-        client.stop()
+        for client in clients.values { client.stop() }
     }
 
-    func refresh(force: Bool = false) async {
-        guard !stopped, !refreshing, force || Date() >= nextAttempt else { return }
-        refreshing = true
-        defer { refreshing = false }
-        do {
-            let sample = try await client.sample()
-            guard !stopped else { return }
-            windows = sample.windows
-            lastSuccess = Date()
-            errorMessage = nil
-            failures = 0
-            nextAttempt = .distantPast
-            let recovered = tracker.observe(account: sample.fingerprint, windows: sample.windows)
-            if let state = tracker.state, let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: stateKey) }
-            updateDock()
-            if !recovered.isEmpty { await notifyRecovery(recovered) }
-        } catch {
-            guard !stopped else { return }
-            client.stop()
-            failures += 1
-            let delay = min(300, 30 * pow(2, Double(min(failures - 1, 4))))
-            nextAttempt = Date().addingTimeInterval(delay)
-            errorMessage = "\(error.localizedDescription) \(Int(delay)) 秒后重试。"
-            updateDock()
+    func refresh(force: Bool = false, retryCredentials: Bool = true) async {
+        await withTaskGroup(of: Void.self) { group in
+            for service in enabledServices {
+                group.addTask { await self.refresh(service, force: force, retryCredentials: retryCredentials) }
+            }
         }
     }
 
-    func updateDock() {
-        let value = selectedWindow?.percentageText ?? "—"
-        NSApp.dockTile.badgeLabel = errorMessage == nil ? value : "\(value) !"
-        NSApp.dockTile.display()
+    private func refresh(_ service: QuotaService, force: Bool, retryCredentials: Bool = true) async {
+        guard !stopped, isEnabled(service), !snapshot(service).refreshing,
+              (force && retryCredentials) || !requiresManualRetry.contains(service),
+              schedules[service, default: RefreshSchedule()].canRefresh(force: force), let client = clients[service] else { return }
+        requiresManualRetry.remove(service)
+        services[service, default: ServiceSnapshot()].refreshing = true
+        defer { services[service, default: ServiceSnapshot()].refreshing = false }
+        do {
+            let sample = try await client.sample()
+            guard !stopped, isEnabled(service) else { return }
+            services[service] = ServiceSnapshot(windows: sample.windows, lastSuccess: Date(), refreshing: true)
+            schedules[service, default: RefreshSchedule()].succeeded()
+            let recovered = tracker.observe(service: service, account: sample.fingerprint, windows: sample.windows,
+                                            notify: notificationsEnabled(for: service))
+            persistRecovery()
+            if !recovered.isEmpty { await notifyRecovery(recovered, service: service) }
+        } catch {
+            guard !stopped, isEnabled(service) else { return }
+            if service == .codex { client.stop() }
+            if error is KeychainAccessDeclined {
+                requiresManualRetry.insert(service)
+                services[service, default: ServiceSnapshot()].errorMessage = error.localizedDescription
+                return
+            }
+            let retryAfter = (error as? QuotaHTTPError)?.retryAfter
+            let delay = schedules[service, default: RefreshSchedule()].failed(retryAfter: retryAfter)
+            services[service, default: ServiceSnapshot()].errorMessage = "\(error.localizedDescription) \(Int(min(delay, Double(Int.max / 2)))) 秒后重试。"
+        }
     }
 
     func updateNotificationStatus() async {
@@ -108,7 +165,7 @@ final class MonitorModel: ObservableObject {
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             notificationsEnabled = true
-            notificationStatus = "额度恢复到 100% 时通知一次"
+            notificationStatus = "已允许系统通知，各服务可独立开关"
         case .denied:
             notificationsEnabled = false
             notificationStatus = "通知未获允许，请在系统设置中开启"
@@ -138,17 +195,17 @@ final class MonitorModel: ObservableObject {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
     }
 
-    private func notifyRecovery(_ recovered: [QuotaWindow]) async {
+    private func notifyRecovery(_ recovered: [QuotaWindow], service: QuotaService) async {
         await updateNotificationStatus()
-        guard notificationsEnabled else { return }
-        let descriptions = recovered.map { "\($0.name == "codex" ? "Codex" : $0.name) · \($0.periodText)" }
-        await sendNotification(title: "Codex 额度已恢复至 100%", body: descriptions.joined(separator: "、") + "已恢复，可以继续使用。")
+        guard !stopped, isEnabled(service), notificationsEnabled, notificationsEnabled(for: service) else { return }
+        let descriptions = recovered.map(\.displayLabel)
+        await sendNotification(title: "\(service.title) 额度已恢复至 100%", body: descriptions.joined(separator: "、") + "已恢复，可以继续使用。")
     }
 
     func sendTestNotification() async {
         await requestNotificationsIfNeeded()
         guard notificationsEnabled else { return }
-        await sendNotification(title: "Codex 额度通知测试", body: "通知已就绪。实际额度从不足 100% 恢复至 100% 时，会在这里提醒。")
+        await sendNotification(title: "额度通知测试", body: "通知已就绪。启用提醒的服务在实际额度恢复至 100% 时，会在这里通知。")
     }
 
     private func sendNotification(title: String, body: String) async {

@@ -6,33 +6,18 @@ import QuotaCore
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     private let model = MonitorModel()
-    private var window: NSWindow?
-    private var floatingPanel: FloatingQuotaPanelController?
+    private var menuBar: MenuBarController?
+    private var controlPanel: ControlPanelController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
         buildMenu()
-        floatingPanel = FloatingQuotaPanelController(model: model) { [weak self] in self?.showWindow() }
-        showFloatingPanel()
+        controlPanel = ControlPanelController(model: model)
+        menuBar = MenuBarController(model: model) { [weak self] in self?.showPanel() }
         model.start()
     }
 
-    @objc func showFloatingPanel() { floatingPanel?.show() }
-
-    @objc func showWindow() {
-        if window == nil {
-            let view = NSHostingView(rootView: MainView(model: model))
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 580), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-            window.title = "Codex 额度 · 详情与设置"
-            window.contentView = view
-            window.setContentSize(view.fittingSize)
-            window.isReleasedWhenClosed = false
-            window.center()
-            self.window = window
-        }
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
+    @objc func showPanel() { controlPanel?.showPanel() }
 
     private func buildMenu() {
         let menu = NSMenu()
@@ -40,10 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         menu.addItem(root)
         let appMenu = NSMenu()
         root.submenu = appMenu
-        let show = NSMenuItem(title: "显示悬浮面板", action: #selector(showFloatingPanel), keyEquivalent: "0")
+        let show = NSMenuItem(title: "打开控制面板…", action: #selector(showPanel), keyEquivalent: "0")
         show.target = self
         appMenu.addItem(show)
-        let settings = NSMenuItem(title: "详情与设置…", action: #selector(showWindow), keyEquivalent: ",")
+        let settings = NSMenuItem(title: "额度与设置…", action: #selector(showPanel), keyEquivalent: ",")
         settings.target = self
         appMenu.addItem(settings)
         appMenu.addItem(.separator())
@@ -53,8 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showFloatingPanel(); return true }
-    func applicationWillTerminate(_ notification: Notification) { floatingPanel?.close(); model.stop() }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPanel(); return true }
+    func applicationWillTerminate(_ notification: Notification) { menuBar?.stop(); controlPanel?.close(); model.stop() }
     func applicationDidBecomeActive(_ notification: Notification) { Task { await model.updateNotificationStatus() } }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
@@ -62,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        Task { @MainActor in self.showWindow(); completionHandler() }
+        Task { @MainActor in self.showPanel(); completionHandler() }
     }
 }
 
@@ -70,6 +55,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 struct CodexQuotaDockApp {
     @MainActor
     static func main() {
+        if let index = CommandLine.arguments.firstIndex(of: "--render-menu-previews"), CommandLine.arguments.count > index + 1 {
+            NSApplication.shared.setActivationPolicy(.prohibited)
+            do {
+                try MenuBarImageRenderer.writePreviews(to: URL(fileURLWithPath: CommandLine.arguments[index + 1], isDirectory: true))
+            } catch { fputs("Preview failed: \(error.localizedDescription)\n", stderr); exit(1) }
+            return
+        }
         if CommandLine.arguments.contains("--probe") {
             Task { @MainActor in
                 let client = CodexClient()
@@ -91,7 +83,7 @@ struct CodexQuotaDockApp {
         }
         let app = NSApplication.shared
         let delegate = AppDelegate()
-        app.setActivationPolicy(.regular)
+        app.setActivationPolicy(.accessory)
         app.delegate = delegate
         withExtendedLifetime(delegate) { app.run() }
     }
