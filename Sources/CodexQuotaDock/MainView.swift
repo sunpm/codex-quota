@@ -8,6 +8,7 @@ import QuotaCore
 struct MainView: View {
     @ObservedObject var model: MonitorModel
     @ObservedObject private var cursorUsage: CursorUsageModel
+    @ObservedObject private var resetAnnouncements: ResetAnnouncementMonitor
     @StateObject private var navigation: PanelNavigation
     @StateObject private var usage = UsageModel()
     @State private var selectedService: QuotaService?
@@ -16,6 +17,7 @@ struct MainView: View {
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
         _cursorUsage = ObservedObject(wrappedValue: model.cursorUsage)
+        _resetAnnouncements = ObservedObject(wrappedValue: model.resetAnnouncements)
         _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
     }
 
@@ -164,6 +166,9 @@ struct MainView: View {
                     QuotaServiceBlock(service: service, windows: snapshot.windows, error: snapshot.errorMessage,
                                       lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
                         .panelCard()
+                    if service == .codex {
+                        ResetAnnouncementView(model: resetAnnouncements).panelCard()
+                    }
                 }
             }.padding(24)
         }
@@ -218,6 +223,11 @@ struct MainView: View {
                 }
                 Text(model.notificationStatus).font(.system(size: 11)).foregroundStyle(.secondary)
                 if let error = model.notificationError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
+                Divider().padding(.vertical, 4)
+                Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
+                    set: { model.setResetNotificationsEnabled($0) }))
+                    .toggleStyle(.switch).controlSize(.small).disabled(!model.isEnabled(.codex))
+                    .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
             }.padding(16).panelCard()
             usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()

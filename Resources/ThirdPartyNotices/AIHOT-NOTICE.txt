@@ -1,0 +1,13 @@
+AIHOT reset announcement data
+
+Source: https://aihot.news/codex-reset
+API contract: https://aihot.news/openapi-v1.json
+Data usage terms: https://aihot.news/terms
+
+Codex Quota Dock reads the public reset announcement API and preserves source
+links. AIHOT is an independent service, not an official OpenAI service.
+Announcements and estimates do not establish the quota of an individual account.
+
+No AIHOT implementation code is included. The MIT license of the AIHOT framework
+repository does not license the hosted service's data. Data use is governed by
+AIHOT's own terms.
