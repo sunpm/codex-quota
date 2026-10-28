@@ -3,7 +3,7 @@
 import Foundation
 import CoreFoundation
 
-public struct UsageTokens: Equatable, Sendable {
+public struct UsageTokens: Codable, Equatable, Sendable {
     public var input: Int = 0
     public var output: Int = 0
     public var cached: Int = 0
@@ -27,7 +27,7 @@ public enum UsageSpeedTier: String, CaseIterable, Sendable {
     case standard = "Standard", fast = "Fast", ultrafast = "Ultrafast"
 }
 
-public struct UsageRecord: Identifiable, Sendable {
+public struct UsageRecord: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public let service: QuotaService
     public let session: String
@@ -54,13 +54,14 @@ public struct UsageScan: Sendable {
     /// 原始工作目录到已确认主项目的映射；records 中的路径保持不变。
     public var projectRoots: [String: String] = [:]
     public var warnings: [String] = []
+    public var historyError: String?
     public var fileCount = 0
     public init() {}
 
     public func projectPath(for directory: String) -> String { projectRoots[directory] ?? directory }
 }
 
-/// 只缓存文件元数据和用量字段，不保存消息正文或登录信息。
+/// 文件元数据仅用于内存缓存，用量字段持久保存；不保存消息正文或登录信息。
 public actor LocalUsageReader {
     private struct CachedFile {
         let size: Int
@@ -69,9 +70,37 @@ public actor LocalUsageReader {
         let invalidLines: Int
     }
     private var cache: [URL: CachedFile] = [:]
-    public init() {}
+    private let historyStore: UsageHistoryStore
+    private var history = UsageHistory()
+    private var savedHistory = UsageHistory()
+    private var historyLoaded = false
 
-    public func scan() -> UsageScan {
+    public init(historyURL: URL? = nil) {
+        historyStore = UsageHistoryStore(url: historyURL)
+    }
+
+    /// 只清除本应用的历史；现存日志在下一次扫描时重新采集。
+    public func clearHistory() throws {
+        try historyStore.clear()
+        history = UsageHistory()
+        savedHistory = history
+        historyLoaded = true
+        cache.removeAll()
+    }
+
+    public func scan(rescan: Bool = false) -> UsageScan {
+        if rescan { cache.removeAll() }
+        var result = UsageScan()
+        if !historyLoaded {
+            do {
+                history = try historyStore.load()
+                savedHistory = history
+                historyLoaded = true
+            } catch {
+                // 损坏或不支持的历史不能当成首装覆盖，仍允许查看现存日志。
+                result.historyError = "已保存历史无法读取，原文件已保留；当前仅显示现存日志。"
+            }
+        }
         let manager = FileManager.default
         let home = manager.homeDirectoryForCurrentUser
         let env = ProcessInfo.processInfo.environment
@@ -84,7 +113,6 @@ public actor LocalUsageReader {
             (.codex, codex.appendingPathComponent("archived_sessions")),
             (.claude, claude.appendingPathComponent("projects"))
         ]
-        var result = UsageScan()
         var files: [(QuotaService, URL)] = []
         var compressed = 0
         var failures = 0
@@ -104,7 +132,18 @@ public actor LocalUsageReader {
         }
         // 父会话先入账，避免 fork 重放后的时间戳把旧用量挪到新日期。
         files.sort { $0.1.lastPathComponent < $1.1.lastPathComponent }
-        var records: [String: UsageRecord] = [:]
+        var records = history.records
+        func merge(_ record: UsageRecord) {
+            if let old = records[record.id] {
+                // Claude 流式快照保留最大用量；fork 重放不得把历史挪到更晚的时间。
+                if record.service == .claude {
+                    guard record.tokens.total > old.tokens.total else { return }
+                } else {
+                    guard record.date < old.date else { return }
+                }
+            }
+            records[record.id] = record
+        }
         var invalid = 0
         var alive: Set<URL> = []
         for (service, file) in files {
@@ -123,23 +162,30 @@ public actor LocalUsageReader {
                 }
                 invalid += parsed.invalidLines
                 result.fileCount += 1
-                for record in parsed.records {
-                    // Claude 的同一消息可能有多个流式快照，保留完整用量最大的一个。
-                    if let old = records[record.id] {
-                        if service == .claude && record.tokens.total > old.tokens.total { records[record.id] = record }
-                    } else { records[record.id] = record }
-                }
+                for record in parsed.records { merge(record) }
             } catch {
                 failures += 1
                 // 短暂读取失败保留上一次已解析的文件结果，并在界面标记不完整。
-                for record in cache[file]?.records ?? [] where records[record.id] == nil { records[record.id] = record }
+                for record in cache[file]?.records ?? [] { merge(record) }
             }
         }
         cache = cache.filter { alive.contains($0.key) }
-        result.records = records.values.sorted { $0.date < $1.date }
-        // 每轮在后台按唯一路径解析，日志缓存不冻结已移动或删除的 worktree 关系。
+        result.records = records.values.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date < $1.date }
+        // 仍可确认的目录每轮更新归属；已删除的 worktree 沿用之前确认的主项目。
         for project in Set(result.records.map(\.project)) {
-            result.projectRoots[project] = ProjectWorktreeResolver.mainProjectPath(for: project)
+            result.projectRoots[project] = ProjectWorktreeResolver.mainProjectPath(for: project) ?? history.projectRoots[project]
+        }
+        if historyLoaded {
+            history.records = records
+            history.projectRoots = result.projectRoots
+            if history != savedHistory {
+                do {
+                    try historyStore.save(history)
+                    savedHistory = history
+                } catch {
+                    result.historyError = "历史保存失败，新增用量暂仅保留在内存；下次刷新会重试。"
+                }
+            }
         }
         if failures > 0 { result.warnings.append("\(failures) 处日志无法读取，统计可能不完整") }
         if invalid > 0 { result.warnings.append("\(invalid) 条记录格式无效，已跳过") }
