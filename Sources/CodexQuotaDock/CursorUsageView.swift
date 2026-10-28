@@ -5,6 +5,12 @@ struct CursorUsageView: View {
     @ObservedObject var model: CursorUsageModel
     let page: PanelPage
 
+    private struct ModelTotal: Identifiable {
+        var id: String { model }
+        let model: String
+        let totals: CursorUsageTotals
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -25,7 +31,7 @@ struct CursorUsageView: View {
                 }
                 if let error = model.errorMessage {
                     Label((model.snapshot == nil ? "" : "数据已过期 · ") + error, systemImage: "exclamationmark.triangle")
-                        .font(.callout).foregroundStyle(.orange)
+                        .font(.callout).foregroundStyle(.primary)
                 }
                 if let snapshot = model.snapshot {
                     let totals = CursorUsageTotals(events: snapshot.events)
@@ -33,7 +39,7 @@ struct CursorUsageView: View {
                         Text("\(snapshot.interval.start.formatted(date: .numeric, time: .shortened)) – \(snapshot.interval.end.formatted(date: .numeric, time: .shortened))")
                         Spacer()
                         Text("更新于 \(snapshot.updatedAt.formatted(date: .omitted, time: .shortened))")
-                    }.font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    }.font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 14)], spacing: 14) {
                         metric("总 Tokens", tokens(totals))
                         metric("请求数", totals.requests.formatted())
@@ -47,10 +53,10 @@ struct CursorUsageView: View {
                     }
                     if totals.missingTokens > 0 || totals.cost.unpricedCount > 0 {
                         Text("\(totals.missingTokens) 条记录缺少完整 Token，\(totals.cost.unpricedCount) 条记录缺少费用；仅汇总已知值。")
-                            .font(.caption).foregroundStyle(.orange)
+                            .font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10))
                     }
                     Text("服务端费用可能包含套餐内用量，不代表额外账单。")
-                        .font(.caption).foregroundStyle(.secondary)
+                        .font(PanelTypography.detail).foregroundStyle(.secondary)
                 } else if model.refreshing {
                     ProgressView("正在读取 Cursor 用量…").frame(maxWidth: .infinity, minHeight: 240)
                 } else if model.errorMessage == nil {
@@ -80,32 +86,31 @@ struct CursorUsageView: View {
 
     private func modelTable(_ events: [CursorUsageEvent]) -> some View {
         let grouped = Dictionary(grouping: events, by: \.model)
-        let totals: [(model: String, totals: CursorUsageTotals)] = grouped.map {
-            (model: $0.key, totals: CursorUsageTotals(events: $0.value))
+        let totals = grouped.map {
+            ModelTotal(model: $0.key, totals: CursorUsageTotals(events: $0.value))
         }
         let groups = totals.sorted {
             $0.totals.tokens == $1.totals.tokens ? $0.model < $1.model : $0.totals.tokens > $1.totals.tokens
         }
-        return VStack(spacing: 0) {
-            HStack {
-                Text("模型"); Spacer()
-                Text("Tokens").frame(width: 130, alignment: .trailing)
-                Text("请求数").frame(width: 70, alignment: .trailing)
-                Text("服务端费用").frame(width: 130, alignment: .trailing)
-            }.font(.caption).foregroundStyle(.secondary).padding(.bottom, 8)
-            ForEach(groups, id: \.model) { group in
-                Divider()
-                HStack {
-                    Text(group.model).lineLimit(1).help(group.model)
-                    Spacer(minLength: 8)
-                    Text(tokens(group.totals)).frame(width: 130, alignment: .trailing)
-                    Text(group.totals.requests.formatted()).frame(width: 70, alignment: .trailing)
-                    Text(cost(group.totals)).frame(width: 130, alignment: .trailing)
-                        .help(group.totals.cost.pricedCount == 0 ? "接口未提供费用"
-                              : group.totals.cost.amount.formatted(.currency(code: "USD").precision(.fractionLength(2...8))))
-                }.font(.callout).monospacedDigit().padding(.vertical, 11)
-            }
-        }.padding(18).panelCard()
+        return Table(groups) {
+            TableColumn("模型") { group in
+                Text(group.model).lineLimit(1).help(group.model).padding(.vertical, 8)
+            }.width(min: 150, ideal: 240)
+            TableColumn("Tokens") { group in
+                Text(tokens(group.totals)).frame(maxWidth: .infinity, alignment: .trailing)
+            }.width(min: 130, ideal: 155)
+            TableColumn("请求数") { group in
+                Text(group.totals.requests.formatted()).frame(maxWidth: .infinity, alignment: .trailing)
+            }.width(min: 65, ideal: 80)
+            TableColumn("服务端费用") { group in
+                Text(cost(group.totals)).frame(maxWidth: .infinity, alignment: .trailing)
+                    .help(group.totals.cost.pricedCount == 0 ? "接口未提供费用"
+                          : group.totals.cost.amount.formatted(.currency(code: "USD").precision(.fractionLength(2...8))))
+            }.width(min: 110, ideal: 130)
+        }
+        .monospacedDigit().tableStyle(.inset(alternatesRowBackgrounds: true))
+        .frame(height: min(420, CGFloat(groups.count) * 42 + 32))
+        .padding(18).panelCard()
     }
 
     private func tokens(_ totals: CursorUsageTotals) -> String {

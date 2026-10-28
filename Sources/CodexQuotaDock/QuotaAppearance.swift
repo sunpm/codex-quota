@@ -4,6 +4,11 @@ import AppKit
 import SwiftUI
 import QuotaCore
 
+enum PanelTypography {
+    // macOS 的 caption 默认偏小；时间、说明与表格明细统一使用可读的 12pt。
+    static let detail = Font.system(size: 12)
+}
+
 func quotaColor(remaining: Double?) -> Color {
     guard let remaining else { return .secondary }
     let light: (CGFloat, CGFloat, CGFloat)

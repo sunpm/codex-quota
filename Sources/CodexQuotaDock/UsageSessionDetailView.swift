@@ -26,7 +26,7 @@ struct UsageSessionDetailView: View {
                 costLabel(records)
             }.monospacedDigit()
             if let record = records.first {
-                Text(record.session).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                Text(record.session).font(PanelTypography.detail).foregroundStyle(.secondary).textSelection(.enabled)
             }
             let directories = Set(records.map(\.project)).filter { !$0.isEmpty }.sorted()
             if !directories.isEmpty {
@@ -41,7 +41,7 @@ struct UsageSessionDetailView: View {
                                 }
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }
-                    }.font(.caption).padding(.top, 4)
+                    }.font(PanelTypography.detail).padding(.top, 4)
                 }
             }
             HStack(spacing: 12) {
@@ -76,7 +76,7 @@ struct UsageSessionDetailView: View {
                 }.width(min: 100, ideal: 115)
             }.monospacedDigit()
             Text("API 等价估算 · USD · 缺少速度档位的旧日志按 Standard 估算")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(PanelTypography.detail).foregroundStyle(.secondary)
         }
         .padding(20)
         .frame(minWidth: 800, idealWidth: 1000, minHeight: 480, idealHeight: 640)

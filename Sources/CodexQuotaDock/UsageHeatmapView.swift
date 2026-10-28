@@ -24,7 +24,7 @@ struct UsageHeatmapView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("用量热力图").font(.headline)
-                Text("最近 53 周").font(.caption).foregroundStyle(.secondary)
+                Text("最近 53 周").font(PanelTypography.detail).foregroundStyle(.secondary)
                 Spacer()
                 Picker("热力图指标", selection: $metric) {
                     Text("Tokens").tag("Tokens")
@@ -64,7 +64,7 @@ struct UsageHeatmapView: View {
             let hasUnpriced = days.contains { $0.cost.unpricedCount > 0 }
             VStack(alignment: .leading, spacing: 14) {
                 GeometryReader { geometry in
-                    let size = max(10, min(16, (geometry.size.width - 56 - 52 * 3) / 53))
+                    let size = max(12, min(16, (geometry.size.width - 56 - 52 * 3) / 53))
                     ZStack(alignment: .topLeading) {
                         HStack(alignment: .top, spacing: 8) {
                             VStack(spacing: 3) {
@@ -109,14 +109,14 @@ struct UsageHeatmapView: View {
                                     }
                                 }.padding(.trailing, 20)
                             }
-                        }.font(.system(size: 10))
+                        }.font(PanelTypography.detail)
                         if let day = days.first(where: { $0.id == hoveredDate }) {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(day.id, format: .dateTime.year().month().day()).fontWeight(.semibold)
                                 Text("\(day.tokens.formatted()) Tokens")
                                 Text("估算费用：\(formattedCost(day.cost))")
                             }
-                            .font(.caption).monospacedDigit()
+                            .font(PanelTypography.detail).monospacedDigit()
                             .frame(width: 240, alignment: .leading).padding(12)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.primary.opacity(0.1)))
@@ -139,7 +139,7 @@ struct UsageHeatmapView: View {
                         RoundedRectangle(cornerRadius: 2).fill(color(level: level)).frame(width: 11, height: 11)
                     }
                     Text("多")
-                }.font(.caption).foregroundStyle(.secondary).accessibilityElement(children: .combine)
+                }.font(PanelTypography.detail).foregroundStyle(.secondary).accessibilityElement(children: .combine)
             }
             .onChange(of: metric) { _ in hoveredDate = nil }
         }

@@ -40,7 +40,7 @@ struct MainView: View {
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
-        .frame(minWidth: 480, idealWidth: 1140, minHeight: 440, idealHeight: 760)
+        .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
         .alert("开启持久通知", isPresented: $model.showsPersistentNotificationGuide) {
             Button("前往设置") { model.openNotificationSettings() }
             Button("暂不设置", role: .cancel) {}
@@ -83,7 +83,7 @@ struct MainView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("服务").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.vertical, 8)
+            Text("服务").font(PanelTypography.detail).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.vertical, 8)
             serviceButton(nil)
             ForEach(QuotaService.allCases) { service in serviceButton(service) }
             Divider().padding(.vertical, 12)
@@ -100,41 +100,46 @@ struct MainView: View {
     private func serviceButton(_ service: QuotaService?) -> some View {
         Button {
             selectedService = service
-            if navigation.page == .settings { navigation.page = .overview }
+            if navigation.page == .settings || (service == .cursor && (navigation.page == .sessions || navigation.page == .projects)) {
+                navigation.page = .overview
+            }
         } label: {
             HStack(spacing: 8) {
                 if let service { ServiceTile(service: service) }
                 else { Image(systemName: "square.grid.2x2").frame(width: 22, height: 22) }
                 Text(service?.title ?? "全部")
-                    .fontWeight(selectedService == service ? .semibold : .regular)
+                    .fontWeight(selectedService == service && navigation.page != .settings ? .semibold : .regular)
                 Spacer(minLength: 0)
             }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
                 .padding(.horizontal, 10)
-                .background(selectedService == service ? Color.primary.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .background(selectedService == service && navigation.page != .settings ? Color.accentColor.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
-        }.accessibilityAddTraits(selectedService == service ? .isSelected : [])
+        }.accessibilityAddTraits(selectedService == service && navigation.page != .settings ? .isSelected : [])
     }
 
     private func navigationButton(_ page: PanelPage) -> some View {
-        Button { navigation.page = page } label: {
+        let unavailable = selectedService == .cursor && (page == .sessions || page == .projects)
+        return Button { navigation.page = page } label: {
             HStack(spacing: 8) {
                 Image(systemName: page.symbol).frame(width: 22, height: 22)
                 Text(page.rawValue).fontWeight(navigation.page == page ? .semibold : .regular)
                 Spacer(minLength: 0)
             }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
-                .foregroundStyle(.primary)
-                .background(navigation.page == page ? Color.primary.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .foregroundStyle(unavailable ? .secondary : .primary)
+                .background(navigation.page == page ? Color.accentColor.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
-        }.accessibilityAddTraits(navigation.page == page ? .isSelected : [])
+        }.disabled(unavailable)
+            .help(unavailable ? "Cursor 未提供\(page.rawValue)信息" : page.rawValue)
+            .accessibilityAddTraits(navigation.page == page ? .isSelected : [])
     }
 
     private var header: some View {
         HStack(spacing: 12) {
             Text(navigation.page == .overview ? "用量统计" : navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
             Spacer()
-            if (selectedService == .cursor ? cursorUsage.refreshing : usage.refreshing) && navigation.page != .settings && navigation.page != .quota {
+            if navigation.page != .settings && (navigation.page == .quota ? model.refreshing : selectedService == .cursor ? cursorUsage.refreshing : usage.refreshing) {
                 ProgressView().controlSize(.small)
             }
             if navigation.page != .settings {
@@ -153,22 +158,24 @@ struct MainView: View {
     private var quotaContent: some View {
         let services = model.enabledServices.filter { selectedService == nil || $0 == selectedService }
         return ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 if services.isEmpty {
                     VStack(spacing: 12) {
                         Text("尚未启用服务，请在设置中开启监测。")
                             .foregroundStyle(.secondary)
                         Button("打开设置") { navigation.page = .settings }
-                    }.font(.system(size: 12)).padding(24)
+                    }.font(.body).frame(maxWidth: .infinity, minHeight: 240)
                 }
-                ForEach(services) { service in
-                    let snapshot = model.snapshot(service)
-                    QuotaServiceBlock(service: service, windows: snapshot.windows, error: snapshot.errorMessage,
-                                      lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
-                        .panelCard()
-                    if service == .codex {
-                        ResetAnnouncementView(model: resetAnnouncements).panelCard()
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16, alignment: .top)], spacing: 16) {
+                    ForEach(services) { service in
+                        let snapshot = model.snapshot(service)
+                        QuotaServiceBlock(service: service, windows: snapshot.windows, error: snapshot.errorMessage,
+                                          lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
+                            .panelCard()
                     }
+                }
+                if services.contains(.codex) {
+                    ResetAnnouncementView(model: resetAnnouncements).panelCard()
                 }
             }.padding(24)
         }
@@ -177,19 +184,27 @@ struct MainView: View {
     private var settings: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 14) {
-                Toggle("在菜单栏显示额度", isOn: Binding(get: { model.showsMenuBar }, set: { model.setShowsMenuBar($0) }))
+                HStack {
+                    Text("在菜单栏显示额度")
+                    Spacer()
+                    Toggle("在菜单栏显示额度", isOn: Binding(get: { model.showsMenuBar }, set: { model.setShowsMenuBar($0) })).labelsHidden()
+                }
                 Divider()
-                Toggle("登录 Mac 时启动", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
-                if let error = model.launchError { Text(error).font(.caption).foregroundStyle(.orange) }
+                HStack {
+                    Text("登录 Mac 时启动")
+                    Spacer()
+                    Toggle("登录 Mac 时启动", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) })).labelsHidden()
+                }
+                if let error = model.launchError { Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10)) }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("服务")
+                    Text("服务").font(.headline).foregroundStyle(.primary)
                     Spacer()
                     Text("监测").frame(width: 46)
-                    Text("重置通知").frame(width: 60)
+                    Text("恢复通知").frame(width: 60)
                     Text("菜单栏").frame(width: 46)
-                }.font(.system(size: 11)).foregroundStyle(.secondary)
+                }.font(PanelTypography.detail).foregroundStyle(.secondary)
                 ForEach(QuotaService.allCases) { service in
                     HStack(spacing: 8) {
                         ServiceTile(service: service)
@@ -197,14 +212,14 @@ struct MainView: View {
                         Spacer(minLength: 0)
                         Toggle("监测 \(service.title)", isOn: Binding(get: { model.isEnabled(service) }, set: { model.setEnabled($0, for: service) }))
                             .labelsHidden().frame(width: 46)
-                        Toggle("\(service.title) 重置通知", isOn: Binding(get: { model.notificationsEnabled(for: service) }, set: { model.setNotificationsEnabled($0, for: service) }))
+                        Toggle("\(service.title) 恢复通知", isOn: Binding(get: { model.notificationsEnabled(for: service) }, set: { model.setNotificationsEnabled($0, for: service) }))
                             .labelsHidden().frame(width: 60).disabled(!model.isEnabled(service))
                         Toggle("在菜单栏显示 \(service.title)", isOn: Binding(get: { model.isShownInMenuBar(service) }, set: { model.setShownInMenuBar($0, for: service) }))
                             .labelsHidden().frame(width: 46).disabled(!model.showsMenuBar || !model.isEnabled(service))
-                    }.toggleStyle(.switch).controlSize(.small)
+                    }.toggleStyle(.switch).controlSize(.small).padding(.vertical, 3)
                 }
                 Text("监测开关控制额度查询；用量统计独立读取本机日志。")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .font(PanelTypography.detail).foregroundStyle(.secondary)
                 HStack {
                     Text("查询间隔")
                     Spacer()
@@ -212,46 +227,49 @@ struct MainView: View {
                 }.padding(.top, 4)
             }.padding(16).panelCard()
             VStack(alignment: .leading, spacing: 8) {
+                Text("恢复通知").font(.headline)
+                Text(model.notificationStatus).font(PanelTypography.detail).foregroundStyle(.secondary)
                 HStack {
-                    Text("恢复通知")
-                    Spacer()
                     if !model.persistentNotificationsEnabled {
-                        Button("开启持久通知") { model.showPersistentNotificationGuide() }.controlSize(.small)
+                        Button("开启持久通知") { model.showPersistentNotificationGuide() }
                     }
-                    Button("测试通知") { Task { await model.sendTestNotification() } }.controlSize(.small)
-                    Button("系统设置") { model.openNotificationSettings() }.controlSize(.small)
+                    Button("测试通知") { Task { await model.sendTestNotification() } }
+                    Button("系统设置") { model.openNotificationSettings() }
                 }
-                Text(model.notificationStatus).font(.system(size: 11)).foregroundStyle(.secondary)
-                if let error = model.notificationError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
+                if let error = model.notificationError { Text(error).font(PanelTypography.detail).foregroundStyle(.primary) }
                 Divider().padding(.vertical, 4)
-                Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
-                    set: { model.setResetNotificationsEnabled($0) }))
-                    .toggleStyle(.switch).controlSize(.small).disabled(!model.isEnabled(.codex))
-                    .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
+                HStack {
+                    Text("Codex 重置动态通知")
+                    Spacer()
+                    Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
+                        set: { model.setResetNotificationsEnabled($0) }))
+                        .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(!model.isEnabled(.codex))
+                        .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
+                }
             }.padding(16).panelCard()
             usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
             Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(PanelTypography.detail).foregroundStyle(.secondary)
             HStack {
                 Text("\(appName) \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
                 Spacer()
                 Link("致谢 cc-bar · MIT", destination: URL(string: "https://github.com/nanvon/cc-bar")!)
-            }.font(.system(size: 10)).foregroundStyle(.tertiary)
+            }.font(PanelTypography.detail).foregroundStyle(.secondary)
         }
         .font(.system(size: 13))
     }
 
     private var usageHistorySettings: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("用量历史")
+            Text("用量历史").font(.headline)
             HStack {
                 Button("重新扫描日志") { Task { await usage.refresh(rescan: true) } }
                 Spacer()
                 Button("清除已保存历史…", role: .destructive) { confirmsHistoryClear = true }
-            }.controlSize(.small).disabled(usage.refreshing || !model.readsLocalUsage)
+            }.disabled(usage.refreshing || !model.readsLocalUsage)
             if let error = usage.historyActionError ?? usage.scan.historyError {
-                Text(error).font(.caption).foregroundStyle(.orange)
+                Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10))
             }
         }.padding(16).panelCard()
             .alert("清除已保存的用量历史？", isPresented: $confirmsHistoryClear) {
@@ -271,69 +289,62 @@ private struct QuotaServiceBlock: View {
     let lastSuccess: Date?
     let refreshing: Bool
 
-    private var primary: QuotaWindow? { windows.first }
-    private var color: Color { quotaColor(remaining: primary?.remaining) }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 9) {
                 ServiceTile(service: service)
-                Text(service.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary)
+                Text(service.title).font(.headline)
                 Spacer(minLength: 0)
-                Text("剩余额度").font(.system(size: 10)).foregroundStyle(.tertiary)
+                Text("剩余").font(PanelTypography.detail).foregroundStyle(.secondary)
             }
-            HStack(spacing: 10) {
-                VStack(spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 0) {
-                        Text(primary.map { String(Int($0.remaining.rounded(.down))) } ?? "--")
-                            .font(.system(size: 32, weight: .semibold)).monospacedDigit().kerning(-0.8)
-                        if primary != nil { Text("%").font(.system(size: 16, weight: .semibold)).opacity(0.75) }
-                    }.foregroundStyle(color).fixedSize()
-                    Text(primary?.displayLabel ?? "当前额度")
-                        .font(.system(size: 9, weight: .semibold)).foregroundStyle(.tertiary)
-                        .lineLimit(2).help(primary?.displayLabel ?? "当前额度")
-                }.frame(width: 72)
-                VStack(alignment: .leading, spacing: 8) {
-                    QuotaProgressBar(remaining: primary?.remaining ?? 0, tint: color)
-                    VStack(alignment: .leading, spacing: 1) {
+            if windows.isEmpty {
+                Text(refreshing ? "正在读取额度…" : "暂无额度读数")
+                    .font(.body).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+            }
+            ForEach(windows) { window in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(window.displayLabel).font(.body).lineLimit(2).help(window.displayLabel)
+                        Spacer(minLength: 0)
+                        Text(window.percentageText)
+                            .font(.system(size: 24, weight: .semibold)).monospacedDigit()
+                            .foregroundStyle(quotaColor(remaining: window.remaining)).fixedSize()
+                    }
+                    QuotaProgressBar(remaining: window.remaining, tint: quotaColor(remaining: window.remaining), height: 6)
+                        .accessibilityHidden(true)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         TimelineView(.periodic(from: .now, by: 1)) { context in
-                            Text(primary?.compactResetCountdown(at: context.date) ?? "--:--:--")
-                                .font(.system(size: 11, weight: .medium)).monospacedDigit()
+                            if window.resetsAt != nil {
+                                Text(window.compactResetCountdown(at: context.date))
+                                    .font(.system(size: 13, weight: .medium)).monospacedDigit()
+                                    .foregroundStyle(.primary)
+                                    .help("距额度重置")
+                            }
                         }
-                        if let reset = primary?.resetsAt {
+                        Spacer(minLength: 0)
+                        if let reset = window.resetsAt {
                             Text("重置 · \(reset.formatted(.dateTime.month().day().hour().minute()))")
-                                .font(.system(size: 9.5)).foregroundStyle(.tertiary).lineLimit(1)
+                                .monospacedDigit()
                         } else {
-                            Text("重置时间未知").font(.system(size: 9.5)).foregroundStyle(.tertiary)
+                            Text("重置时间未知")
                         }
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-            ForEach(Array(windows.dropFirst())) { window in
-                VStack(spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(window.displayLabel).font(.system(size: 10)).foregroundStyle(.secondary)
-                            .lineLimit(1).help(window.displayLabel)
-                        Spacer(minLength: 2)
-                        Text(window.percentageText).font(.system(size: 10.5, weight: .medium))
-                            .monospacedDigit().foregroundStyle(quotaColor(remaining: window.remaining))
-                        TimelineView(.periodic(from: .now, by: 1)) { context in
-                            Text(window.compactResetCountdown(at: context.date))
-                                .font(.system(size: 9.5, design: .monospaced)).foregroundStyle(.tertiary)
-                        }.frame(width: 88, alignment: .trailing)
-                    }
-                    QuotaProgressBar(remaining: window.remaining, tint: quotaColor(remaining: window.remaining), height: 2.5)
+                    }.font(PanelTypography.detail).foregroundStyle(.secondary)
                 }
             }
-            Text(refreshing ? "正在查询…" : lastSuccess.map { "\(error == nil ? "最近更新" : "旧数据") · \($0.formatted(date: .omitted, time: .standard))" } ?? "等待首次读取")
-                .font(.system(size: 10)).foregroundStyle(.tertiary).monospacedDigit()
+            if !windows.isEmpty {
+                Text(refreshing ? "正在查询…" : lastSuccess.map { "\(error == nil ? "更新于" : "数据已过期 · 更新于") \($0.formatted(date: .omitted, time: .standard))" } ?? "等待首次读取")
+                    .font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
+            }
             if let error {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11)).foregroundStyle(.orange)
-                    .lineLimit(2).help(error)
+                Label {
+                    Text(error).foregroundStyle(.primary)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(quotaColor(remaining: 10))
+                }.font(.callout).fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
