@@ -20,5 +20,7 @@ mkdir -p "$APP_DIR/Contents/Resources/ThirdPartyNotices"
 cp Resources/ThirdPartyNotices/*.txt "$APP_DIR/Contents/Resources/ThirdPartyNotices/"
 swift scripts/make-icon.swift "$PROJECT_DIR/.build/AppIcon.iconset"
 iconutil -c icns "$PROJECT_DIR/.build/AppIcon.iconset" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
+swift scripts/make-icon.swift "$PROJECT_DIR/.build/AppIconDark.iconset" dark
+iconutil -c icns "$PROJECT_DIR/.build/AppIconDark.iconset" -o "$APP_DIR/Contents/Resources/AppIconDark.icns"
 codesign --force --deep --sign - "$APP_DIR"
 printf '%s\n' "$APP_DIR"
