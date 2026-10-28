@@ -25,6 +25,7 @@ final class MonitorModel: ObservableObject {
     @Published private(set) var showsMenuBar: Bool
 
     let readsLocalUsage: Bool
+    let cursorUsage: CursorUsageModel
     private let defaults: UserDefaults
     private let preferences: ServicePreferences
     private let clients: [QuotaService: QuotaClient]
@@ -58,7 +59,9 @@ final class MonitorModel: ObservableObject {
         showsMenuBar = defaults.object(forKey: "menuBar.visible") as? Bool ?? true
         readsLocalUsage = clients == nil
         preferences = ServicePreferences(defaults: defaults)
-        self.clients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
+        let resolvedClients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
+        self.clients = resolvedClients
+        cursorUsage = CursorUsageModel(client: resolvedClients[.cursor] as? CursorClient, enabled: preferences.isEnabled(.cursor))
         if let data = defaults.data(forKey: stateKey), let saved = try? JSONDecoder().decode(ServiceRecoveryTracker.self, from: data) {
             tracker = saved
         } else {
@@ -71,6 +74,7 @@ final class MonitorModel: ObservableObject {
     func setEnabled(_ enabled: Bool, for service: QuotaService) {
         objectWillChange.send()
         preferences.setEnabled(enabled, for: service)
+        if service == .cursor { cursorUsage.setEnabled(enabled) }
         // 停止监测时没有连续观测；再次开启先建立基线。
         tracker.clear(service)
         persistRecovery()
@@ -107,11 +111,13 @@ final class MonitorModel: ObservableObject {
             Task { @MainActor in
                 self?.timer?.invalidate()
                 self?.timer = nil
+                self?.cursorUsage.setPaused(true)
             }
         }
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 self?.startPolling()
+                self?.cursorUsage.setPaused(false)
                 await self?.refresh(force: true, retryCredentials: false)
             }
         }
@@ -132,6 +138,7 @@ final class MonitorModel: ObservableObject {
 
     func stop() {
         stopped = true
+        cursorUsage.setPaused(true)
         timer?.invalidate()
         timer = nil
         if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
@@ -159,6 +166,7 @@ final class MonitorModel: ObservableObject {
         do {
             let sample = try await client.sample()
             guard !stopped, isEnabled(service) else { return }
+            if service == .cursor { cursorUsage.observeAccount(sample.fingerprint) }
             services[service] = ServiceSnapshot(windows: sample.windows, lastSuccess: Date(), refreshing: true)
             schedules[service, default: RefreshSchedule()].succeeded()
             let recovered = tracker.observe(service: service, account: sample.fingerprint, windows: sample.windows,
