@@ -16,7 +16,7 @@
 | 已实现，待实机验收 | 读取压缩日志 | 补齐压缩归档中的历史用量 |
 | 已实现，待实机验收 | 保留历史统计 | 清理源日志后仍能查看已采集的用量 |
 | 已实现，待真实服务验收 | Cursor 用量历史 | 补充账号全设备 Token 与服务端费用 |
-| P2 | Antigravity 本地用量 | 补充本机会话的 Token 历史 |
+| 已实现，待实机验收 | Antigravity 本地用量 | 补充本机会话的 Token 历史 |
 | 暂缓 | 额度折算与用满预估 | 先解决账号归属与统计范围不一致的问题 |
 
 P1 优先复用现有数据完成明细、归组和趋势；压缩读取单独处理解码依赖。P2 的持久化和新数据来源分别实施，避免一次扩大存储与统计口径。
@@ -134,13 +134,19 @@ P1 优先复用现有数据完成明细、归组和趋势；压缩读取单独�
 
 ## Antigravity 本地用量
 
-- [ ] 读取本机 transcript 的实际 Token 字段，接入现有用量汇总。
+- [x] 读取本机 transcript 的实际 Token 字段，接入现有用量汇总。
 
-参考 cc-switch 的会话导入逻辑，同时考虑 IDE 与 CLI 数据目录。相同会话在一个目录只有索引时，仍继续查找另一个目录的 transcript；避免旧对话新增用量被遮蔽。模型缺失时保留未知，不用当前模型设置猜测历史记录。
+直接扫描 `~/.gemini/antigravity/brain` 与 `~/.gemini/antigravity-cli/brain` 下的 `transcript_full.jsonl`，不依赖会话索引，因此一处只有索引不会遮蔽另一处的日志。复用按文件大小和修改时间缓存、分块 JSONL 读取及历史持久化，无新增依赖。
+
+只采集 `PLANNER_RESPONSE` 的 `DONE` 响应；按会话与 `step_index` 去重，同一文件最后一次导出生效，两处副本重叠步骤采用较新文件。历史保存步骤对应的文件修改时间，避免较新日志清理后被旧副本回退，旧版历史快照仍可读取。输入不减缓存，输出不另加推理；输入或输出计数缺失时提示不完整，不从正文推算。缓存字段省略时按零处理，显式无效值不入账。
+
+已接入总览、热力图、小时 / 每日趋势、对话明细和自定义定价。只保留响应自身的模型字段，缺失模型与定价继续显示未知 / 未定价；未导出日志的原生数据库历史、自定义数据目录、正文中的模型切换和项目归属补全不在本次范围。不会读取真实服务凭据或调用接口。
+
+现有核心检查 90 个断言、应用检查 25 个断言与标准构建打包通过；已有检查不覆盖新增 Antigravity 日志解析与跨目录合并，旧对话追加、重复副本、步骤修正和新增页面仍待实机验收。未新增或修改自动化测试代码，也未读取真实服务凭据或调用真实接口。
 
 验收：旧对话追加用量能更新，两个目录的同会话不重复统计；按日志实际定义处理输入、缓存与推理 Token，缺少模型或定价时保留不完整状态。
 
-参考：[cc-switch Antigravity 导入](https://github.com/farion1231/cc-switch/blob/32db0e5763caa0ce5e91a378ccf0c8677f90a2bd/src-tauri/src/services/session_usage_agy.rs)、[双目录遮蔽问题](https://github.com/farion1231/cc-switch/issues/8941)。
+参考：[cc-switch Antigravity 导入](https://github.com/farion1231/cc-switch/blob/6d6b7162f122ac0ce1356a14688c8c4f712db3c8/src-tauri/src/services/session_usage_agy.rs)、[transcript 读取](https://github.com/farion1231/cc-switch/blob/6d6b7162f122ac0ce1356a14688c8c4f712db3c8/src-tauri/src/session_manager/providers/agy.rs)、[双目录遮蔽问题 #8941](https://github.com/farion1231/cc-switch/issues/8941)、[旧版日志缺少 Token 字段 #8914](https://github.com/farion1231/cc-switch/pull/8914)（2026-10-28 复查，两项仍开放）。上游 MIT 许可；使用本项目 Foundation 读取与持久化，不引入 Rust、SQLite / Protobuf 或原生数据库回退。
 
 ## 暂缓额度折算与用满预估
 

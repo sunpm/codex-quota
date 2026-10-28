@@ -40,7 +40,7 @@ struct UsageTrendView: View {
             }
             Chart {
                 ForEach(buckets.keys.sorted(), id: \.self) { bucket in
-                    ForEach([QuotaService.codex, .claude]) { service in
+                    ForEach([QuotaService.codex, .claude, .antigravity]) { service in
                         if let total = buckets[bucket]?[service], metric != "费用" || total.cost.pricedCount > 0 {
                             let amount = metric == "费用" ? NSDecimalNumber(decimal: total.cost.amount).doubleValue : Double(total.tokens)
                             BarMark(x: .value("时间", bucket, unit: unit), y: .value(metric == "费用" ? "USD" : "Tokens", amount))
@@ -57,7 +57,7 @@ struct UsageTrendView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .chartForegroundStyleScale(["Codex": Color.blue, "Claude Code": Color.orange])
+            .chartForegroundStyleScale(["Codex": Color.blue, "Claude Code": Color.orange, "Antigravity": Color.purple])
             .chartXScale(domain: interval.start...interval.end)
             .chartXAxis {
                 AxisMarks(values: hourly ? .stride(by: .hour, count: 3) : .automatic(desiredCount: 6)) { _ in
@@ -93,7 +93,7 @@ struct UsageTrendView: View {
                         }
                     if let hoveredBucket, let entries = buckets[hoveredBucket] {
                         let width: CGFloat = 269
-                        let height: CGFloat = entries.count > 1 ? 116 : 76
+                        let height: CGFloat = 36 + 40 * CGFloat(entries.count)
                         let x = hoverPoint.x + (hoverPoint.x + width + 12 < geometry.size.width ? width / 2 + 12 : -width / 2 - 12)
                         let y = hoverPoint.y - height / 2 - 12
                         details(bucket: hoveredBucket, entries: entries)
@@ -120,10 +120,11 @@ struct UsageTrendView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(bucket, format: hourly ? .dateTime.year().month().day().hour().minute() : .dateTime.year().month().day())
                 .fontWeight(.semibold)
-            ForEach([QuotaService.codex, .claude]) { service in
+            ForEach([QuotaService.codex, .claude, .antigravity]) { service in
                 if let total = entries[service] {
                     HStack(alignment: .top) {
-                        Circle().fill(service == .codex ? Color.blue : .orange).frame(width: 6, height: 6).padding(.top, 4)
+                        Circle().fill(service == .codex ? Color.blue : service == .claude ? .orange : .purple)
+                            .frame(width: 6, height: 6).padding(.top, 4)
                         Text(service.title)
                         Spacer(minLength: 8)
                         VStack(alignment: .trailing, spacing: 2) {

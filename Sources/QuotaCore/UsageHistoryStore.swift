@@ -5,6 +5,8 @@ struct UsageHistory: Codable, Equatable {
     var version = 1
     var records: [String: UsageRecord] = [:]
     var projectRoots: [String: String] = [:]
+    /// 可选字段兼容已有快照，避免较新 transcript 被清理后由旧副本回退计数。
+    var antigravityModified: [String: Date]?
 }
 
 struct UsageHistoryStore {
