@@ -94,15 +94,18 @@ struct AppChecks {
         expect(model.snapshot(.codex).lastSuccess == finalSnapshot.lastSuccess, "停止后仍发布了结果")
         expect(codex.stops > 0, "退出未停止客户端")
 
-        // 菜单只提供面板入口；关闭或重复打开面板不创建新的监测任务。
+        // 菜单提供面板入口和退出；关闭或重复打开面板不创建新的监测任务。
         NSApplication.shared.setActivationPolicy(.accessory)
         let panelClient = StubClient()
         let panelModel = MonitorModel(defaults: defaults, clients: [.codex: panelClient])
         let panel = ControlPanelController(model: panelModel)
         let menuBar = MenuBarController(model: panelModel) { panel.showPanel() }
         let window = panel.window!
-        expect(menuBar.menu.items.count == 1 && menuBar.menu.items[0].action != nil,
-               "菜单栏只能保留打开面板的操作")
+        expect(menuBar.menu.items.count == 3 && menuBar.menu.items[0].action != nil
+               && menuBar.menu.items[1].isSeparatorItem
+               && menuBar.menu.items[2].action == #selector(NSApplication.terminate(_:))
+               && menuBar.menu.items[2].target === NSApp,
+               "菜单栏应提供打开面板、分隔线和退出应用的操作")
         expect(!window.isVisible, "启动时不应自动展开面板")
         menuBar.menu.performActionForItem(at: 0)
         expect(window.isVisible, "菜单入口未打开独立窗口")

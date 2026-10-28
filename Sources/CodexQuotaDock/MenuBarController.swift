@@ -26,6 +26,9 @@ final class MenuBarController: NSObject {
         let item = NSMenuItem(title: "打开主窗口", action: #selector(showPanel), keyEquivalent: "")
         item.target = self
         menu.addItem(item)
+        menu.addItem(.separator())
+        let quit = menu.addItem(withTitle: "退出 Codex Quota Dock", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quit.target = NSApp
 
         render()
         subscription = model.objectWillChange
@@ -53,7 +56,7 @@ final class MenuBarController: NSObject {
 
     private func render() {
         let services = model.menuBarServices
-        statusItem.isVisible = model.showsMenuBar && !services.isEmpty
+        statusItem.isVisible = model.hasMenuBarItem
         guard statusItem.isVisible else { return }
         guard let button = statusItem.button else { return }
         let entries = services.map { service in
