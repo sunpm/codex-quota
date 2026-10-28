@@ -10,6 +10,7 @@ final class UsageModel: ObservableObject {
     @Published private(set) var priceDate = BundledModelPrices.date
     @Published private(set) var updatingPrices = false
     @Published private(set) var pricingError: String?
+    @Published private(set) var historyActionError: String?
     private let reader = LocalUsageReader()
     private let defaults: UserDefaults
     private var catalog: [String: ModelPricing]
@@ -90,14 +91,30 @@ final class UsageModel: ObservableObject {
     }
 
 
-    func refresh() async {
+    func refresh(rescan: Bool = false) async {
         guard !refreshing else { return }
         refreshing = true
-        let result = await reader.scan()
+        defer { refreshing = false }
+        apply(await reader.scan(rescan: rescan))
+    }
+
+    func clearHistory() async {
+        guard !refreshing else { return }
+        refreshing = true
+        defer { refreshing = false }
+        do {
+            try await reader.clearHistory()
+            historyActionError = nil
+            apply(await reader.scan())
+        } catch {
+            historyActionError = "清除失败，已保留原有历史。"
+        }
+    }
+
+    private func apply(_ result: UsageScan) {
         scan = result
         reprice()
         updatedAt = Date()
-        refreshing = false
     }
 }
 
@@ -273,6 +290,9 @@ struct UsageView: View {
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(model.scan.warnings, id: \.self) { warning in
                 Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.caption)
+            }
+            if let error = model.scan.historyError {
+                Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.caption)
             }
             HStack {
                 Text("本机日志 · Codex / Claude Code")

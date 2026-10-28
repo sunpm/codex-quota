@@ -10,6 +10,7 @@ struct MainView: View {
     @StateObject private var navigation: PanelNavigation
     @StateObject private var usage = UsageModel()
     @State private var selectedService: QuotaService?
+    @State private var confirmsHistoryClear = false
 
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
@@ -208,6 +209,7 @@ struct MainView: View {
                 Text(model.notificationStatus).font(.system(size: 11)).foregroundStyle(.secondary)
                 if let error = model.notificationError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
             }.padding(16).panelCard()
+            usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
             Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -218,6 +220,26 @@ struct MainView: View {
             }.font(.system(size: 10)).foregroundStyle(.tertiary)
         }
         .font(.system(size: 13))
+    }
+
+    private var usageHistorySettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("用量历史")
+            HStack {
+                Button("重新扫描日志") { Task { await usage.refresh(rescan: true) } }
+                Spacer()
+                Button("清除已保存历史…", role: .destructive) { confirmsHistoryClear = true }
+            }.controlSize(.small).disabled(usage.refreshing || !model.readsLocalUsage)
+            if let error = usage.historyActionError ?? usage.scan.historyError {
+                Text(error).font(.caption).foregroundStyle(.orange)
+            }
+        }.padding(16).panelCard()
+            .alert("清除已保存的用量历史？", isPresented: $confirmsHistoryClear) {
+                Button("取消", role: .cancel) {}
+                Button("清除并重新扫描", role: .destructive) { Task { await usage.clearHistory() } }
+            } message: {
+                Text("仅清除本应用保存的全部服务用量历史，随后重新扫描现存日志。已删除源日志对应的历史将无法恢复；源日志与模型定价不会被删除。")
+            }
     }
 
 }
