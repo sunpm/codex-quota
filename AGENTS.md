@@ -21,6 +21,7 @@
 - 原生 macOS 应用，以主窗口为主体，菜单栏额度显示可选；Swift Package，最低 macOS 13，无需第三方 Swift 包。
 - `Sources/CodexQuotaDock/`：入口、服务客户端、监测调度、SwiftUI 面板和 AppKit 菜单栏。
 - `Sources/QuotaCore/`：额度模型、响应解析、倒计时与通知判定；保持可离线验证。
+- `Sources/CZstd/`：随应用静态编译的 Zstandard 解码源码；版本、生成方式和许可见 `THIRD_PARTY_NOTICES.md`，不依赖系统安装的 `zstd`。
 - `Tests/QuotaCoreTests/`：可执行的自包含检查，不依赖完整 Xcode / XCTest。
 - `Tests/AppChecks/`：注入模拟客户端检查监测流程，可生成离线界面预览。
 - `Resources/`：应用元数据、图标、随包分发的第三方许可。
