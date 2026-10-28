@@ -89,7 +89,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        Task { @MainActor in self.showPanel(); completionHandler() }
+        let postID = response.notification.request.content.userInfo["resetPostID"] as? String
+        Task { @MainActor in
+            if let postID, let url = ResetAnnouncementPost.sourceURL(for: postID) { NSWorkspace.shared.open(url) }
+            else { self.showPanel() }
+            completionHandler()
+        }
     }
 }
 

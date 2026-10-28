@@ -26,6 +26,7 @@ final class MonitorModel: ObservableObject {
 
     let readsLocalUsage: Bool
     let cursorUsage: CursorUsageModel
+    let resetAnnouncements: ResetAnnouncementMonitor
     private let defaults: UserDefaults
     private let preferences: ServicePreferences
     private let clients: [QuotaService: QuotaClient]
@@ -42,7 +43,7 @@ final class MonitorModel: ObservableObject {
 
     var enabledServices: [QuotaService] { QuotaService.allCases.filter { isEnabled($0) } }
     var menuBarServices: [QuotaService] { enabledServices.filter { isShownInMenuBar($0) } }
-    var refreshing: Bool { enabledServices.contains { snapshot($0).refreshing } }
+    var refreshing: Bool { resetAnnouncements.refreshing || enabledServices.contains { snapshot($0).refreshing } }
     var lastSuccess: Date? { enabledServices.compactMap { snapshot($0).lastSuccess }.max() }
     var errorMessage: String? {
         let errors = enabledServices.compactMap { service in snapshot(service).errorMessage.map { "\(service.title)：\($0)" } }
@@ -62,6 +63,8 @@ final class MonitorModel: ObservableObject {
         let resolvedClients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
         self.clients = resolvedClients
         cursorUsage = CursorUsageModel(client: resolvedClients[.cursor] as? CursorClient, enabled: preferences.isEnabled(.cursor))
+        resetAnnouncements = ResetAnnouncementMonitor(defaults: defaults, enabled: preferences.isEnabled(.codex),
+                                                       client: clients == nil ? ResetAnnouncementClient() : nil)
         if let data = defaults.data(forKey: stateKey), let saved = try? JSONDecoder().decode(ServiceRecoveryTracker.self, from: data) {
             tracker = saved
         } else {
@@ -75,6 +78,10 @@ final class MonitorModel: ObservableObject {
         objectWillChange.send()
         preferences.setEnabled(enabled, for: service)
         if service == .cursor { cursorUsage.setEnabled(enabled) }
+        if service == .codex {
+            resetAnnouncements.setEnabled(enabled)
+            if enabled { Task { await refreshResetAnnouncements() } }
+        }
         // 停止监测时没有连续观测；再次开启先建立基线。
         tracker.clear(service)
         persistRecovery()
@@ -85,6 +92,11 @@ final class MonitorModel: ObservableObject {
     func setNotificationsEnabled(_ enabled: Bool, for service: QuotaService) {
         objectWillChange.send()
         preferences.setNotificationsEnabled(enabled, for: service)
+        if enabled { Task { await requestNotificationsIfNeeded() } }
+    }
+
+    func setResetNotificationsEnabled(_ enabled: Bool) {
+        resetAnnouncements.setNotificationsEnabled(enabled)
         if enabled { Task { await requestNotificationsIfNeeded() } }
     }
 
@@ -104,6 +116,7 @@ final class MonitorModel: ObservableObject {
 
     func start() {
         stopped = false
+        resetAnnouncements.setPaused(false)
         // 保持后台定时刷新，仍允许系统正常睡眠。
         activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取已启用服务的额度")
         startPolling()
@@ -112,12 +125,14 @@ final class MonitorModel: ObservableObject {
                 self?.timer?.invalidate()
                 self?.timer = nil
                 self?.cursorUsage.setPaused(true)
+                self?.resetAnnouncements.setPaused(true)
             }
         }
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 self?.startPolling()
                 self?.cursorUsage.setPaused(false)
+                self?.resetAnnouncements.setPaused(false)
                 await self?.refresh(force: true, retryCredentials: false)
             }
         }
@@ -139,6 +154,7 @@ final class MonitorModel: ObservableObject {
     func stop() {
         stopped = true
         cursorUsage.setPaused(true)
+        resetAnnouncements.stop()
         timer?.invalidate()
         timer = nil
         if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
@@ -150,8 +166,22 @@ final class MonitorModel: ObservableObject {
 
     func refresh(force: Bool = false, retryCredentials: Bool = true) async {
         await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.refreshResetAnnouncements() }
             for service in enabledServices {
                 group.addTask { await self.refresh(service, force: force, retryCredentials: retryCredentials) }
+            }
+        }
+    }
+
+    private func refreshResetAnnouncements() async {
+        let events = await resetAnnouncements.refresh()
+        guard !events.isEmpty else { return }
+        await updateNotificationStatus()
+        for event in events {
+            guard !stopped, isEnabled(.codex), notificationsEnabled, resetAnnouncements.notificationsEnabled else { return }
+            if let post = event.latestPost {
+                await sendNotification(title: event.notificationTitle, body: post.text,
+                                       identifier: "reset-announcement:\(post.id):\(event.status.rawValue)", resetPostID: post.id)
             }
         }
     }
@@ -264,13 +294,14 @@ final class MonitorModel: ObservableObject {
         await sendNotification(title: "额度通知测试", body: "通知已就绪。启用提醒的服务在实际额度恢复至 100% 时，会在这里通知。")
     }
 
-    private func sendNotification(title: String, body: String) async {
+    private func sendNotification(title: String, body: String, identifier: String = UUID().uuidString, resetPostID: String? = nil) async {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
+        if let resetPostID { content.userInfo["resetPostID"] = resetPostID }
         do {
-            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: identifier, content: content, trigger: nil))
             notificationError = nil
         } catch { notificationError = "通知发送失败：\(error.localizedDescription)" }
     }
