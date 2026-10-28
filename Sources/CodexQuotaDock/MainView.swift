@@ -11,6 +11,7 @@ struct MainView: View {
     @ObservedObject private var resetAnnouncements: ResetAnnouncementMonitor
     @StateObject private var navigation: PanelNavigation
     @StateObject private var usage = UsageModel()
+    @StateObject private var updates = AppUpdateModel()
     @State private var selectedService: QuotaService?
     @State private var confirmsHistoryClear = false
 
@@ -183,6 +184,7 @@ struct MainView: View {
 
     private var settings: some View {
         VStack(alignment: .leading, spacing: 16) {
+            AppUpdateView(model: updates)
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("在菜单栏显示额度")
@@ -252,7 +254,7 @@ struct MainView: View {
             Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
                 .font(PanelTypography.detail).foregroundStyle(.secondary)
             HStack {
-                Text("\(appName) \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
+                Text(appName)
                 Spacer()
                 Link("致谢 cc-bar · MIT", destination: URL(string: "https://github.com/nanvon/cc-bar")!)
             }.font(PanelTypography.detail).foregroundStyle(.secondary)

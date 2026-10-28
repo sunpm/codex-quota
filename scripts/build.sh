@@ -15,6 +15,9 @@ fi
 if [[ -n "${APP_BUILD_NUMBER:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $APP_BUILD_NUMBER" "$APP_DIR/Contents/Info.plist"
 fi
+if [[ -n "${RELEASE_TAG:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Add :ReleaseVersion string ${RELEASE_TAG#v}" "$APP_DIR/Contents/Info.plist"
+fi
 cp Resources/codex.svg "$APP_DIR/Contents/Resources/codex.svg"
 mkdir -p "$APP_DIR/Contents/Resources/ThirdPartyNotices"
 cp Resources/ThirdPartyNotices/*.txt "$APP_DIR/Contents/Resources/ThirdPartyNotices/"
