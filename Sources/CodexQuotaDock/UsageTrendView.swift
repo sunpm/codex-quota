@@ -11,12 +11,12 @@ struct UsageTrendView: View {
     let hourly: Bool
     let interval: DateInterval
     private var unit: Calendar.Component { hourly ? .hour : .day }
-    @Binding var metric: String
+    let metric: String
     @State private var hoveredBucket: Date?
     @State private var hoverPoint = CGPoint.zero
 
     @MainActor
-    init(model: UsageModel, buckets: [Date: [UsageRecord]], hourly: Bool, interval: DateInterval, metric: Binding<String>) {
+    init(model: UsageModel, buckets: [Date: [UsageRecord]], hourly: Bool, interval: DateInterval, metric: String) {
         // 汇总随数据更新，鼠标移动只读取汇总结果。
         self.buckets = buckets.mapValues { records in
             Dictionary(grouping: records, by: \.service).mapValues {
@@ -25,19 +25,12 @@ struct UsageTrendView: View {
         }
         self.hourly = hourly
         self.interval = interval
-        _metric = metric
+        self.metric = metric
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text((hourly ? "每小时" : "每日") + (metric == "费用" ? "估算费用" : "用量")).font(.headline)
-                Spacer()
-                Picker("统计指标", selection: $metric) {
-                    Text("Tokens").tag("Tokens")
-                    Text("费用").tag("费用")
-                }.pickerStyle(.segmented).labelsHidden().frame(width: 150)
-            }
+            Text((hourly ? "每小时" : "每日") + (metric == "费用" ? "估算费用" : "用量")).font(.headline)
             Chart {
                 ForEach(buckets.keys.sorted(), id: \.self) { bucket in
                     ForEach([QuotaService.codex, .claude, .antigravity]) { service in
@@ -135,6 +128,6 @@ struct UsageTrendView: View {
                     }
                 }
             }
-        }.font(.caption)
+        }.font(PanelTypography.detail)
     }
 }

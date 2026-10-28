@@ -38,15 +38,19 @@ struct PricingSettingsView: View {
                 Text(model.priceDate)
                 Spacer()
                 Text("USD / 百万 Tokens")
-            }.font(.caption).foregroundStyle(.secondary)
-            TextField("搜索模型", text: $search)
+            }.font(PanelTypography.detail).foregroundStyle(.secondary)
+            TextField("搜索模型", text: $search).textFieldStyle(.roundedBorder)
             ScrollView {
                 LazyVStack(spacing: 0) {
+                    if rows.isEmpty {
+                        Text("没有匹配的模型").foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 160)
+                    }
                     ForEach(rows) { price in
                         HStack {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(price.model).lineLimit(1).help(price.model)
-                                Text(priceLabel(price)).font(.caption).foregroundStyle(.secondary)
+                                Text(priceLabel(price)).font(PanelTypography.detail).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Button("编辑") { editing = price }
@@ -56,8 +60,8 @@ struct PricingSettingsView: View {
                 }
             }.frame(height: 240)
             Text("更新公开价格会重算历史估算，保留自定义价格。金额不含订阅费及工具调用附加费。")
-                .font(.caption).foregroundStyle(.secondary)
-            if let error = model.pricingError { Text(error).font(.caption).foregroundStyle(.orange) }
+                .font(PanelTypography.detail).foregroundStyle(.secondary)
+            if let error = model.pricingError { Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10)) }
         }
         .sheet(item: $editing) { price in
             PriceEditor(price: price, isCustom: model.isCustom(price), save: model.savePrice, reset: model.resetPrice)
@@ -124,8 +128,8 @@ private struct PriceEditor: View {
                 }.textFieldStyle(.roundedBorder)
             }
             Text("留空表示未定价，0 表示免费。倍率作用于各类 Token；缺少速度或缓存保留期的日志按标准档、短保留期估算。")
-                .font(.caption).foregroundStyle(.secondary)
-            if let error { Text(error).foregroundStyle(.red).font(.caption) }
+                .font(PanelTypography.detail).foregroundStyle(.secondary)
+            if let error { Text(error).foregroundStyle(.red).font(PanelTypography.detail) }
             HStack {
                 if isCustom {
                     Button("恢复公开价格") { reset(price); dismiss() }
