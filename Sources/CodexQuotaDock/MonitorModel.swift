@@ -43,6 +43,7 @@ final class MonitorModel: ObservableObject {
 
     var enabledServices: [QuotaService] { QuotaService.allCases.filter { isEnabled($0) } }
     var menuBarServices: [QuotaService] { enabledServices.filter { isShownInMenuBar($0) } }
+    var hasMenuBarItem: Bool { showsMenuBar && !menuBarServices.isEmpty }
     var refreshing: Bool { resetAnnouncements.refreshing || enabledServices.contains { snapshot($0).refreshing } }
     var lastSuccess: Date? { enabledServices.compactMap { snapshot($0).lastSuccess }.max() }
     var errorMessage: String? {
