@@ -7,26 +7,31 @@ struct UsageTrendView: View {
         let tokens: Int
         let cost: UsageCost
     }
-    private let daily: [Date: [QuotaService: Total]]
+    private let buckets: [Date: [QuotaService: Total]]
+    let hourly: Bool
+    let interval: DateInterval
+    private var unit: Calendar.Component { hourly ? .hour : .day }
     @Binding var metric: String
-    @State private var hoveredDay: Date?
+    @State private var hoveredBucket: Date?
     @State private var hoverPoint = CGPoint.zero
 
     @MainActor
-    init(model: UsageModel, daily: [Date: [UsageRecord]], metric: Binding<String>) {
+    init(model: UsageModel, buckets: [Date: [UsageRecord]], hourly: Bool, interval: DateInterval, metric: Binding<String>) {
         // 汇总随数据更新，鼠标移动只读取汇总结果。
-        self.daily = daily.mapValues { records in
+        self.buckets = buckets.mapValues { records in
             Dictionary(grouping: records, by: \.service).mapValues {
                 Total(tokens: $0.reduce(0) { $0 + $1.tokens.total }, cost: model.costTotal($0))
             }
         }
+        self.hourly = hourly
+        self.interval = interval
         _metric = metric
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(metric == "费用" ? "每日估算费用" : "每日用量").font(.headline)
+                Text((hourly ? "每小时" : "每日") + (metric == "费用" ? "估算费用" : "用量")).font(.headline)
                 Spacer()
                 Picker("统计指标", selection: $metric) {
                     Text("Tokens").tag("Tokens")
@@ -34,25 +39,34 @@ struct UsageTrendView: View {
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 150)
             }
             Chart {
-                ForEach(daily.keys.sorted(), id: \.self) { day in
+                ForEach(buckets.keys.sorted(), id: \.self) { bucket in
                     ForEach([QuotaService.codex, .claude]) { service in
-                        if let total = daily[day]?[service], metric != "费用" || total.cost.pricedCount > 0 {
+                        if let total = buckets[bucket]?[service], metric != "费用" || total.cost.pricedCount > 0 {
                             let amount = metric == "费用" ? NSDecimalNumber(decimal: total.cost.amount).doubleValue : Double(total.tokens)
-                            BarMark(x: .value("日期", day, unit: .day), y: .value(metric == "费用" ? "USD" : "Tokens", amount))
+                            BarMark(x: .value("时间", bucket, unit: unit), y: .value(metric == "费用" ? "USD" : "Tokens", amount))
                                 .foregroundStyle(by: .value("服务", service.title))
-                                .accessibilityLabel("\(day.formatted(date: .abbreviated, time: .omitted)) \(service.title)")
+                                .accessibilityLabel("\(bucket.formatted(date: .abbreviated, time: hourly ? .shortened : .omitted)) \(service.title)")
                                 .accessibilityValue(metric == "费用" ? formattedCost(total.cost) : "\(total.tokens) Tokens")
                         }
                     }
                 }
-                if let hoveredDay, daily[hoveredDay] != nil {
-                    RuleMark(x: .value("日期", hoveredDay, unit: .day))
+                if let hoveredBucket, buckets[hoveredBucket] != nil {
+                    RuleMark(x: .value("时间", hoveredBucket, unit: unit))
                         .foregroundStyle(.secondary)
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
                         .accessibilityHidden(true)
                 }
             }
             .chartForegroundStyleScale(["Codex": Color.blue, "Claude Code": Color.orange])
+            .chartXScale(domain: interval.start...interval.end)
+            .chartXAxis {
+                AxisMarks(values: hourly ? .stride(by: .hour, count: 3) : .automatic(desiredCount: 6)) { _ in
+                    AxisGridLine()
+                    AxisTick()
+                    if hourly { AxisValueLabel(format: .dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) }
+                    else { AxisValueLabel() }
+                }
+            }
             .chartYAxis { AxisMarks(position: .leading) { value in
                 AxisGridLine()
                 AxisValueLabel { if let number = value.as(Double.self) {
@@ -67,22 +81,22 @@ struct UsageTrendView: View {
                             switch phase {
                             case .active(let point):
                                 guard plot.contains(point), let date: Date = proxy.value(atX: point.x - plot.minX) else {
-                                    hoveredDay = nil
+                                    hoveredBucket = nil
                                     return
                                 }
-                                let day = Calendar.current.startOfDay(for: date)
+                                let bucket = Calendar.current.dateInterval(of: unit, for: date)!.start
                                 hoverPoint = point
-                                hoveredDay = daily[day] == nil ? nil : day
+                                hoveredBucket = buckets[bucket] == nil ? nil : bucket
                             case .ended:
-                                hoveredDay = nil
+                                hoveredBucket = nil
                             }
                         }
-                    if let hoveredDay, let entries = daily[hoveredDay] {
+                    if let hoveredBucket, let entries = buckets[hoveredBucket] {
                         let width: CGFloat = 269
                         let height: CGFloat = entries.count > 1 ? 116 : 76
                         let x = hoverPoint.x + (hoverPoint.x + width + 12 < geometry.size.width ? width / 2 + 12 : -width / 2 - 12)
                         let y = hoverPoint.y - height / 2 - 12
-                        details(day: hoveredDay, entries: entries)
+                        details(bucket: hoveredBucket, entries: entries)
                             .frame(width: 245, alignment: .leading)
                             .padding(12)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
@@ -96,13 +110,16 @@ struct UsageTrendView: View {
             .frame(height: 210)
         }
         .padding(18).panelCard()
-        .onChange(of: metric) { _ in hoveredDay = nil }
-        .onChange(of: daily.keys.sorted()) { _ in hoveredDay = nil }
+        .onChange(of: metric) { _ in hoveredBucket = nil }
+        .onChange(of: buckets.keys.sorted()) { _ in hoveredBucket = nil }
+        .onChange(of: interval) { _ in hoveredBucket = nil }
+        .onChange(of: hourly) { _ in hoveredBucket = nil }
     }
 
-    private func details(day: Date, entries: [QuotaService: Total]) -> some View {
+    private func details(bucket: Date, entries: [QuotaService: Total]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(day, format: .dateTime.year().month().day()).fontWeight(.semibold)
+            Text(bucket, format: hourly ? .dateTime.year().month().day().hour().minute() : .dateTime.year().month().day())
+                .fontWeight(.semibold)
             ForEach([QuotaService.codex, .claude]) { service in
                 if let total = entries[service] {
                     HStack(alignment: .top) {

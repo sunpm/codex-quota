@@ -9,7 +9,7 @@
 	<key>CFBundleName</key>
 	<string>Codex Quota Dock</string>
 	<key>CFBundleDisplayName</key>
-	<string>Codex 额度</string>
+	<string>Codex Quota Dock</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -69,15 +69,15 @@ public struct ModelPricing: Codable, Identifiable, Sendable {
         } else { selected = rates }
         guard let base = selected.cost(record.tokens) else { return nil }
         let multiplier: Decimal
-        switch record.serviceTier {
-        case "standard", "default", "auto": multiplier = 1
-        case "fast", "priority":
+        switch record.speedTier {
+        case .standard: multiplier = 1
+        case .fast:
             guard let fastMultiplier else { return nil }
             multiplier = fastMultiplier
-        case "ultrafast":
+        case .ultrafast:
             guard let ultrafastMultiplier else { return nil }
             multiplier = ultrafastMultiplier
-        default: return nil
+        case nil: return nil
         }
         return base * multiplier * (record.isUSOnly ? Decimal(string: "1.1")! : 1)
     }

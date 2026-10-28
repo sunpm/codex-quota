@@ -23,6 +23,10 @@ public struct UsageTokens: Equatable, Sendable {
     }
 }
 
+public enum UsageSpeedTier: String, CaseIterable, Sendable {
+    case standard = "Standard", fast = "Fast", ultrafast = "Ultrafast"
+}
+
 public struct UsageRecord: Identifiable, Sendable {
     public let id: String
     public let service: QuotaService
@@ -33,13 +37,27 @@ public struct UsageRecord: Identifiable, Sendable {
     public let tokens: UsageTokens
     public let serviceTier: String
     public let isUSOnly: Bool
+
+    /// 明细分组与计费共用日志档位映射；未知档位不得按 Standard 计费。
+    public var speedTier: UsageSpeedTier? {
+        switch serviceTier {
+        case "standard", "default", "auto": return .standard
+        case "fast", "priority": return .fast
+        case "ultrafast": return .ultrafast
+        default: return nil
+        }
+    }
 }
 
 public struct UsageScan: Sendable {
     public var records: [UsageRecord] = []
+    /// 原始工作目录到已确认主项目的映射；records 中的路径保持不变。
+    public var projectRoots: [String: String] = [:]
     public var warnings: [String] = []
     public var fileCount = 0
     public init() {}
+
+    public func projectPath(for directory: String) -> String { projectRoots[directory] ?? directory }
 }
 
 /// 只缓存文件元数据和用量字段，不保存消息正文或登录信息。
@@ -117,6 +135,10 @@ public actor LocalUsageReader {
         }
         cache = cache.filter { alive.contains($0.key) }
         result.records = records.values.sorted { $0.date < $1.date }
+        // 每轮在后台按唯一路径解析，日志缓存不冻结已移动或删除的 worktree 关系。
+        for project in Set(result.records.map(\.project)) {
+            result.projectRoots[project] = ProjectWorktreeResolver.mainProjectPath(for: project)
+        }
         if failures > 0 { result.warnings.append("\(failures) 处日志无法读取，统计可能不完整") }
         if invalid > 0 { result.warnings.append("\(invalid) 条记录格式无效，已跳过") }
         if compressed > 0 { result.warnings.append("\(compressed) 个压缩日志暂未计入") }

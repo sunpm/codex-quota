@@ -123,17 +123,30 @@ final class PanelNavigation: ObservableObject {
 
 private enum UsageRange: String, CaseIterable {
     case today = "今天", yesterday = "昨天", week = "7 天", month = "30 天", all = "全部", custom = "自定义"
-    func start(now: Date, custom: Date) -> Date {
+    var hourly: Bool { self == .today || self == .yesterday }
+
+    func intervals(now: Date, customStart: Date, customEnd: Date) -> (current: DateInterval, previous: DateInterval?) {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: now)
+        let start: Date
         switch self {
-        case .today: return today
-        case .yesterday: return calendar.date(byAdding: .day, value: -1, to: today)!
-        case .week: return calendar.date(byAdding: .day, value: -6, to: today)!
-        case .month: return calendar.date(byAdding: .day, value: -29, to: today)!
-        case .all: return .distantPast
-        case .custom: return calendar.startOfDay(for: custom)
+        case .today: start = today
+        case .yesterday: start = calendar.date(byAdding: .day, value: -1, to: today)!
+        case .week: start = calendar.date(byAdding: .day, value: -6, to: today)!
+        case .month: start = calendar.date(byAdding: .day, value: -29, to: today)!
+        case .all: return (DateInterval(start: .distantPast, end: now), nil)
+        case .custom: start = calendar.startOfDay(for: customStart)
         }
+        let fullEnd = self == .yesterday ? today
+            : calendar.date(byAdding: .day, value: 1, to: self == .custom ? calendar.startOfDay(for: customEnd) : today)!
+        let end = max(start, min(fullEnd, now))
+        let current = DateInterval(start: start, end: end)
+        guard end > start else { return (current, nil) }
+        let days = calendar.dateComponents([.day], from: start, to: fullEnd).day!
+        // 按自然日平移，进行中的范围保留同一当地截止时刻；不把一天固定成 86400 秒。
+        let previous = DateInterval(start: calendar.date(byAdding: .day, value: -days, to: start)!,
+                                    end: calendar.date(byAdding: .day, value: -days, to: end)!)
+        return (current, previous)
     }
 }
 
@@ -154,14 +167,12 @@ struct UsageView: View {
     @State private var customEnd = Date()
     @State private var grouping = "模型"
     @State private var metric = "Tokens"
+    @State private var selectedSession: UsageGroup?
 
-    private var records: [UsageRecord] {
-        let now = Date()
-        let calendar = Calendar.current
-        let start = range.start(now: now, custom: customStart)
-        let end = range == .yesterday ? calendar.startOfDay(for: now)
-            : range == .custom ? calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: customEnd))! : now
-        return model.scan.records.filter { (service == nil || $0.service == service) && $0.date >= start && $0.date < end }
+    private func records(in interval: DateInterval) -> [UsageRecord] {
+        model.scan.records.filter {
+            (service == nil || $0.service == service) && $0.date >= interval.start && $0.date < interval.end
+        }
     }
     private func total(_ records: [UsageRecord]) -> UsageTokens {
         records.reduce(into: UsageTokens()) { $0.add($1.tokens) }
@@ -176,11 +187,11 @@ struct UsageView: View {
             case "服务":
                 key = record.service.rawValue; name = record.service.title; detail = ""
             case "项目":
-                key = record.project; name = projectName(record.project); detail = record.project
+                key = model.scan.projectPath(for: record.project); name = projectName(key); detail = key
             case "对话":
                 key = record.service.rawValue + record.session
                 name = "\(record.service.title) · \(record.session.prefix(8))"
-                detail = projectName(record.project)
+                detail = projectName(model.scan.projectPath(for: record.project))
             default:
                 key = record.service.rawValue + ":" + record.model; name = record.model; detail = record.service.title
             }
@@ -197,7 +208,9 @@ struct UsageView: View {
     }
 
     var body: some View {
-        let records = records
+        // 汇总、图表和比较共用同一截止时刻与筛选，避免临界时刻口径不同。
+        let intervals = range.intervals(now: Date(), customStart: customStart, customEnd: customEnd)
+        let records = records(in: intervals.current)
         let tokens = total(records)
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -218,14 +231,15 @@ struct UsageView: View {
             } else if model.updatedAt == nil {
                 ProgressView("正在读取本地用量…").frame(maxWidth: .infinity, minHeight: 260)
             } else if records.isEmpty && page != .overview {
+                summary(records, tokens: tokens, previous: intervals.previous)
                 empty("所选范围内没有用量", detail: "统计 Codex 和 Claude Code 保存在本机的会话记录。")
             } else if page == .overview {
-                summary(records, tokens: tokens)
+                summary(records, tokens: tokens, previous: intervals.previous)
                 UsageHeatmapView(model: model, service: service)
                 if records.isEmpty {
                     empty("所选范围内没有用量", detail: "统计 Codex 和 Claude Code 保存在本机的会话记录。")
                 } else {
-                    chart(records)
+                    chart(records, interval: intervals.current)
                     HStack(alignment: .top, spacing: 18) {
                         composition(tokens).frame(maxWidth: .infinity)
                         ranking(Array(groups(records, by: "对话").prefix(5)), title: "高消耗对话")
@@ -243,10 +257,11 @@ struct UsageView: View {
                     }.padding(18).panelCard()
                 }
             } else {
-                summary(records, tokens: tokens)
+                summary(records, tokens: tokens, previous: intervals.previous)
                 VStack(alignment: .leading, spacing: 12) {
                     Text(page.rawValue).font(.headline)
-                    groupTable(groups(records, by: page.rawValue), total: tokens.total, cost: model.costTotal(records))
+                    groupTable(groups(records, by: page.rawValue), total: tokens.total, cost: model.costTotal(records),
+                               opensSession: page == .sessions)
                 }.padding(18).panelCard()
             }
             let costs = model.costTotal(records)
@@ -266,26 +281,73 @@ struct UsageView: View {
             }.font(.caption).foregroundStyle(.secondary)
         }
         .padding(24)
-    }
-
-    private func summary(_ records: [UsageRecord], tokens: UsageTokens) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 14)], spacing: 14) {
-            metricCard("总 Tokens", value: formattedTokens(tokens.total))
-            metricCard("估算费用", value: formattedCost(model.costTotal(records)))
-            metricCard("对话", value: Set(records.map { $0.service.rawValue + $0.session }).count.formatted())
-            metricCard("输入缓存命中率", value: tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—")
+        .sheet(item: $selectedSession) { session in
+            UsageSessionDetailView(model: model, title: session.name,
+                range: range == .custom
+                    ? customStart.formatted(date: .numeric, time: .omitted) + " – " + customEnd.formatted(date: .numeric, time: .omitted)
+                    : range.rawValue,
+                records: records.filter { $0.service.rawValue + $0.session == session.id })
         }
     }
-    private func metricCard(_ label: String, value: String) -> some View {
+
+    private func summary(_ records: [UsageRecord], tokens: UsageTokens, previous: DateInterval?) -> some View {
+        let previousRecords = previous.map { self.records(in: $0) }
+        let previousTokens = previousRecords.map { total($0).total }
+        let cost = model.costTotal(records)
+        let previousCost = previousRecords.map { model.costTotal($0) }
+        return VStack(alignment: .leading, spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 14)], spacing: 14) {
+                metricCard("总 Tokens", value: formattedTokens(tokens.total),
+                    change: previousTokens.map { change(current: Decimal(tokens.total), previous: Decimal($0), money: false) },
+                    previous: previousTokens.map { "\($0.formatted()) Tokens" })
+                metricCard("估算费用", value: records.isEmpty ? "$0.00" : formattedCost(cost),
+                    change: previousCost.map {
+                        cost.unpricedCount > 0 || $0.unpricedCount > 0 ? "含未定价，暂不比较"
+                            : change(current: cost.amount, previous: $0.amount, money: true)
+                    }, previous: previousCost.map { $0.pricedCount == 0 && $0.unpricedCount == 0 ? "$0.00" : formattedCost($0) })
+                metricCard("对话", value: Set(records.map { $0.service.rawValue + $0.session }).count.formatted())
+                metricCard("输入缓存命中率", value: tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—")
+            }
+            if let previous {
+                Text("对比 \(previous.start.formatted(date: .numeric, time: .shortened)) – \(previous.end.formatted(date: .numeric, time: .shortened))")
+                    .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+    }
+    private func metricCard(_ label: String, value: String, change: String? = nil, previous: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label).font(.callout).foregroundStyle(.secondary)
             Text(value).font(.system(size: 25, weight: .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(16).panelCard()
+            if let change {
+                Text(change).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    .help(previous.map { "上期：\($0)" } ?? "")
+            }
+        }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).padding(16).panelCard()
     }
-    private func chart(_ records: [UsageRecord]) -> some View {
-        UsageTrendView(model: model, daily: Dictionary(grouping: records) {
-            Calendar.current.startOfDay(for: $0.date)
-        }, metric: $metric)
+    private func change(current: Decimal, previous: Decimal, money: Bool) -> String {
+        let delta = current - previous
+        guard delta != 0 else { return "较上期持平" }
+        let magnitude = abs(delta)
+        let amount: String
+        if money {
+            var cost = UsageCost(); cost.add(magnitude)
+            amount = formattedCost(cost)
+        } else { amount = formattedTokens(NSDecimalNumber(decimal: magnitude).intValue) }
+        guard previous > 0 else { return "较上期新增 \(amount)" }
+        let sign = delta > 0 ? "+" : "−"
+        let percent = NSDecimalNumber(decimal: magnitude / previous).doubleValue.formatted(.percent.precision(.fractionLength(1)))
+        return "\(sign)\(percent) · \(sign)\(amount)"
+    }
+    private func chart(_ records: [UsageRecord], interval: DateInterval) -> some View {
+        let calendar = Calendar.current
+        let unit: Calendar.Component = range.hourly ? .hour : .day
+        let buckets = Dictionary(grouping: records) { calendar.dateInterval(of: unit, for: $0.date)!.start }
+        let start = range == .all ? buckets.keys.min() ?? calendar.startOfDay(for: interval.end) : interval.start
+        // 当前未结束的小时 / 天也展示完整柱宽；未来时间只留空，不补造读数。
+        let endDay = calendar.dateInterval(of: .day, for: range == .all ? buckets.keys.max() ?? interval.end : interval.end)!
+        let end = range != .all && interval.end == endDay.start ? endDay.start : endDay.end
+        return UsageTrendView(model: model, buckets: buckets, hourly: range.hourly,
+                              interval: DateInterval(start: start, end: end), metric: $metric)
     }
     private func composition(_ tokens: UsageTokens) -> some View {
         let parts: [(String, Int, Color)] = [("输入", tokens.input, .blue), ("输出", tokens.output, .purple),
@@ -315,21 +377,24 @@ struct UsageView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.headline)
             ForEach(groups) { group in
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(group.name).lineLimit(1)
-                        Text(group.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text(formattedCost(group.cost))
-                        Text(formattedTokens(group.tokens.total) + " Tokens").font(.caption).foregroundStyle(.secondary)
-                    }.monospacedDigit()
-                }.font(.callout)
+                Button { selectedSession = group } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(group.name).lineLimit(1)
+                            Text(group.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(formattedCost(group.cost))
+                            Text(formattedTokens(group.tokens.total) + " Tokens").font(.caption).foregroundStyle(.secondary)
+                        }.monospacedDigit()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                    }.font(.callout).contentShape(Rectangle())
+                }.buttonStyle(.plain)
             }
         }.padding(18).panelCard()
     }
-    private func groupTable(_ groups: [UsageGroup], total: Int, cost: UsageCost) -> some View {
+    private func groupTable(_ groups: [UsageGroup], total: Int, cost: UsageCost, opensSession: Bool = false) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text("名称"); Spacer()
@@ -337,10 +402,11 @@ struct UsageView: View {
                 Text("估算费用").frame(width: 100, alignment: .trailing)
                 Text(metric == "费用" ? "费用占比" : "Token 占比").frame(width: 70, alignment: .trailing)
                 Text("缓存命中率").frame(width: 86, alignment: .trailing)
+                if opensSession { Color.clear.frame(width: 8, height: 1) }
             }.font(.caption).foregroundStyle(.secondary).padding(.bottom, 8)
             ForEach(groups) { group in
                 Divider()
-                HStack(spacing: 12) {
+                let row = HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(group.name).fontWeight(.medium).lineLimit(1).help(group.detail.isEmpty ? group.name : group.detail)
                         if !group.detail.isEmpty { Text(group.detail).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
@@ -351,7 +417,15 @@ struct UsageView: View {
                     Text(share(group, tokens: total, cost: cost)).frame(width: 70, alignment: .trailing)
                     Text(group.tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—")
                         .frame(width: 86, alignment: .trailing)
-                }.font(.callout).monospacedDigit().padding(.vertical, 11)
+                    if opensSession {
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary).frame(width: 8)
+                    }
+                }.font(.callout).monospacedDigit().padding(.vertical, 11).contentShape(Rectangle())
+                if opensSession {
+                    Button { selectedSession = group } label: { row }.buttonStyle(.plain)
+                } else {
+                    row
+                }
             }
         }
     }

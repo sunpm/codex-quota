@@ -18,6 +18,8 @@ final class MonitorModel: ObservableObject {
     @Published var notificationStatus = "正在检查通知权限…"
     @Published var notificationError: String?
     @Published var notificationsEnabled = false
+    @Published private(set) var persistentNotificationsEnabled = false
+    @Published var showsPersistentNotificationGuide = false
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var launchError: String?
     @Published private(set) var showsMenuBar: Bool
@@ -35,6 +37,7 @@ final class MonitorModel: ObservableObject {
     private var sleepObserver: NSObjectProtocol?
     private var activity: NSObjectProtocol?
     private let stateKey = "recoveryState.v2"
+    private let notificationGuideKey = "notifications.persistentGuideShown"
 
     var enabledServices: [QuotaService] { QuotaService.allCases.filter { isEnabled($0) } }
     var menuBarServices: [QuotaService] { enabledServices.filter { isShownInMenuBar($0) } }
@@ -178,10 +181,30 @@ final class MonitorModel: ObservableObject {
 
     func updateNotificationStatus() async {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
+        persistentNotificationsEnabled = false
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             notificationsEnabled = true
-            notificationStatus = "已允许系统通知，各服务可独立开关"
+            switch settings.alertSetting {
+            case .enabled:
+                switch settings.alertStyle {
+                case .alert:
+                    persistentNotificationsEnabled = true
+                    notificationStatus = "持久通知已开启，提醒保留到手动关闭"
+                case .banner:
+                    notificationStatus = "临时横幅，提醒会自动消失"
+                case .none:
+                    notificationStatus = "已允许通知，未开启桌面提醒"
+                @unknown default:
+                    notificationStatus = "已允许通知，无法确认提醒样式"
+                }
+            case .disabled:
+                notificationStatus = "已允许通知，未开启桌面提醒"
+            case .notSupported:
+                notificationStatus = "已允许通知，无法确认提醒样式"
+            @unknown default:
+                notificationStatus = "已允许通知，无法确认提醒样式"
+            }
         case .denied:
             notificationsEnabled = false
             notificationStatus = "通知未获允许，请在系统设置中开启"
@@ -205,6 +228,15 @@ final class MonitorModel: ObservableObject {
             return
         }
         await updateNotificationStatus()
+        if settings.authorizationStatus == .notDetermined, notificationsEnabled,
+           !persistentNotificationsEnabled, !defaults.bool(forKey: notificationGuideKey) {
+            showPersistentNotificationGuide()
+        }
+    }
+
+    func showPersistentNotificationGuide() {
+        defaults.set(true, forKey: notificationGuideKey)
+        showsPersistentNotificationGuide = true
     }
 
     func openNotificationSettings() {
