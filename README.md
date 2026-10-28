@@ -19,6 +19,23 @@ open "dist/Codex Quota Dock.app"
 
 如需开机启动，建议将构建出的 `.app` 拖入“应用程序”，从新位置打开，再在控制面板的“设置”页开启“登录 Mac 时启动”。该设置默认关闭。
 
+## 自动发布与 Changelog
+
+推送 `vX.Y.Z` 标签后，[Release 工作流](.github/workflows/release.yml) 在 `macos-15` / Xcode 16.4 上运行现有离线检查、构建 Apple Silicon / Intel 通用应用，并发布到 GitHub Releases。`vX.Y.Z-beta.1`、`vX.Y.Z-rc.1` 等带后缀的标签会标记为预发布，不设为 Latest。
+
+先将待发布代码及工作流提交、推送到 GitHub，再在对应提交上创建标签，例如：
+
+```sh
+git tag -a v0.7.0 -m "发布 v0.7.0"
+git push origin v0.7.0
+```
+
+Release 附件包含 `CodexQuotaDock-v0.7.0-macOS-universal.zip` 和 `SHA256SUMS.txt`。Changelog 使用 GitHub 原生 Release Notes，自动汇总合并的 PR、贡献者和完整变更链接。已有正式版本时，预发布与正式版统一从当前历史中最近正式版本累计，避免遗漏 beta / rc 中的 PR；没有正式标签时由 GitHub 自动选择范围。每次改动通过 PR 合并，PR 标题简洁描述结果即可，无需添加分类标签。直接提交不保证单独列入更新条目；发布说明保存在 Releases，不自动回写仓库中的 `CHANGELOG.md`。
+
+CI 使用标签的 `X.Y.Z` 写入应用版本、工作流运行编号写入构建号；仅修改构建产物，不改写源码中的 `Info.plist`。本地构建仍默认使用源码版本与当前机器架构，可用 `bash scripts/build.sh --arch arm64 --arch x86_64` 构建通用版本（需要完整 Xcode）。
+
+发布使用 Actions 自带的 `GITHUB_TOKEN` 和 `contents: write` 权限，无需额外 PAT；仓库或组织策略需要允许此工作流运行。构建仍使用 ad-hoc 签名，没有接入 Developer ID 签名与公证。构建或检查失败不会发布；附件上传失败时可能留下草稿，确认原因并删除该未发布草稿后，可在 Actions 中重新运行。已发布版本使用新标签更新，不覆盖原附件。
+
 ## 主窗口与菜单栏
 
 - 菜单栏按 Codex、Claude Code、Antigravity、Cursor 顺序显示已启用监测且勾选了“菜单栏”的服务。只显示一个服务时最多显示两个额度窗口，例如 `80%/84%`。使用系统模板图像适配深浅色和选中状态。
@@ -107,7 +124,7 @@ CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-module-cache" swiftc -parse-as-librar
 
 ## 限制
 
-- 当前为本地 ad-hoc 签名版本，未做 Developer ID 签名或公证，适用于本机自用。
+- 当前本地构建与 Releases 均使用 ad-hoc 签名，未做 Developer ID 签名或公证；下载版可能被 macOS 阻止首次打开。
 - 菜单栏空间受屏幕尺寸、刘海及其他菜单项目影响；空间不足时 macOS 可能隐藏状态栏项目。
 - 定时器受系统调度和网络延迟影响，30 秒是查询目标间隔，不保证服务端数据在 30 秒内更新。专注模式和系统通知设置可能影响横幅显示。
 - 重置后若额度在下次轮询前已被使用，可能观察不到 100%，不会发出“恢复至 100%”通知。倒计时归零本身也不会触发通知。

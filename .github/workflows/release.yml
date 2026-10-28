@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*.[0-9]*.[0-9]*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      RELEASE_TAG: ${{ github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read version
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
+            echo "::error::版本标签应为 vX.Y.Z 或 vX.Y.Z-beta.1 / vX.Y.Z-rc.1"
+            exit 1
+          fi
+          version="${RELEASE_TAG#v}"
+          echo "APP_VERSION=${version%%-*}" >> "$GITHUB_ENV"
+          echo "APP_BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Run existing checks
+        run: bash scripts/test.sh
+
+      - name: Build universal app
+        run: bash scripts/build.sh --arch arm64 --arch x86_64
+
+      - name: Package
+        run: |
+          app="dist/Codex Quota Dock.app"
+          lipo "$app/Contents/MacOS/CodexQuotaDock" -verify_arch arm64
+          lipo "$app/Contents/MacOS/CodexQuotaDock" -verify_arch x86_64
+          codesign --verify --deep --strict "$app"
+          archive="CodexQuotaDock-${RELEASE_TAG}-macOS-universal.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/$archive"
+          (cd dist && shasum -a 256 "$archive" > SHA256SUMS.txt)
+          printf '适用于 macOS 13 及以上，支持 Apple Silicon 和 Intel。解压 ZIP 后将应用拖入“应用程序”。\n\n当前使用 ad-hoc 签名，未经过 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。\n' > dist/release-notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          options=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            options+=(--prerelease --latest=false)
+          fi
+          # 已有正式版本时，统一从该版本累计，保留 beta / rc 中的 PR。
+          previous_tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' \
+            --exclude '*-*' --exclude "$RELEASE_TAG" "$RELEASE_TAG" 2>/dev/null || true)"
+          if [[ -n "$previous_tag" ]]; then
+            options+=(--notes-start-tag "$previous_tag")
+          fi
+          gh release create "$RELEASE_TAG" \
+            "dist/CodexQuotaDock-${RELEASE_TAG}-macOS-universal.zip" \
+            dist/SHA256SUMS.txt \
+            --verify-tag --title "$RELEASE_TAG" \
+            --generate-notes --notes-file dist/release-notes.md "${options[@]}"
