@@ -46,6 +46,7 @@
 - **恢复提醒**：首次启动允许通知后，可在“设置 → 恢复通知”发送测试通知或开启持久通知引导。macOS 26 及更新版本在系统通知设置中开启桌面提醒并选择“持续”，旧版选择“提醒”。
 - **重置动态**：额度页的全部服务额度之后，独立显示最近三条 Tibo 重置或发卡动态，数据来自 [AIHOT](https://aihot.news/codex-reset)，每 10 分钟查询。可在“设置 → 恢复通知”开启独立的“Codex 重置动态通知”（默认关闭），点击通知打开原帖。
 - **后台运行**：关闭窗口后继续监测，点击 Dock 图标可恢复窗口。需要开机启动时，在设置中开启“登录 Mac 时启动”。
+- **检查更新**：在“设置 → 软件更新”手动查询 GitHub 最新正式版，查看更新说明并下载对应 Mac 的 Apple Silicon / Intel DMG（Rosetta 下也优先下载 Apple Silicon 版）。下载由默认浏览器处理，安装仍需手动完成；没有对应附件时提供发布页入口。检查不使用账号凭据，不自动轮询，遇到 GitHub 限流会等待允许重试的时间。
 
 | 快捷键 | 操作 |
 | --- | --- |
@@ -179,7 +180,7 @@ bash scripts/package-dmg.sh x86_64
 
 脚本复用标准构建，使用系统 `hdiutil` 生成并校验镜像，产物位于 `dist/`。可通过 `APP_VERSION` 指定版本；本地默认使用源码版本与当前架构。
 
-推送 `vX.Y.Z` 标签会触发 [Release 工作流](.github/workflows/release.yml)，在 `macos-15` / Xcode 16.4 上运行检查、分别构建 Apple Silicon / Intel DMG，并发布校验值。`-beta.1`、`-rc.1` 等后缀标记为预发布，不设为 Latest。标签版本与运行编号只写入构建产物，不回写源码元数据。
+推送 `vX.Y.Z` 标签会触发 [Release 工作流](.github/workflows/release.yml)，在 `macos-15` / Xcode 16.4 上运行检查、分别构建 Apple Silicon / Intel DMG，并发布校验值。`-beta.1`、`-rc.1` 等后缀标记为预发布，不设为 Latest。标签完整版本写入产物的 `ReleaseVersion`，让更新检查区分同版本号的预发布与正式版；标签版本与运行编号只写入构建产物，不回写源码元数据。
 
 更新说明由 GitHub 原生 Release Notes 根据已合并 PR 生成，已有正式版本时从最近正式版本累计，配置见 [.github/release.yml](.github/release.yml)。发布使用 Actions 自带 `GITHUB_TOKEN` 和 `contents: write` 权限，无需额外 PAT。已发布版本使用新标签更新，不覆盖原附件；上传失败留下的未发布草稿需确认并清理后重跑。
 

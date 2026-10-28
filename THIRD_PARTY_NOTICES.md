@@ -51,6 +51,8 @@ Antigravity 本地用量的目录布局、已完成步骤、计数与重复导�
 
 内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI / Anthropic 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
+软件更新入口参考 cc-bar 的 `Core/UpdateChecker.swift` 中公开版本查询与数字版本比较的设计，并核对 GitHub Releases API 文档；本项目仅手动查询最新正式版并打开对应架构的 DMG，不引入 Sparkle 或自动安装。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`（2026-10-29），沿用随包分发的 cc-bar MIT 许可与版权声明。
+
 ## Zstandard 压缩日志
 
 `Sources/CZstd/` 来自 [facebook/zstd v1.5.7](https://github.com/facebook/zstd/tree/v1.5.7)，固定提交 `f8745da6ff1ad1e7bab384bd1f9d742439278e99`。Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved. 项目提供 BSD / GPLv2 双许可证，本应用选择 BSD；完整原文保存在 `Resources/ThirdPartyNotices/zstd-LICENSE.txt`，随应用包分发。
