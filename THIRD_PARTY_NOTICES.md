@@ -13,6 +13,8 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 本次多服务接入还参考了 cc-bar 的 `Core/Credentials/ClaudeAuth.swift`、`CursorAuth.swift` 和 `Core/Quota/ClaudeQuotaClient.swift`、`CursorQuotaClient.swift` 的登录存储格式、解析及 Cursor 解密方式。`AGENTS.md` 吸收了适用于本项目的协作规则，未引入其自动发版约定。
 
+Cursor 账号用量的接口字段、分页完整性校验和美分换算参考并改编自 cc-bar `4cc95d092e4aaf23738459abb166fb1173352691` 的 `Core/Usage/CursorUsageFetcher.swift`（2026-10-28）。同时比较 CodexBar 的 `Sources/CodexBarCore/Providers/Cursor/CursorUsageEventsFetcher.swift` 与 [历史接口 403 重试问题 #3910](https://github.com/steipete/CodexBar/issues/3910)。沿用两项目随包分发的 MIT 声明；使用本项目现有 HTTP、登录态与退避，未引入新依赖、浏览器登录、递归分窗或上游数据库。
+
 Antigravity 本地进程发现、接口格式及响应解析参考 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的 `Sources/CodexBarCore/Providers/Antigravity/AntigravityStatusProbe.swift`、`AntigravityStatusProbe+ResponseModels.swift`、`AntigravityQuotaSummaryParser.swift` 和 `AntigravityLocalhostSession.swift`。参考日期：2026-10-25。
 
 Copyright (c) 2026 Peter Steinberger。采用 MIT License；完整声明保存在 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`，构建时一并复制到应用包中。

@@ -231,7 +231,7 @@ struct UsageView: View {
         let tokens = total(records)
         VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Text(service?.title ?? "全部服务").foregroundStyle(.secondary)
+                Text(service?.title ?? "本机用量").foregroundStyle(.secondary)
                 Spacer()
                 Picker("时间范围", selection: $range) {
                     ForEach(UsageRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -243,7 +243,7 @@ struct UsageView: View {
                     DatePicker("结束", selection: $customEnd, in: customStart..., displayedComponents: .date)
                 }
             }
-            if service == .antigravity || service == .cursor {
+            if service == .antigravity {
                 empty("暂无本地 Token 数据", detail: "\(service!.title) 目前支持剩余额度查询，可在“额度”中查看。")
             } else if model.updatedAt == nil {
                 ProgressView("正在读取本地用量…").frame(maxWidth: .infinity, minHeight: 260)

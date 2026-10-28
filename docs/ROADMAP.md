@@ -15,7 +15,7 @@
 | 已实现，待实机验收 | 同期比较 | 判断用量与费用的变化 |
 | 已实现，待实机验收 | 读取压缩日志 | 补齐压缩归档中的历史用量 |
 | 已实现，待实机验收 | 保留历史统计 | 清理源日志后仍能查看已采集的用量 |
-| P2 | Cursor 用量历史 | 补充账号全设备 Token 与服务端费用 |
+| 已实现，待真实服务验收 | Cursor 用量历史 | 补充账号全设备 Token 与服务端费用 |
 | P2 | Antigravity 本地用量 | 补充本机会话的 Token 历史 |
 | 暂缓 | 额度折算与用满预估 | 先解决账号归属与统计范围不一致的问题 |
 
@@ -118,13 +118,19 @@ P1 优先复用现有数据完成明细、归组和趋势；压缩读取单独�
 
 ## Cursor 用量历史
 
-- [ ] 接入远端用量事件，展示 Token、模型、请求数与服务端费用。
+- [x] 接入远端用量事件，展示 Token、模型、请求数与服务端费用。
 
-参考 cc-bar 的 `get-filtered-usage-events` 读取与分页处理。数据范围标为“账号全设备用量”；服务端费用与本地 API 等价估算分别呈现，缺少项目或会话信息时不强行归组。查询沿用现有只读登录态和已启用服务的凭据边界。
+已复用 Cursor 只读登录态与 HTTP 客户端，读取 `get-filtered-usage-events`。Cursor 概览单独显示“账号全设备用量”，默认最近 30 个自然日，可选择日期；服务端 `chargedCents` 按 Decimal 换算 USD，与本地估算分开展示，不强行生成项目或会话归属，也不写入本地历史存储。
+
+分页校验服务端总数一致及收齐数量，最多 200 页、每页 1,000 条；没有稳定事件 ID，因此只在完整成功时替换范围快照，不跨刷新叠加。分页失败保留旧快照并标记过期，超限提示缩小范围，不增加递归拆分或猜测去重。缺失费用与零费用分别处理，缺少完整 Token 字段的事件仍计入请求数并标明不完整。
+
+仅在已启用 Cursor 监测且概览可见时自动查询，成功后间隔五分钟；独立错误与退避，共用 Cursor 额度客户端的限流冷却。401 / 403 和取消钥匙串访问后等待手动重试；识别到新账号先清空旧快照，关闭监测清空并取消查询，睡眠与退出取消在途查询。保留最后成功的范围和时间，选择新范围后不会把旧快照标为新查询结果。
+
+现有核心检查 90 个断言、应用检查 25 个断言、标准构建与打包及签名验证通过；未新增或修改自动化测试。已有检查不覆盖新增 Cursor 历史解析、分页和账号切换；未读取真实服务凭据或调用真实接口，相关流程及新增页面交互仍待实机验收。
 
 验收：分页与刷新不重复入账，账号切换不混合记录，费用缺失与零费用可区分；远端失败保留最后成功快照并标明过期。可查询的历史范围以接口实际返回为准。
 
-参考：[cc-bar CursorUsageFetcher](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Usage/CursorUsageFetcher.swift)。
+参考：[cc-bar CursorUsageFetcher](https://github.com/nanvon/cc-bar/blob/4cc95d092e4aaf23738459abb166fb1173352691/Core/Usage/CursorUsageFetcher.swift)、[CodexBar CursorUsageEventsFetcher](https://github.com/steipete/CodexBar/blob/main/Sources/CodexBarCore/Providers/Cursor/CursorUsageEventsFetcher.swift)、[历史接口 403 重试问题 #3910](https://github.com/steipete/CodexBar/issues/3910)（2026-10-28 复查）。两项目均为 MIT，继续使用本项目 Foundation 网络栈，不引入上游浏览器登录、CSV 回退或增量数据库。
 
 ## Antigravity 本地用量
 

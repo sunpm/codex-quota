@@ -46,6 +46,7 @@ private final class QuotaSessionDelegate: NSObject, URLSessionTaskDelegate {
 @MainActor
 final class QuotaHTTP {
     private let session: URLSession
+    private(set) var rateLimitedUntil = Date.distantPast
     init(local: Bool = false) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpCookieStorage = nil
@@ -56,6 +57,10 @@ final class QuotaHTTP {
         session = URLSession(configuration: configuration, delegate: QuotaSessionDelegate(local: local), delegateQueue: nil)
     }
     func data(url: URL, headers: [String: String] = [:], body: [String: Any]? = nil, timeout: TimeInterval = 20) async throws -> Data {
+        try Task.checkCancellation()
+        guard Date() >= rateLimitedUntil else {
+            throw QuotaHTTPError(status: 429, retryAfter: rateLimitedUntil.timeIntervalSinceNow)
+        }
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -68,7 +73,10 @@ final class QuotaHTTP {
         let data: Data
         let response: URLResponse
         do { (data, response) = try await session.data(for: request) }
-        catch { throw MonitorError.message("无法连接额度服务，请检查网络或客户端运行状态。") }
+        catch {
+            if Task.isCancelled { throw CancellationError() }
+            throw MonitorError.message("无法连接服务，请检查网络或客户端运行状态。")
+        }
         guard let response = response as? HTTPURLResponse else { throw MonitorError.message("服务未返回有效 HTTP 响应。") }
         guard (200..<300).contains(response.statusCode) else {
             var retryAfter: TimeInterval?
@@ -80,6 +88,7 @@ final class QuotaHTTP {
                 formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss z"
                 let value = Double(raw) ?? formatter.date(from: raw)?.timeIntervalSinceNow ?? 300
                 retryAfter = value.isFinite ? max(30, value) : 300
+                rateLimitedUntil = Date().addingTimeInterval(retryAfter!)
             }
             throw QuotaHTTPError(status: response.statusCode, retryAfter: retryAfter)
         }
@@ -120,12 +129,42 @@ final class ClaudeClient: QuotaClient {
 @MainActor
 final class CursorClient: QuotaClient {
     private let http = QuotaHTTP()
+    var rateLimitedUntil: Date { http.rateLimitedUntil }
     func sample() async throws -> QuotaSample {
         let auth = try await Task.detached(priority: .utility) { try LocalCredentials.cursorSession() }.value
         let data = try await http.data(url: URL(string: "https://cursor.com/api/usage-summary")!, headers: ["Cookie": auth.cookie])
         let windows = try ServiceQuotaParser.cursor(data)
         guard !windows.isEmpty else { throw MonitorError.message("Cursor 未返回可用的有限额度；当前套餐或接口可能不支持百分比查询。") }
         return QuotaSample(fingerprint: accountFingerprint(auth.subject), windows: windows)
+    }
+
+    // Endpoint and page fields reference nanvon/cc-bar (MIT), CursorUsageFetcher.swift.
+    // Copyright (c) 2026 nanvon. See Resources/ThirdPartyNotices/cc-bar-LICENSE.txt.
+    func usage(auth: LocalCredentials.CursorSession, interval: DateInterval) async throws -> [CursorUsageEvent] {
+        let pageSize = 1_000
+        var events: [CursorUsageEvent] = []
+        var expectedTotal: Int?
+        for number in 1...200 {
+            let data = try await http.data(
+                url: URL(string: "https://cursor.com/api/dashboard/get-filtered-usage-events")!,
+                headers: ["Cookie": auth.cookie, "Origin": "https://cursor.com"],
+                body: ["page": number, "pageSize": pageSize,
+                       "startDate": String(Int64(interval.start.timeIntervalSince1970 * 1_000)),
+                       "endDate": String(Int64(interval.end.timeIntervalSince1970 * 1_000))])
+            try Task.checkCancellation()
+            let page = try CursorUsagePage.decode(data)
+            guard expectedTotal == nil || expectedTotal == page.total else { throw CursorUsageError.incompletePages }
+            expectedTotal = page.total
+            events.append(contentsOf: page.events)
+            guard page.events.count <= pageSize, events.count <= page.total else { throw CursorUsageError.incompletePages }
+            if page.events.count < pageSize || events.count == page.total {
+                guard events.count == page.total else { throw CursorUsageError.incompletePages }
+                // 接口可能包含结束边界，统一按左闭右开区间展示。
+                return events.filter { $0.date >= interval.start && $0.date < interval.end }
+                    .sorted { $0.date > $1.date }
+            }
+        }
+        throw CursorUsageError.pageLimit
     }
     func stop() { http.stop() }
 }
