@@ -13,6 +13,8 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 本次多服务接入还参考了 cc-bar 的 `Core/Credentials/ClaudeAuth.swift`、`CursorAuth.swift` 和 `Core/Quota/ClaudeQuotaClient.swift`、`CursorQuotaClient.swift` 的登录存储格式、解析及 Cursor 解密方式。`AGENTS.md` 吸收了适用于本项目的协作规则，未引入其自动发版约定。
 
+Cursor 账号用量的接口字段、分页完整性校验和美分换算参考并改编自 cc-bar `4cc95d092e4aaf23738459abb166fb1173352691` 的 `Core/Usage/CursorUsageFetcher.swift`（2026-10-28）。同时比较 CodexBar 的 `Sources/CodexBarCore/Providers/Cursor/CursorUsageEventsFetcher.swift` 与 [历史接口 403 重试问题 #3910](https://github.com/steipete/CodexBar/issues/3910)。沿用两项目随包分发的 MIT 声明；使用本项目现有 HTTP、登录态与退避，未引入新依赖、浏览器登录、递归分窗或上游数据库。
+
 Antigravity 本地进程发现、接口格式及响应解析参考 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的 `Sources/CodexBarCore/Providers/Antigravity/AntigravityStatusProbe.swift`、`AntigravityStatusProbe+ResponseModels.swift`、`AntigravityQuotaSummaryParser.swift` 和 `AntigravityLocalhostSession.swift`。参考日期：2026-10-25。
 
 Copyright (c) 2026 Peter Steinberger。采用 MIT License；完整声明保存在 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`，构建时一并复制到应用包中。
@@ -29,8 +31,24 @@ Copyright (c) 2026 Peter Steinberger。采用 MIT License；完整声明保存�
 
 本地用量统计的日志字段、缓存拆分与重复事件处理参考并改编自 cc-bar 的 `Core/Usage/CodexJSONLScanner.swift`、`ClaudeJSONLScanner.swift` 和 `UsageModels.swift`（参考日期：2026-10-28）。沿用上述 MIT 声明。实现仅保留本项目使用的日志字段与内存文件缓存，未引入其数据库、费用定价或日志监视依赖。
 
+历史保留参考 cc-bar `530ef49` 的 `Core/Storage/UsageSnapshotStore.swift` 的单份快照原子提交与不覆盖无效历史的设计，并复查 [fork 重复统计问题 #7](https://github.com/nanvon/cc-bar/issues/7)（2026-10-28，已关闭）。使用 Foundation 与本项目的逐条用量记录自行实现，无新增依赖，未复制上游快照存储代码；沿用已有随包分发的 cc-bar MIT 声明。
+
 Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core/Usage/ProjectWorktreeResolver.swift`（参考日期：2026-10-28），并核对 [Git 仓库布局](https://git-scm.com/docs/gitrepository-layout)。沿用随包分发的 cc-bar MIT 声明；本项目按每轮扫描解析目录归属，保留原始路径，不复制其分支读取、目录名回退或长期路径缓存。
 
 统计口径与流式用量处理同时参考 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 的 `src/components/usage/UsageHero.tsx`、`src-tauri/src/services/session_usage.rs`、`session_usage_codex.rs` 和用量统计文档（参考日期：2026-10-28）。Copyright (c) 2025 Jason Young。采用 MIT License；完整原文保存在 `Resources/ThirdPartyNotices/cc-switch-LICENSE.txt`，随应用分发。未引入其 Tauri、路由代理或数据库。费用计算进一步参考并改编其 `src-tauri/src/proxy/usage/calculator.rs` 的 Decimal 分项公式和 Claude 缓存写入口径；模型价格导入参考 `src/lib/modelsDevPricing.ts` 的公开目录结构，并保留缺价状态。
 
 内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI / Anthropic 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
+
+## Zstandard 压缩日志
+
+`Sources/CZstd/` 来自 [facebook/zstd v1.5.7](https://github.com/facebook/zstd/tree/v1.5.7)，固定提交 `f8745da6ff1ad1e7bab384bd1f9d742439278e99`。Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved. 项目提供 BSD / GPLv2 双许可证，本应用选择 BSD；完整原文保存在 `Resources/ThirdPartyNotices/zstd-LICENSE.txt`，随应用包分发。
+
+仅静态编译官方单文件解码器 `zstddeclib.c`，保留上游生成内容和原始 `lib/zstd.h`、`lib/zstd_errors.h`，不链接 Homebrew 动态库。单文件生成默认关闭 legacy 格式和汇编，不包含压缩器或命令行工具。Swift 的按块解码循环改编自同版本 `examples/streaming_decompression.c`；同时参考 cc-bar 的块读取思路，沿用其现有 MIT 声明。
+
+重新生成时，在该版本源码的 `build/single_file_libs/` 目录执行上游命令，将生成文件复制到 `Sources/CZstd/`，两个头文件复制到其 `include/`，并同步许可：
+
+```sh
+python3 combine.py -r ../../lib -x legacy/zstd_legacy.h -o zstddeclib.c zstddeclib-in.c
+```
+
+来源归档 `https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz` 的 SHA-256 为 `37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3`；生成的 `zstddeclib.c` 为 `5eb38abe0a7eea13674b312a006df72002d4192f0f0b4d09e6f03fb927a1f3d0`。升级时重新核对上游 release、解码相关 issue 和许可，不直接编辑生成文件。

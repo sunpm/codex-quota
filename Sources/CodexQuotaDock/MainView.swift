@@ -7,12 +7,15 @@ import QuotaCore
 
 struct MainView: View {
     @ObservedObject var model: MonitorModel
+    @ObservedObject private var cursorUsage: CursorUsageModel
     @StateObject private var navigation: PanelNavigation
     @StateObject private var usage = UsageModel()
     @State private var selectedService: QuotaService?
+    @State private var confirmsHistoryClear = false
 
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
+        _cursorUsage = ObservedObject(wrappedValue: model.cursorUsage)
         _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
     }
 
@@ -27,6 +30,8 @@ struct MainView: View {
                     ScrollView { settings.frame(maxWidth: 760).padding(24).frame(maxWidth: .infinity) }
                 } else if navigation.page == .quota {
                     quotaContent
+                } else if selectedService == .cursor {
+                    ScrollView { CursorUsageView(model: cursorUsage, page: navigation.page) }
                 } else {
                     ScrollView { UsageView(model: usage, service: selectedService, page: navigation.page) }
                 }
@@ -42,17 +47,21 @@ struct MainView: View {
         }
         .task {
             guard model.readsLocalUsage else { return }
-            // 只在面板可见时刷新日志，不增加后台网络请求。
+            // 仅在面板可见时扫描；Cursor 历史另有五分钟刷新间隔。
             while !Task.isCancelled {
                 if NSApp.windows.contains(where: { $0.isVisible && $0.identifier?.rawValue == "control-panel" }) {
                     await usage.refresh()
+                    if selectedService == .cursor, navigation.page == .overview { await cursorUsage.refresh() }
                 }
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
             guard model.readsLocalUsage, (event.object as? NSWindow)?.identifier?.rawValue == "control-panel" else { return }
-            Task { await usage.refresh() }
+            Task {
+                await usage.refresh()
+                if selectedService == .cursor, navigation.page == .overview { await cursorUsage.refresh() }
+            }
         }
     }
 
@@ -123,16 +132,18 @@ struct MainView: View {
         HStack(spacing: 12) {
             Text(navigation.page == .overview ? "用量统计" : navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
             Spacer()
-            if usage.refreshing && navigation.page != .settings && navigation.page != .quota {
+            if (selectedService == .cursor ? cursorUsage.refreshing : usage.refreshing) && navigation.page != .settings && navigation.page != .quota {
                 ProgressView().controlSize(.small)
             }
             if navigation.page != .settings {
                 Button {
                     if navigation.page == .quota { Task { await model.refresh(force: true) } }
+                    else if selectedService == .cursor { Task { await cursorUsage.refresh(force: true) } }
                     else { Task { await usage.refresh() } }
                 } label: { Label("刷新", systemImage: "arrow.clockwise") }
                     .keyboardShortcut("r", modifiers: .command)
-                    .disabled(navigation.page == .quota ? model.refreshing : usage.refreshing)
+                    .disabled(navigation.page == .quota ? model.refreshing
+                              : selectedService == .cursor ? cursorUsage.refreshing || !cursorUsage.enabled : usage.refreshing)
             }
         }.padding(.horizontal, 24).frame(height: 56)
     }
@@ -208,6 +219,7 @@ struct MainView: View {
                 Text(model.notificationStatus).font(.system(size: 11)).foregroundStyle(.secondary)
                 if let error = model.notificationError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
             }.padding(16).panelCard()
+            usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
             Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -218,6 +230,26 @@ struct MainView: View {
             }.font(.system(size: 10)).foregroundStyle(.tertiary)
         }
         .font(.system(size: 13))
+    }
+
+    private var usageHistorySettings: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("用量历史")
+            HStack {
+                Button("重新扫描日志") { Task { await usage.refresh(rescan: true) } }
+                Spacer()
+                Button("清除已保存历史…", role: .destructive) { confirmsHistoryClear = true }
+            }.controlSize(.small).disabled(usage.refreshing || !model.readsLocalUsage)
+            if let error = usage.historyActionError ?? usage.scan.historyError {
+                Text(error).font(.caption).foregroundStyle(.orange)
+            }
+        }.padding(16).panelCard()
+            .alert("清除已保存的用量历史？", isPresented: $confirmsHistoryClear) {
+                Button("取消", role: .cancel) {}
+                Button("清除并重新扫描", role: .destructive) { Task { await usage.clearHistory() } }
+            } message: {
+                Text("仅清除本应用保存的全部服务用量历史，随后重新扫描现存日志。已删除源日志对应的历史将无法恢复；源日志与模型定价不会被删除。")
+            }
     }
 
 }

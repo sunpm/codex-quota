@@ -10,6 +10,7 @@ final class UsageModel: ObservableObject {
     @Published private(set) var priceDate = BundledModelPrices.date
     @Published private(set) var updatingPrices = false
     @Published private(set) var pricingError: String?
+    @Published private(set) var historyActionError: String?
     private let reader = LocalUsageReader()
     private let defaults: UserDefaults
     private var catalog: [String: ModelPricing]
@@ -90,14 +91,30 @@ final class UsageModel: ObservableObject {
     }
 
 
-    func refresh() async {
+    func refresh(rescan: Bool = false) async {
         guard !refreshing else { return }
         refreshing = true
-        let result = await reader.scan()
+        defer { refreshing = false }
+        apply(await reader.scan(rescan: rescan))
+    }
+
+    func clearHistory() async {
+        guard !refreshing else { return }
+        refreshing = true
+        defer { refreshing = false }
+        do {
+            try await reader.clearHistory()
+            historyActionError = nil
+            apply(await reader.scan())
+        } catch {
+            historyActionError = "清除失败，已保留原有历史。"
+        }
+    }
+
+    private func apply(_ result: UsageScan) {
         scan = result
         reprice()
         updatedAt = Date()
-        refreshing = false
     }
 }
 
@@ -214,7 +231,7 @@ struct UsageView: View {
         let tokens = total(records)
         VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Text(service?.title ?? "全部服务").foregroundStyle(.secondary)
+                Text(service?.title ?? "本机用量").foregroundStyle(.secondary)
                 Spacer()
                 Picker("时间范围", selection: $range) {
                     ForEach(UsageRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -226,7 +243,7 @@ struct UsageView: View {
                     DatePicker("结束", selection: $customEnd, in: customStart..., displayedComponents: .date)
                 }
             }
-            if service == .antigravity || service == .cursor {
+            if service == .antigravity {
                 empty("暂无本地 Token 数据", detail: "\(service!.title) 目前支持剩余额度查询，可在“额度”中查看。")
             } else if model.updatedAt == nil {
                 ProgressView("正在读取本地用量…").frame(maxWidth: .infinity, minHeight: 260)
@@ -273,6 +290,9 @@ struct UsageView: View {
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(model.scan.warnings, id: \.self) { warning in
                 Label(warning, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.caption)
+            }
+            if let error = model.scan.historyError {
+                Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.caption)
             }
             HStack {
                 Text("本机日志 · Codex / Claude Code")

@@ -21,10 +21,11 @@
 - 原生 macOS 应用，以主窗口为主体，菜单栏额度显示可选；Swift Package，最低 macOS 13，无需第三方 Swift 包。
 - `Sources/CodexQuotaDock/`：入口、服务客户端、监测调度、SwiftUI 面板和 AppKit 菜单栏。
 - `Sources/QuotaCore/`：额度模型、响应解析、倒计时与通知判定；保持可离线验证。
+- `Sources/CZstd/`：随应用静态编译的 Zstandard 解码源码；版本、生成方式和许可见 `THIRD_PARTY_NOTICES.md`，不依赖系统安装的 `zstd`。
 - `Tests/QuotaCoreTests/`：可执行的自包含检查，不依赖完整 Xcode / XCTest。
 - `Tests/AppChecks/`：注入模拟客户端检查监测流程，可生成离线界面预览。
 - `Resources/`：应用元数据、图标、随包分发的第三方许可。
-- `scripts/test.sh` 和 `scripts/build.sh`：验证与打包入口；产物放 `dist/`，临时预览放 `work/`。
+- `scripts/test.sh`、`scripts/build.sh` 和 `scripts/package-dmg.sh`：验证、应用构建及按架构打包 DMG 的入口；产物放 `dist/`，临时预览放 `work/`。
 
 ## 实现与界面
 
@@ -49,7 +50,7 @@
 - 带凭据的真实服务验证需有相应授权；优先用不含隐私的响应夹具验证解析、去重、账号切换和开关行为。
 - 人工验收覆盖菜单栏、展开面板、各服务的空态/错误态、设置持久化、系统通知及退出清理。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
-- `.github/workflows/release.yml` 在推送 `vX.Y.Z` 或预发布标签后运行现有检查、构建通用应用并发布 GitHub Release；更新说明由 GitHub 原生 Release Notes 按最近正式版本以来的 PR 生成，配置见 `.github/release.yml`。推送版本标签即触发发布，仍需用户对应授权，不能把参考项目的“发版”命令视为本项目预授权。
+- `.github/workflows/release.yml` 在推送 `vX.Y.Z` 或预发布标签后运行现有检查，分别构建 Apple Silicon / Intel 应用并发布两个 DMG 与 SHA256 校验值；更新说明由 GitHub 原生 Release Notes 按最近正式版本以来的 PR 生成，配置见 `.github/release.yml`。推送版本标签即触发发布，仍需用户对应授权，不能把参考项目的“发版”命令视为本项目预授权。
 
 ## Git 提交规范
 

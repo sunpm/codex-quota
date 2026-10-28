@@ -13,9 +13,9 @@
 | 已实现，待实机验收 | worktree 归并到主项目 | 同一仓库的用量不再散落在多个路径下 |
 | 已实现，待实机验收 | 小时趋势 | 看清一天内的消耗高峰 |
 | 已实现，待实机验收 | 同期比较 | 判断用量与费用的变化 |
-| P1 | 读取压缩日志 | 补齐未计入的历史；若已出现压缩日志提示，优先处理 |
-| P2 | 保留历史统计 | 清理源日志后仍能查看已采集的用量 |
-| P2 | Cursor 用量历史 | 补充账号全设备 Token 与服务端费用 |
+| 已实现，待实机验收 | 读取压缩日志 | 补齐压缩归档中的历史用量 |
+| 已实现，待实机验收 | 保留历史统计 | 清理源日志后仍能查看已采集的用量 |
+| 已实现，待真实服务验收 | Cursor 用量历史 | 补充账号全设备 Token 与服务端费用 |
 | P2 | Antigravity 本地用量 | 补充本机会话的 Token 历史 |
 | 暂缓 | 额度折算与用满预估 | 先解决账号归属与统计范围不一致的问题 |
 
@@ -63,7 +63,7 @@ P1 优先复用现有数据完成明细、归组和趋势；压缩读取单独�
 
 - [x] 将可识别的 Git worktree 用量归入同一个主仓库。
 
-后台扫描按不同工作目录只读解析 `.git` 与 `commondir`，支持相对路径和仓库子目录；概览、项目页及对话所属项目使用同一映射。原始记录不改写，对话明细的“工作目录”可查看原始路径与主项目。子仓库和子模块保持独立，无法确认归属的目录不按同名合并；已删除的 worktree 也不猜测归属，每轮刷新重新解析关系。
+后台扫描按不同工作目录只读解析 `.git` 与 `commondir`，支持相对路径和仓库子目录；概览、项目页及对话所属项目使用同一映射。原始记录不改写，对话明细的“工作目录”可查看原始路径与主项目。子仓库和子模块保持独立，无法确认归属的目录不按同名合并；每轮刷新重新解析关系，已删除或不可读的 worktree 沿用历史中已确认的归属，无历史则保留原始分组。
 
 现有核心与应用检查共 115 个断言通过，编译通过；应用检查沿用上节的实际产物目录执行方式。未新增测试代码，已有检查不覆盖新的目录归属解析；实际多 worktree 数据和明细展示仍待人工核对。
 
@@ -88,35 +88,49 @@ P1 优先复用现有数据完成明细、归组和趋势；压缩读取单独�
 
 ## 读取压缩日志
 
-- [ ] 支持 Codex `.jsonl.zst`，复用现有 JSONL 解析与去重。
+- [x] 支持 Codex `.jsonl.zst`，复用现有 JSONL 解析与去重。
 
-当前压缩文件只计入“未计入”提示。参考流式解压方式，按块读取，避免将整份日志一次性展开到内存；实施前明确 `libzstd` 的引入、分发与许可方式，不能默认用户已安装命令行解压工具。
+已在 sessions / archived_sessions 扫描压缩日志，按 256 KiB 块解码后交给同一个 JSONL 解析器。剥离 `.zst` 后再提取会话 ID，普通与压缩副本使用同一去重键，沿用累计签名和 fork 重放处理。拼接帧继续解码，空文件、损坏或截断帧按读取失败处理；失败时仅保留该文件上次成功缓存，不缓存半份解压结果。压缩归档末尾的无效 JSON 也计入不完整提示。
+
+静态编译 Zstandard v1.5.7 官方单文件解码源码及头文件，不加入远程 Swift 包或运行时动态库，不要求用户安装命令行工具，不落盘解压内容。采用 BSD 许可并随应用分发，来源和重新生成方式见 [第三方来源](../THIRD_PARTY_NOTICES.md)。
+
+现有核心与应用检查共 115 个断言通过，默认构建与打包通过。检查入口补上 C 模块链接，并固定使用其所需的 native 对象目录；未增加或修改测试场景。已有检查不覆盖压缩日志解析，压缩前后统计、混合副本及损坏文件仍待人工核对。
 
 验收：同一会话压缩前后统计一致；普通与压缩副本并存、active / archived 迁移和 fork 重放不重复入账。损坏或截断文件继续提示统计不完整，不补造用量。只有确实计入后才消除对应提示。
 
-参考：[cc-bar ZstdStreamReader](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Usage/ZstdStreamReader.swift)、[fork 重复统计问题](https://github.com/nanvon/cc-bar/issues/7)。
+参考：[cc-bar ZstdStreamReader](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Usage/ZstdStreamReader.swift)、[fork 重复统计问题](https://github.com/nanvon/cc-bar/issues/7)（已关闭）、[Zstandard 流式解码示例](https://github.com/facebook/zstd/blob/v1.5.7/examples/streaming_decompression.c)、[截断检测说明](https://github.com/facebook/zstd/issues/1109)。
 
 ## 保留历史统计
 
-- [ ] 持久保存已采集的用量元数据，源日志被清理后仍可查看。
+- [x] 持久保存已采集的用量元数据，源日志被清理后仍可查看。
 
-当前只使用内存缓存，源文件消失后相应用量会消失。保存去重标识、来源、时间、服务、会话、项目、模型、Token 与计费所需档位，不保存消息正文或凭据；保留 Token 明细，以支持价格变更后重算。
+已增加版本化 JSON 快照，保存去重标识、服务来源、时间、会话、工作目录、模型、Token 分类、计费档位与已确认的项目归属，不保存消息正文、凭据或计算后的费用。扫描与已保存记录按 ID 合并；Claude 的流式快照保留最大完整用量，fork 重放不将已有用量挪到更晚的时间。源日志消失不删除历史记录，价格修改继续通过现有逐条计费逻辑重算。
 
-提供明确的本应用历史清理入口，区分重新扫描现存日志和清除已保存历史。旧日志已经删除且此前未采集的部分无法恢复。历史价格版本暂不扩展，继续按当前价格表估算并说明口径。
+使用 Foundation 的原子写入，无新增依赖；仅历史有变化时写入，失败保留内存结果并重试。历史读取失败或格式版本不支持时保留原文件并提示，不用现存日志静默覆盖旧历史。
+
+设置页提供“重新扫描日志”和“清除已保存历史…”：前者跳过内存文件缓存、保留历史；后者确认后仅清除本应用全部服务的历史，再从现存日志采集，不删除源日志或定价设置。旧日志已经删除且此前未采集的部分无法恢复；不保存历史价格版本。
+
+现有核心与应用检查共 115 个断言、应用构建与打包、签名验证通过；未新增或修改自动化测试。已有检查不覆盖新增持久化与清理流程，重启、源日志清理后的恢复及清理确认仍待实机验收。
 
 验收：重启和清理源日志后已采集的统计仍在；重复扫描不重复累计，价格变更可重算，主动清理范围清晰且不删除其他应用源日志。
 
-参考：[cc-bar 历史保留说明](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/README.md)、[UsageSnapshotStore](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Storage/UsageSnapshotStore.swift)。
+参考：[cc-bar 历史保留说明](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/README.md)、[UsageSnapshotStore](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Storage/UsageSnapshotStore.swift)、[fork 重复统计问题 #7](https://github.com/nanvon/cc-bar/issues/7)（2026-10-28 复查，已关闭）。本项目保存逐条记录并复用现有去重，不引入多份聚合缓存、增量进度或数据库。
 
 ## Cursor 用量历史
 
-- [ ] 接入远端用量事件，展示 Token、模型、请求数与服务端费用。
+- [x] 接入远端用量事件，展示 Token、模型、请求数与服务端费用。
 
-参考 cc-bar 的 `get-filtered-usage-events` 读取与分页处理。数据范围标为“账号全设备用量”；服务端费用与本地 API 等价估算分别呈现，缺少项目或会话信息时不强行归组。查询沿用现有只读登录态和已启用服务的凭据边界。
+已复用 Cursor 只读登录态与 HTTP 客户端，读取 `get-filtered-usage-events`。Cursor 概览单独显示“账号全设备用量”，默认最近 30 个自然日，可选择日期；服务端 `chargedCents` 按 Decimal 换算 USD，与本地估算分开展示，不强行生成项目或会话归属，也不写入本地历史存储。
+
+分页校验服务端总数一致及收齐数量，最多 200 页、每页 1,000 条；没有稳定事件 ID，因此只在完整成功时替换范围快照，不跨刷新叠加。分页失败保留旧快照并标记过期，超限提示缩小范围，不增加递归拆分或猜测去重。缺失费用与零费用分别处理，缺少完整 Token 字段的事件仍计入请求数并标明不完整。
+
+仅在已启用 Cursor 监测且概览可见时自动查询，成功后间隔五分钟；独立错误与退避，共用 Cursor 额度客户端的限流冷却。401 / 403 和取消钥匙串访问后等待手动重试；识别到新账号先清空旧快照，关闭监测清空并取消查询，睡眠与退出取消在途查询。保留最后成功的范围和时间，选择新范围后不会把旧快照标为新查询结果。
+
+现有核心检查 90 个断言、应用检查 25 个断言、标准构建与打包及签名验证通过；未新增或修改自动化测试。已有检查不覆盖新增 Cursor 历史解析、分页和账号切换；未读取真实服务凭据或调用真实接口，相关流程及新增页面交互仍待实机验收。
 
 验收：分页与刷新不重复入账，账号切换不混合记录，费用缺失与零费用可区分；远端失败保留最后成功快照并标明过期。可查询的历史范围以接口实际返回为准。
 
-参考：[cc-bar CursorUsageFetcher](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Usage/CursorUsageFetcher.swift)。
+参考：[cc-bar CursorUsageFetcher](https://github.com/nanvon/cc-bar/blob/4cc95d092e4aaf23738459abb166fb1173352691/Core/Usage/CursorUsageFetcher.swift)、[CodexBar CursorUsageEventsFetcher](https://github.com/steipete/CodexBar/blob/main/Sources/CodexBarCore/Providers/Cursor/CursorUsageEventsFetcher.swift)、[历史接口 403 重试问题 #3910](https://github.com/steipete/CodexBar/issues/3910)（2026-10-28 复查）。两项目均为 MIT，继续使用本项目 Foundation 网络栈，不引入上游浏览器登录、CSV 回退或增量数据库。
 
 ## Antigravity 本地用量
 
