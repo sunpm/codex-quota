@@ -23,4 +23,6 @@ iconutil -c icns "$PROJECT_DIR/.build/AppIcon.iconset" -o "$APP_DIR/Contents/Res
 swift scripts/make-icon.swift "$PROJECT_DIR/.build/AppIconDark.iconset" dark
 iconutil -c icns "$PROJECT_DIR/.build/AppIconDark.iconset" -o "$APP_DIR/Contents/Resources/AppIconDark.icns"
 codesign --force --deep --sign - "$APP_DIR"
+# 原地覆盖包内文件不会更新包目录时间；通知 Launch Services 重新识别图标等元数据。
+touch "$APP_DIR"
 printf '%s\n' "$APP_DIR"
