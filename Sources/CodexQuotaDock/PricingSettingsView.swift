@@ -18,7 +18,10 @@ struct PricingSettingsView: View {
             }
         }
         return prices.values.filter { search.isEmpty || $0.model.localizedCaseInsensitiveContains(search) }
-            .sorted { $0.service.rawValue == $1.service.rawValue ? $0.model < $1.model : $0.service == .codex }
+            .sorted {
+                $0.service == $1.service ? $0.model < $1.model
+                    : QuotaService.allCases.firstIndex(of: $0.service)! < QuotaService.allCases.firstIndex(of: $1.service)!
+            }
     }
 
     var body: some View {
@@ -105,6 +108,7 @@ private struct PriceEditor: View {
                     Picker("服务", selection: $service) {
                         Text("Codex").tag(QuotaService.codex)
                         Text("Claude Code").tag(QuotaService.claude)
+                        Text("Antigravity").tag(QuotaService.antigravity)
                     }.disabled(!price.model.isEmpty)
                     TextField("模型 ID", text: $name).disabled(!price.model.isEmpty)
                     Section("单价 · USD / 百万 Tokens") { rateFields($rates) }

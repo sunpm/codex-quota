@@ -243,18 +243,16 @@ struct UsageView: View {
                     DatePicker("结束", selection: $customEnd, in: customStart..., displayedComponents: .date)
                 }
             }
-            if service == .antigravity {
-                empty("暂无本地 Token 数据", detail: "\(service!.title) 目前支持剩余额度查询，可在“额度”中查看。")
-            } else if model.updatedAt == nil {
+            if model.updatedAt == nil {
                 ProgressView("正在读取本地用量…").frame(maxWidth: .infinity, minHeight: 260)
             } else if records.isEmpty && page != .overview {
                 summary(records, tokens: tokens, previous: intervals.previous)
-                empty("所选范围内没有用量", detail: "统计 Codex 和 Claude Code 保存在本机的会话记录。")
+                empty("所选范围内没有用量", detail: "仅统计本机日志中已导出的用量。")
             } else if page == .overview {
                 summary(records, tokens: tokens, previous: intervals.previous)
                 UsageHeatmapView(model: model, service: service)
                 if records.isEmpty {
-                    empty("所选范围内没有用量", detail: "统计 Codex 和 Claude Code 保存在本机的会话记录。")
+                    empty("所选范围内没有用量", detail: "仅统计本机日志中已导出的用量。")
                 } else {
                     chart(records, interval: intervals.current)
                     HStack(alignment: .top, spacing: 18) {
@@ -295,7 +293,7 @@ struct UsageView: View {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.orange).font(.caption)
             }
             HStack {
-                Text("本机日志 · Codex / Claude Code")
+                Text(service.map { "本机日志 · \($0.title)" } ?? "本机日志 · Codex / Claude Code / Antigravity")
                 Spacer()
                 if let updated = model.updatedAt { Text(updated, format: .dateTime.hour().minute()).monospacedDigit() }
             }.font(.caption).foregroundStyle(.secondary)

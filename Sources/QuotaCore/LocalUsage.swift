@@ -68,6 +68,7 @@ public actor LocalUsageReader {
         let modified: Date
         let records: [UsageRecord]
         let invalidLines: Int
+        let missingUsage: Int
     }
     private var cache: [URL: CachedFile] = [:]
     private let historyStore: UsageHistoryStore
@@ -130,10 +131,35 @@ public actor LocalUsageReader {
                 else if file.lastPathComponent.hasSuffix(".jsonl.zst") { compressed += 1 }
             }
         }
+        // 直接枚举两处实际 transcript，某一处的纯索引不会遮蔽另一处的日志。
+        // .system_generated 是隐藏目录，不能沿用上方 skipsHiddenFiles 的递归扫描。
+        for directory in ["antigravity", "antigravity-cli"] {
+            let root = home.appendingPathComponent(".gemini/\(directory)/brain")
+            guard manager.fileExists(atPath: root.path) else { continue }
+            do {
+                let sessions = try manager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil,
+                                                               options: [.skipsHiddenFiles])
+                for session in sessions {
+                    let file = session.appendingPathComponent(".system_generated/logs/transcript_full.jsonl")
+                    if manager.fileExists(atPath: file.path) { files.append((.antigravity, file)) }
+                }
+            } catch { failures += 1 }
+        }
         // 父会话先入账，避免 fork 重放后的时间戳把旧用量挪到新日期。
-        files.sort { $0.1.lastPathComponent < $1.1.lastPathComponent }
+        files.sort {
+            $0.1.lastPathComponent == $1.1.lastPathComponent ? $0.1.path < $1.1.path
+                : $0.1.lastPathComponent < $1.1.lastPathComponent
+        }
         var records = history.records
-        func merge(_ record: UsageRecord) {
+        var antigravityModified = history.antigravityModified ?? [:]
+        func merge(_ record: UsageRecord, modified: Date) {
+            if record.service == .antigravity {
+                // 两处日志按步骤合并，重叠步骤以较新文件为准；已完成步骤也可能修正计数。
+                if let previous = antigravityModified[record.id], previous >= modified { return }
+                antigravityModified[record.id] = modified
+                records[record.id] = record
+                return
+            }
             if let old = records[record.id] {
                 // Claude 流式快照保留最大用量；fork 重放不得把历史挪到更晚的时间。
                 if record.service == .claude {
@@ -145,6 +171,7 @@ public actor LocalUsageReader {
             records[record.id] = record
         }
         var invalid = 0
+        var missingUsage = 0
         var alive: Set<URL> = []
         for (service, file) in files {
             alive.insert(file)
@@ -161,12 +188,15 @@ public actor LocalUsageReader {
                     cache[file] = parsed
                 }
                 invalid += parsed.invalidLines
+                missingUsage += parsed.missingUsage
                 result.fileCount += 1
-                for record in parsed.records { merge(record) }
+                for record in parsed.records { merge(record, modified: parsed.modified) }
             } catch {
                 failures += 1
                 // 短暂读取失败保留上一次已解析的文件结果，并在界面标记不完整。
-                for record in cache[file]?.records ?? [] { merge(record) }
+                if let saved = cache[file] {
+                    for record in saved.records { merge(record, modified: saved.modified) }
+                }
             }
         }
         cache = cache.filter { alive.contains($0.key) }
@@ -178,6 +208,7 @@ public actor LocalUsageReader {
         if historyLoaded {
             history.records = records
             history.projectRoots = result.projectRoots
+            history.antigravityModified = antigravityModified.isEmpty ? nil : antigravityModified
             if history != savedHistory {
                 do {
                     try historyStore.save(history)
@@ -190,6 +221,7 @@ public actor LocalUsageReader {
         if failures > 0 { result.warnings.append("\(failures) 处日志无法读取，统计可能不完整") }
         if invalid > 0 { result.warnings.append("\(invalid) 条记录格式无效，已跳过") }
         if compressed > 0 { result.warnings.append("\(compressed) 个压缩日志暂未计入") }
+        if missingUsage > 0 { result.warnings.append("\(missingUsage) 条 Antigravity 响应缺少 Token 计数，统计不完整") }
         return result
     }
 
@@ -215,11 +247,18 @@ public actor LocalUsageReader {
         var isUSOnly = false
         var previousSignature: String?
         var lineNumber = 0
+        let antigravitySession = file.deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().lastPathComponent
+        var antigravity = service == .antigravity ? AntigravityUsageParser(session: antigravitySession) : nil
 
         func consume(_ line: Data) {
             lineNumber += 1
             guard !line.isEmpty else { return }
             guard let row = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { invalid += 1; return }
+            if service == .antigravity {
+                antigravity?.consume(row)
+                return
+            }
             let type = row["type"] as? String
             let payload = row["payload"] as? [String: Any] ?? [:]
             if service == .codex {
@@ -296,7 +335,9 @@ public actor LocalUsageReader {
         }
         // 普通日志正在写入的末行留到下次刷新；压缩归档的无效末行仍应提示。
         if !pending.isEmpty, isCompressed || (try? JSONSerialization.jsonObject(with: pending)) != nil { consume(pending) }
-        return CachedFile(size: size, modified: modified, records: records, invalidLines: invalid)
+        return CachedFile(size: size, modified: modified,
+            records: antigravity?.records ?? records,
+            invalidLines: invalid + (antigravity?.invalidCount ?? 0), missingUsage: antigravity?.missingUsageCount ?? 0)
     }
 
     private func tokenCounts(_ values: [String: Any], codex: Bool) -> UsageTokens? {
