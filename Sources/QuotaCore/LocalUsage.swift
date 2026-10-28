@@ -30,7 +30,7 @@ public enum UsageSpeedTier: String, CaseIterable, Sendable {
 public struct UsageRecord: Codable, Equatable, Identifiable, Sendable {
     public let id: String
     public let service: QuotaService
-    public let session: String
+    public internal(set) var session: String
     public let project: String
     public let model: String
     public let date: Date
@@ -69,6 +69,7 @@ public actor LocalUsageReader {
         let records: [UsageRecord]
         let invalidLines: Int
         let missingUsage: Int
+        let codexContinuation: (segment: String, thread: String)?
     }
     private var cache: [URL: CachedFile] = [:]
     private let historyStore: UsageHistoryStore
@@ -172,6 +173,7 @@ public actor LocalUsageReader {
         }
         var invalid = 0
         var missingUsage = 0
+        var codexThreads: [String: String] = [:]
         var alive: Set<URL> = []
         for (service, file) in files {
             alive.insert(file)
@@ -190,16 +192,30 @@ public actor LocalUsageReader {
                 invalid += parsed.invalidLines
                 missingUsage += parsed.missingUsage
                 result.fileCount += 1
+                if let continuation = parsed.codexContinuation {
+                    codexThreads[continuation.segment] = continuation.thread
+                }
                 for record in parsed.records { merge(record, modified: parsed.modified) }
             } catch {
                 failures += 1
                 // 短暂读取失败保留上一次已解析的文件结果，并在界面标记不完整。
                 if let saved = cache[file] {
+                    if let continuation = saved.codexContinuation {
+                        codexThreads[continuation.segment] = continuation.thread
+                    }
                     for record in saved.records { merge(record, modified: saved.modified) }
                 }
             }
         }
         cache = cache.filter { alive.contains($0.key) }
+        // 分段文件的 UUID 不是对话 ID。源日志确认归属后，同时纠正已保存历史，
+        // 保留原去重键（含无累计签名时的分段 ID）、时间和 Token，避免重复入账。
+        for (id, var record) in records where record.service == .codex {
+            if let thread = codexThreads[record.session] {
+                record.session = thread
+                records[id] = record
+            }
+        }
         result.records = records.values.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date < $1.date }
         // 仍可确认的目录每轮更新归属；已删除的 worktree 沿用之前确认的主项目。
         for project in Set(result.records.map(\.project)) {
@@ -238,7 +254,9 @@ public actor LocalUsageReader {
         let jsonlFile = isCompressed ? file.deletingPathExtension() : file
         let filename = jsonlFile.deletingPathExtension().lastPathComponent
         let filenameID = String(filename.suffix(36))
-        var session = UUID(uuidString: filenameID) == nil ? filename : filenameID
+        let filenameUUID = UUID(uuidString: filenameID)
+        var session = filenameUUID == nil ? filename : filenameID
+        var codexContinuation: (segment: String, thread: String)?
         var emitter = session
         var project = ""
         var model = "未知模型"
@@ -266,7 +284,14 @@ public actor LocalUsageReader {
                     emitter = payload["id"] as? String ?? payload["session_id"] as? String ?? emitter
                     if !sawMeta {
                         project = payload["cwd"] as? String ?? ""
-                        if UUID(uuidString: filenameID) == nil { session = emitter }
+                        if filenameUUID == nil { session = emitter }
+                        // rollout-…-<threadID>_<segmentID>：只有文件名与首条元数据
+                        // 指向同一线程时归并；之后 fork 重放的父线程元数据不改变归属。
+                        let thread = String(filename.dropLast(37).suffix(36))
+                        if filename.suffix(37).first == "_", filenameUUID != nil,
+                           UUID(uuidString: thread) != nil, thread == emitter {
+                            codexContinuation = (segment: filenameID, thread: thread)
+                        }
                         sawMeta = true
                     }
                     return
@@ -337,7 +362,8 @@ public actor LocalUsageReader {
         if !pending.isEmpty, isCompressed || (try? JSONSerialization.jsonObject(with: pending)) != nil { consume(pending) }
         return CachedFile(size: size, modified: modified,
             records: antigravity?.records ?? records,
-            invalidLines: invalid + (antigravity?.invalidCount ?? 0), missingUsage: antigravity?.missingUsageCount ?? 0)
+            invalidLines: invalid + (antigravity?.invalidCount ?? 0), missingUsage: antigravity?.missingUsageCount ?? 0,
+            codexContinuation: codexContinuation)
     }
 
     private func tokenCounts(_ values: [String: Any], codex: Bool) -> UsageTokens? {
