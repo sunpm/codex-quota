@@ -34,6 +34,12 @@ struct MainView: View {
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .frame(minWidth: 480, idealWidth: 1140, minHeight: 440, idealHeight: 760)
+        .alert("开启持久通知", isPresented: $model.showsPersistentNotificationGuide) {
+            Button("前往设置") { model.openNotificationSettings() }
+            Button("暂不设置", role: .cancel) {}
+        } message: {
+            Text(persistentNotificationGuide)
+        }
         .task {
             guard model.readsLocalUsage else { return }
             // 只在面板可见时刷新日志，不增加后台网络请求。
@@ -48,6 +54,17 @@ struct MainView: View {
             guard model.readsLocalUsage, (event.object as? NSWindow)?.identifier?.rawValue == "control-panel" else { return }
             Task { await usage.refresh() }
         }
+    }
+
+    private var persistentNotificationGuide: String {
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
+        let style: String
+        if #available(macOS 26, *) {
+            style = "开启桌面提醒，并将样式设为“持续”。"
+        } else {
+            style = "将提醒样式设为“提醒”。"
+        }
+        return "让额度恢复提醒保留到手动关闭。\n\n在“系统设置 → 通知”中选择“\(appName)”，开启“允许通知”，\(style)"
     }
 
     private var sidebar: some View {
@@ -179,6 +196,9 @@ struct MainView: View {
                 HStack {
                     Text("恢复通知")
                     Spacer()
+                    if !model.persistentNotificationsEnabled {
+                        Button("开启持久通知") { model.showPersistentNotificationGuide() }.controlSize(.small)
+                    }
                     Button("测试通知") { Task { await model.sendTestNotification() } }.controlSize(.small)
                     Button("系统设置") { model.openNotificationSettings() }.controlSize(.small)
                 }

@@ -8,8 +8,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private let model = MonitorModel()
     private var menuBar: MenuBarController?
     private var controlPanel: ControlPanelController?
+    private var iconAppearanceObservation: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        iconAppearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] _, _ in
+            Task { @MainActor in self?.updateAppIcon() }
+        }
         UNUserNotificationCenter.current().delegate = self
         buildMenu()
         controlPanel = ControlPanelController(model: model)
@@ -21,6 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     @objc func showSettings() { controlPanel?.showSettings() }
 
     @objc func showPanel() { controlPanel?.showPanel() }
+
+    private func updateAppIcon() {
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        guard let url = Bundle.main.url(forResource: dark ? "AppIconDark" : "AppIcon", withExtension: "icns"),
+              let image = NSImage(contentsOf: url) else { return }
+        NSApp.applicationIconImage = image
+    }
 
     private func buildMenu() {
         let menu = NSMenu()
@@ -65,7 +76,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPanel(); return true }
-    func applicationWillTerminate(_ notification: Notification) { menuBar?.stop(); controlPanel?.close(); model.stop() }
+    func applicationWillTerminate(_ notification: Notification) {
+        iconAppearanceObservation?.invalidate()
+        iconAppearanceObservation = nil
+        menuBar?.stop(); controlPanel?.close(); model.stop()
+    }
     func applicationDidBecomeActive(_ notification: Notification) { Task { await model.updateNotificationStatus() } }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
