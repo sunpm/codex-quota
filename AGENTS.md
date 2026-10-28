@@ -18,7 +18,7 @@
 
 ## 项目结构
 
-- 原生 macOS 菜单栏应用，Swift Package，最低 macOS 13；无需第三方 Swift 包。
+- 原生 macOS 应用，以主窗口为主体，菜单栏额度显示可选；Swift Package，最低 macOS 13，无需第三方 Swift 包。
 - `Sources/CodexQuotaDock/`：入口、服务客户端、监测调度、SwiftUI 面板和 AppKit 菜单栏。
 - `Sources/QuotaCore/`：额度模型、响应解析、倒计时与通知判定；保持可离线验证。
 - `Tests/QuotaCoreTests/`：可执行的自包含检查，不依赖完整 Xcode / XCTest。
@@ -31,6 +31,7 @@
 - 优先 SwiftUI / AppKit 系统控件、SF Symbols 和原生 macOS 风格；不添加无关装饰或大面积自造背景。
 - 百分比和倒计时使用等宽数字。额度状态色统一使用 `quotaColor`；品牌识别与额度状态分开。
 - 服务显示顺序保持稳定：Codex、Claude Code、Antigravity、Cursor。
+- 启动显示主窗口和 Dock 图标；关闭窗口继续后台监测，重新打开复用同一窗口，`⌘Q` 才退出。菜单栏显示偏好与服务监测开关独立。
 - 以接口实际返回值为准，缺失或无效额度不得补成 0% 使用量 / 100% 剩余。
 - 网络失败保留上次成功快照和时间，并标明过期；各服务的失败、退避及通知状态相互隔离。
 - 429 遵守限流及 `Retry-After`，手动刷新也不绕过服务端冷却时间。

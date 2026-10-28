@@ -1,105 +1,158 @@
 // Adapted from nanvon/cc-bar (MIT), MenuBar/PopoverRootView.swift.
 // Copyright (c) 2026 nanvon. See Resources/ThirdPartyNotices/cc-bar-LICENSE.txt.
+// Sidebar and section styling reference farion1231/cc-switch (MIT); see THIRD_PARTY_NOTICES.md.
 import AppKit
 import SwiftUI
 import QuotaCore
 
 struct MainView: View {
     @ObservedObject var model: MonitorModel
-    @State private var showsSettings = false
+    @StateObject private var navigation: PanelNavigation
+    @StateObject private var usage = UsageModel()
+    @State private var selectedService: QuotaService?
 
-    init(model: MonitorModel, showsSettings: Bool = false) {
+    init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
-        _showsSettings = State(initialValue: showsSettings)
+        _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            TabView(selection: $showsSettings) {
-                VStack(spacing: 0) {
+        HStack(spacing: 0) {
+            sidebar
+            Divider()
+            VStack(spacing: 0) {
+                header
+                Divider()
+                if navigation.page == .settings {
+                    ScrollView { settings.frame(maxWidth: 760).padding(24).frame(maxWidth: .infinity) }
+                } else if navigation.page == .quota {
                     quotaContent
-                    Divider()
-                    HStack {
-                        Text("每 \(Int(MonitorModel.refreshInterval)) 秒查询")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button { showsSettings = true } label: {
-                            Label(model.notificationsEnabled ? "\(model.notificationServiceCount) 个服务提醒" : "通知未开启",
-                                  systemImage: model.notificationsEnabled && model.notificationServiceCount > 0 ? "bell" : "bell.slash")
-                        }.help("打开通知设置")
-                    }
-                    .font(.system(size: 11))
-                    .padding(.horizontal, 16).padding(.vertical, 10)
+                } else {
+                    ScrollView { UsageView(model: usage, service: selectedService, page: navigation.page) }
                 }
-                .tabItem { Text("用量") }.tag(false)
-                ScrollView { settings }
-                    .tabItem { Text("设置") }.tag(true)
-            }
-            .padding(.horizontal, 16).padding(.bottom, 16)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .windowBackgroundColor))
         }
-        .frame(minWidth: 480, idealWidth: 560, minHeight: 440, idealHeight: 640)
+        .frame(minWidth: 480, idealWidth: 1140, minHeight: 440, idealHeight: 760)
+        .task {
+            guard model.readsLocalUsage else { return }
+            // 只在面板可见时刷新日志，不增加后台网络请求。
+            while !Task.isCancelled {
+                if NSApp.windows.contains(where: { $0.isVisible && $0.identifier?.rawValue == "control-panel" }) {
+                    await usage.refresh()
+                }
+                try? await Task.sleep(nanoseconds: 30_000_000_000)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
+            guard model.readsLocalUsage, (event.object as? NSWindow)?.identifier?.rawValue == "control-panel" else { return }
+            Task { await usage.refresh() }
+        }
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("服务").font(.caption).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.vertical, 8)
+            serviceButton(nil)
+            ForEach(QuotaService.allCases) { service in serviceButton(service) }
+            Divider().padding(.vertical, 12)
+            ForEach(PanelPage.allCases.filter { $0 != .settings }) { page in
+                navigationButton(page)
+            }
+            Spacer()
+            navigationButton(.settings)
+        }
+        .buttonStyle(.plain).font(.system(size: 13)).padding(12).frame(width: 188)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private func serviceButton(_ service: QuotaService?) -> some View {
+        Button {
+            selectedService = service
+            if navigation.page == .settings { navigation.page = .overview }
+        } label: {
+            HStack(spacing: 8) {
+                if let service { ServiceTile(service: service) }
+                else { Image(systemName: "square.grid.2x2").frame(width: 22, height: 22) }
+                Text(service?.title ?? "全部")
+                    .fontWeight(selectedService == service ? .semibold : .regular)
+                Spacer(minLength: 0)
+            }
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+                .padding(.horizontal, 10)
+                .background(selectedService == service ? Color.primary.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+        }.accessibilityAddTraits(selectedService == service ? .isSelected : [])
+    }
+
+    private func navigationButton(_ page: PanelPage) -> some View {
+        Button { navigation.page = page } label: {
+            HStack(spacing: 8) {
+                Image(systemName: page.symbol).frame(width: 22, height: 22)
+                Text(page.rawValue).fontWeight(navigation.page == page ? .semibold : .regular)
+                Spacer(minLength: 0)
+            }
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
+                .foregroundStyle(.primary)
+                .background(navigation.page == page ? Color.primary.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+        }.accessibilityAddTraits(navigation.page == page ? .isSelected : [])
     }
 
     private var header: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("控制面板").font(.headline)
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    Text(refreshSubtitle(at: context.date))
-                        .font(.system(size: 11)).foregroundStyle(.secondary)
-                        .monospacedDigit().lineLimit(1)
-                }
+            Text(navigation.page == .overview ? "用量统计" : navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
+            Spacer()
+            if usage.refreshing && navigation.page != .settings && navigation.page != .quota {
+                ProgressView().controlSize(.small)
             }
-            Spacer(minLength: 4)
-            Circle()
-                .fill(model.errorMessage != nil ? Color.orange : model.lastSuccess != nil ? Color.green : Color.gray)
-                .frame(width: 7, height: 7).padding(.trailing, 4)
-                .help(model.errorMessage ?? "每 30 秒自动查询")
-            Button { Task { await model.refresh(force: true) } } label: {
-                Label("立即刷新", systemImage: "arrow.clockwise")
+            if navigation.page != .settings {
+                Button {
+                    if navigation.page == .quota { Task { await model.refresh(force: true) } }
+                    else { Task { await usage.refresh() } }
+                } label: { Label("刷新", systemImage: "arrow.clockwise") }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .disabled(navigation.page == .quota ? model.refreshing : usage.refreshing)
             }
-            .keyboardShortcut("r", modifiers: .command)
-            Button("退出") { NSApp.terminate(nil) }
-                .keyboardShortcut("q", modifiers: .command)
-        }
-        .padding(16)
+        }.padding(.horizontal, 24).frame(height: 56)
     }
 
     private var quotaContent: some View {
-        let services = model.enabledServices
+        let services = model.enabledServices.filter { selectedService == nil || $0 == selectedService }
         return ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: 14) {
                 if services.isEmpty {
                     VStack(spacing: 12) {
                         Text("尚未启用服务，请在设置中开启监测。")
                             .foregroundStyle(.secondary)
-                        Button("打开设置") { showsSettings = true }
+                        Button("打开设置") { navigation.page = .settings }
                     }.font(.system(size: 12)).padding(24)
                 }
-                ForEach(Array(services.enumerated()), id: \.element) { index, service in
-                    if index > 0 { Divider().padding(.horizontal, 16) }
+                ForEach(services) { service in
                     let snapshot = model.snapshot(service)
                     QuotaServiceBlock(service: service, windows: snapshot.windows, error: snapshot.errorMessage,
                                       lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
+                        .panelCard()
                 }
-            }
+            }.padding(24)
         }
     }
 
     private var settings: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("查询间隔")
-                Spacer()
-                Text("30 秒").foregroundStyle(.secondary)
-            }
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle("在菜单栏显示额度", isOn: Binding(get: { model.showsMenuBar }, set: { model.setShowsMenuBar($0) }))
+                Divider()
+                Toggle("登录 Mac 时启动", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+                if let error = model.launchError { Text(error).font(.caption).foregroundStyle(.orange) }
+            }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("服务")
                     Spacer()
                     Text("监测").frame(width: 46)
                     Text("重置通知").frame(width: 60)
+                    Text("菜单栏").frame(width: 46)
                 }.font(.system(size: 11)).foregroundStyle(.secondary)
                 ForEach(QuotaService.allCases) { service in
                     HStack(spacing: 8) {
@@ -110,12 +163,18 @@ struct MainView: View {
                             .labelsHidden().frame(width: 46)
                         Toggle("\(service.title) 重置通知", isOn: Binding(get: { model.notificationsEnabled(for: service) }, set: { model.setNotificationsEnabled($0, for: service) }))
                             .labelsHidden().frame(width: 60).disabled(!model.isEnabled(service))
+                        Toggle("在菜单栏显示 \(service.title)", isOn: Binding(get: { model.isShownInMenuBar(service) }, set: { model.setShownInMenuBar($0, for: service) }))
+                            .labelsHidden().frame(width: 46).disabled(!model.showsMenuBar || !model.isEnabled(service))
                     }.toggleStyle(.switch).controlSize(.small)
                 }
-                Text("关闭通知仍会查询额度，不会补发关闭期间的恢复事件。关闭监测则停止该服务查询。")
+                Text("监测开关控制额度查询；用量统计独立读取本机日志。")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
-            }
-            Divider()
+                HStack {
+                    Text("查询间隔")
+                    Spacer()
+                    Text("30 秒").foregroundStyle(.secondary)
+                }.padding(.top, 4)
+            }.padding(16).panelCard()
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("恢复通知")
@@ -125,31 +184,19 @@ struct MainView: View {
                 }
                 Text(model.notificationStatus).font(.system(size: 11)).foregroundStyle(.secondary)
                 if let error = model.notificationError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
-            }
-            Toggle("登录 Mac 时启动", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
-                .toggleStyle(.switch).controlSize(.small)
-            if let error = model.launchError { Text(error).font(.system(size: 11)).foregroundStyle(.orange) }
-            Divider()
-            Text("复用本机已登录账号，首次读取可能需要钥匙串授权。Antigravity 需保持运行。睡眠时暂停，唤醒后查询；真实额度恢复到 100% 时提醒一次。")
+            }.padding(16).panelCard()
+            PricingSettingsView(model: usage).padding(16).panelCard()
+            Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
             HStack {
-                Text("Codex 额度 0.4.0")
+                Text("Codex 额度 0.6.2")
                 Spacer()
                 Link("致谢 cc-bar · MIT", destination: URL(string: "https://github.com/nanvon/cc-bar")!)
             }.font(.system(size: 10)).foregroundStyle(.tertiary)
         }
-        .font(.system(size: 12))
-        .padding(16)
+        .font(.system(size: 13))
     }
 
-    private func refreshSubtitle(at now: Date) -> String {
-        if model.enabledServices.isEmpty { return "监测已关闭" }
-        if model.refreshing { return "正在刷新…" }
-        guard let date = model.lastSuccess else { return model.errorMessage == nil ? "等待数据" : "刷新失败" }
-        let seconds = max(0, Int(now.timeIntervalSince(date)))
-        let age = seconds < 60 ? "\(seconds) 秒" : seconds < 3600 ? "\(seconds / 60) 分钟" : "\(seconds / 3600) 小时"
-        return model.errorMessage == nil ? "\(age)前已刷新" : "部分服务连接失败"
-    }
 }
 
 private struct QuotaServiceBlock: View {
@@ -167,7 +214,6 @@ private struct QuotaServiceBlock: View {
             HStack(spacing: 9) {
                 ServiceTile(service: service)
                 Text(service.title).font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary)
-                Text(service.vendor).font(.system(size: 11)).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
                 Text("剩余额度").font(.system(size: 10)).foregroundStyle(.tertiary)
             }

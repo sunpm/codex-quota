@@ -15,7 +15,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         controlPanel = ControlPanelController(model: model)
         menuBar = MenuBarController(model: model) { [weak self] in self?.showPanel() }
         model.start()
+        showPanel()
     }
+
+    @objc func showSettings() { controlPanel?.showSettings() }
 
     @objc func showPanel() { controlPanel?.showPanel() }
 
@@ -23,17 +26,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let menu = NSMenu()
         let root = NSMenuItem()
         menu.addItem(root)
-        let appMenu = NSMenu()
+        let appMenu = NSMenu(title: "Codex 额度")
         root.submenu = appMenu
-        let show = NSMenuItem(title: "打开控制面板…", action: #selector(showPanel), keyEquivalent: "0")
+        let show = NSMenuItem(title: "打开主窗口", action: #selector(showPanel), keyEquivalent: "0")
         show.target = self
         appMenu.addItem(show)
-        let settings = NSMenuItem(title: "额度与设置…", action: #selector(showPanel), keyEquivalent: ",")
+        let settings = NSMenuItem(title: "设置…", action: #selector(showSettings), keyEquivalent: ",")
         settings.target = self
         appMenu.addItem(settings)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "隐藏 Codex 额度", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(withTitle: "退出 Codex 额度", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+
+        let fileMenu = NSMenu(title: "文件")
+        menu.addItem(withTitle: "文件", action: nil, keyEquivalent: "").submenu = fileMenu
+        fileMenu.addItem(withTitle: "关闭窗口", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
+        let editMenu = NSMenu(title: "编辑")
+        menu.addItem(withTitle: "编辑", action: nil, keyEquivalent: "").submenu = editMenu
+        editMenu.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
+        let redo = editMenu.addItem(withTitle: "重做", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "复制", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+
+        let windowMenu = NSMenu(title: "窗口")
+        menu.addItem(withTitle: "窗口", action: nil, keyEquivalent: "").submenu = windowMenu
+        windowMenu.addItem(withTitle: "最小化", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: "缩放", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        windowMenu.addItem(.separator())
+        windowMenu.addItem(withTitle: "前置全部窗口", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        NSApp.windowsMenu = windowMenu
         NSApp.mainMenu = menu
     }
 
@@ -83,7 +109,7 @@ struct CodexQuotaDockApp {
         }
         let app = NSApplication.shared
         let delegate = AppDelegate()
-        app.setActivationPolicy(.accessory)
+        app.setActivationPolicy(.regular)
         app.delegate = delegate
         withExtendedLifetime(delegate) { app.run() }
     }

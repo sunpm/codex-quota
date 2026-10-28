@@ -20,7 +20,9 @@ final class MonitorModel: ObservableObject {
     @Published var notificationsEnabled = false
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var launchError: String?
+    @Published private(set) var showsMenuBar: Bool
 
+    let readsLocalUsage: Bool
     private let defaults: UserDefaults
     private let preferences: ServicePreferences
     private let clients: [QuotaService: QuotaClient]
@@ -35,6 +37,7 @@ final class MonitorModel: ObservableObject {
     private let stateKey = "recoveryState.v2"
 
     var enabledServices: [QuotaService] { QuotaService.allCases.filter { isEnabled($0) } }
+    var menuBarServices: [QuotaService] { enabledServices.filter { isShownInMenuBar($0) } }
     var refreshing: Bool { enabledServices.contains { snapshot($0).refreshing } }
     var lastSuccess: Date? { enabledServices.compactMap { snapshot($0).lastSuccess }.max() }
     var errorMessage: String? {
@@ -45,9 +48,12 @@ final class MonitorModel: ObservableObject {
     func snapshot(_ service: QuotaService) -> ServiceSnapshot { services[service] ?? ServiceSnapshot() }
     func isEnabled(_ service: QuotaService) -> Bool { preferences.isEnabled(service) }
     func notificationsEnabled(for service: QuotaService) -> Bool { preferences.notificationsEnabled(service) }
+    func isShownInMenuBar(_ service: QuotaService) -> Bool { preferences.isShownInMenuBar(service) }
 
     init(defaults: UserDefaults = .standard, clients: [QuotaService: QuotaClient]? = nil) {
         self.defaults = defaults
+        showsMenuBar = defaults.object(forKey: "menuBar.visible") as? Bool ?? true
+        readsLocalUsage = clients == nil
         preferences = ServicePreferences(defaults: defaults)
         self.clients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
         if let data = defaults.data(forKey: stateKey), let saved = try? JSONDecoder().decode(ServiceRecoveryTracker.self, from: data) {
@@ -73,6 +79,16 @@ final class MonitorModel: ObservableObject {
         objectWillChange.send()
         preferences.setNotificationsEnabled(enabled, for: service)
         if enabled { Task { await requestNotificationsIfNeeded() } }
+    }
+
+    func setShowsMenuBar(_ shown: Bool) {
+        showsMenuBar = shown
+        defaults.set(shown, forKey: "menuBar.visible")
+    }
+
+    func setShownInMenuBar(_ shown: Bool, for service: QuotaService) {
+        objectWillChange.send()
+        preferences.setShownInMenuBar(shown, for: service)
     }
 
     private func persistRecovery() {

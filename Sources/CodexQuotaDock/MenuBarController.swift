@@ -19,11 +19,13 @@ final class MenuBarController: NSObject {
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
             button.imageScaling = .scaleNone
+            button.target = self
+            button.action = #selector(handleClick)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
-        let item = NSMenuItem(title: "打开控制面板…", action: #selector(showPanel), keyEquivalent: "")
+        let item = NSMenuItem(title: "打开主窗口", action: #selector(showPanel), keyEquivalent: "")
         item.target = self
         menu.addItem(item)
-        statusItem.menu = menu
 
         render()
         subscription = model.objectWillChange
@@ -33,6 +35,16 @@ final class MenuBarController: NSObject {
 
     @objc private func showPanel() { openPanel() }
 
+    @objc private func handleClick() {
+        let event = NSApp.currentEvent
+        if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true,
+           let button = statusItem.button {
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
+        } else {
+            openPanel()
+        }
+    }
+
     func stop() {
         subscription?.cancel()
         subscription = nil
@@ -40,8 +52,11 @@ final class MenuBarController: NSObject {
     }
 
     private func render() {
+        let services = model.menuBarServices
+        statusItem.isVisible = model.showsMenuBar && !services.isEmpty
+        guard statusItem.isVisible else { return }
         guard let button = statusItem.button else { return }
-        let entries = model.enabledServices.map { service in
+        let entries = services.map { service in
             let snapshot = model.snapshot(service)
             return MenuBarImageRenderer.Entry(service: service, windows: snapshot.windows, hasError: snapshot.errorMessage != nil)
         }
@@ -55,9 +70,9 @@ final class MenuBarController: NSObject {
             }.joined(separator: "；")
             return "\(entry.service.title)：\(details.isEmpty ? "等待数据" : details)"
         }.joined(separator: "\n")
-        let summary = description.isEmpty ? "监测已关闭" : description
-        let status = model.errorMessage.map { "额度可能已过期：\($0)" } ?? summary
-        button.setAccessibilityLabel("服务额度。\(status)。打开菜单可进入控制面板。")
-        button.toolTip = "\(status)\n每 \(Int(MonitorModel.refreshInterval)) 秒查询 · 点击菜单中的“打开控制面板…”进行操作"
+        let errors = services.compactMap { service in model.snapshot(service).errorMessage.map { "\(service.title)：\($0)" } }
+        let status = errors.isEmpty ? description : "额度可能已过期：\(errors.joined(separator: "\n"))"
+        button.setAccessibilityLabel("服务额度。\(status)。单击打开主窗口。")
+        button.toolTip = "\(status)\n单击打开主窗口 · 右键打开菜单"
     }
 }

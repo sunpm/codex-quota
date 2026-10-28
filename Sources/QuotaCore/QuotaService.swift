@@ -1,6 +1,6 @@
 import Foundation
 
-public enum QuotaService: String, CaseIterable, Codable, Identifiable {
+public enum QuotaService: String, CaseIterable, Codable, Identifiable, Sendable {
     case codex, claude, antigravity, cursor
 
     public var id: String { rawValue }
@@ -39,11 +39,17 @@ public struct ServicePreferences {
     public func notificationsEnabled(_ service: QuotaService) -> Bool {
         defaults.object(forKey: "service.\(service.rawValue).notifications") as? Bool ?? true
     }
+    public func isShownInMenuBar(_ service: QuotaService) -> Bool {
+        defaults.object(forKey: "service.\(service.rawValue).menuBar") as? Bool ?? true
+    }
     public func setEnabled(_ enabled: Bool, for service: QuotaService) {
         defaults.set(enabled, forKey: "service.\(service.rawValue).enabled")
     }
     public func setNotificationsEnabled(_ enabled: Bool, for service: QuotaService) {
         defaults.set(enabled, forKey: "service.\(service.rawValue).notifications")
+    }
+    public func setShownInMenuBar(_ shown: Bool, for service: QuotaService) {
+        defaults.set(shown, forKey: "service.\(service.rawValue).menuBar")
     }
 }
 
