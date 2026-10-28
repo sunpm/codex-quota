@@ -13,7 +13,7 @@
 | 已实现，待实机验收 | worktree 归并到主项目 | 同一仓库的用量不再散落在多个路径下 |
 | 已实现，待实机验收 | 小时趋势 | 看清一天内的消耗高峰 |
 | 已实现，待实机验收 | 同期比较 | 判断用量与费用的变化 |
-| P1 | 读取压缩日志 | 补齐未计入的历史；若已出现压缩日志提示，优先处理 |
+| 已实现，待实机验收 | 读取压缩日志 | 补齐压缩归档中的历史用量 |
 | P2 | 保留历史统计 | 清理源日志后仍能查看已采集的用量 |
 | P2 | Cursor 用量历史 | 补充账号全设备 Token 与服务端费用 |
 | P2 | Antigravity 本地用量 | 补充本机会话的 Token 历史 |
@@ -88,13 +88,17 @@ P1 优先复用现有数据完成明细、归组和趋势；压缩读取单独�
 
 ## 读取压缩日志
 
-- [ ] 支持 Codex `.jsonl.zst`，复用现有 JSONL 解析与去重。
+- [x] 支持 Codex `.jsonl.zst`，复用现有 JSONL 解析与去重。
 
-当前压缩文件只计入“未计入”提示。参考流式解压方式，按块读取，避免将整份日志一次性展开到内存；实施前明确 `libzstd` 的引入、分发与许可方式，不能默认用户已安装命令行解压工具。
+已在 sessions / archived_sessions 扫描压缩日志，按 256 KiB 块解码后交给同一个 JSONL 解析器。剥离 `.zst` 后再提取会话 ID，普通与压缩副本使用同一去重键，沿用累计签名和 fork 重放处理。拼接帧继续解码，空文件、损坏或截断帧按读取失败处理；失败时仅保留该文件上次成功缓存，不缓存半份解压结果。压缩归档末尾的无效 JSON 也计入不完整提示。
+
+静态编译 Zstandard v1.5.7 官方单文件解码源码及头文件，不加入远程 Swift 包或运行时动态库，不要求用户安装命令行工具，不落盘解压内容。采用 BSD 许可并随应用分发，来源和重新生成方式见 [第三方来源](../THIRD_PARTY_NOTICES.md)。
+
+现有核心与应用检查共 115 个断言通过，默认构建与打包通过。检查入口补上 C 模块链接，并固定使用其所需的 native 对象目录；未增加或修改测试场景。已有检查不覆盖压缩日志解析，压缩前后统计、混合副本及损坏文件仍待人工核对。
 
 验收：同一会话压缩前后统计一致；普通与压缩副本并存、active / archived 迁移和 fork 重放不重复入账。损坏或截断文件继续提示统计不完整，不补造用量。只有确实计入后才消除对应提示。
 
-参考：[cc-bar ZstdStreamReader](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Usage/ZstdStreamReader.swift)、[fork 重复统计问题](https://github.com/nanvon/cc-bar/issues/7)。
+参考：[cc-bar ZstdStreamReader](https://github.com/nanvon/cc-bar/blob/530ef49f3b5808e268181a55311e0c83cc40adff/Core/Usage/ZstdStreamReader.swift)、[fork 重复统计问题](https://github.com/nanvon/cc-bar/issues/7)（已关闭）、[Zstandard 流式解码示例](https://github.com/facebook/zstd/blob/v1.5.7/examples/streaming_decompression.c)、[截断检测说明](https://github.com/facebook/zstd/issues/1109)。
 
 ## 保留历史统计
 

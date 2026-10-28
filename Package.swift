@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [.executable(name: "CodexQuotaDock", targets: ["CodexQuotaDock"])],
     targets: [
-        .target(name: "QuotaCore"),
+        .target(name: "CZstd"),
+        .target(name: "QuotaCore", dependencies: ["CZstd"]),
         .executableTarget(name: "CodexQuotaDock", dependencies: ["QuotaCore"]),
         .executableTarget(name: "QuotaCoreChecks", dependencies: ["QuotaCore"], path: "Tests/QuotaCoreTests")
     ]

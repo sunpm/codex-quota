@@ -96,7 +96,9 @@ public actor LocalUsageReader {
                 failures += 1; continue
             }
             for case let file as URL in enumerator {
-                if file.pathExtension == "jsonl" { files.append((service, file)) }
+                if file.pathExtension == "jsonl" || (service == .codex && file.lastPathComponent.hasSuffix(".jsonl.zst")) {
+                    files.append((service, file))
+                }
                 else if file.lastPathComponent.hasSuffix(".jsonl.zst") { compressed += 1 }
             }
         }
@@ -153,7 +155,10 @@ public actor LocalUsageReader {
         let whole = ISO8601DateFormatter()
         var records: [UsageRecord] = []
         var invalid = 0
-        let filename = file.deletingPathExtension().lastPathComponent
+        let isCompressed = file.pathExtension == "zst"
+        // 压缩副本使用同一个会话 ID，尤其是缺少累计签名时的行号去重键。
+        let jsonlFile = isCompressed ? file.deletingPathExtension() : file
+        let filename = jsonlFile.deletingPathExtension().lastPathComponent
         let filenameID = String(filename.suffix(36))
         var session = UUID(uuidString: filenameID) == nil ? filename : filenameID
         var emitter = session
@@ -227,7 +232,7 @@ public actor LocalUsageReader {
 
         // ponytail: 变更文件从头解析；若单个日志增长到影响刷新，再改为 byte-offset 增量读取。
         var pending = Data()
-        while let chunk = try handle.read(upToCount: 256 * 1024), !chunk.isEmpty {
+        func consumeChunk(_ chunk: Data) {
             pending.append(chunk)
             var start = pending.startIndex
             while let end = pending[start...].firstIndex(of: 10) {
@@ -236,8 +241,15 @@ public actor LocalUsageReader {
             }
             if start > pending.startIndex { pending = Data(pending[start...]) }
         }
-        // 正在写入的末行留到下次刷新；完整但没有换行符的 JSON 仍可读取。
-        if !pending.isEmpty, (try? JSONSerialization.jsonObject(with: pending)) != nil { consume(pending) }
+        if isCompressed {
+            try ZstdStreamReader.forEachChunk(in: handle, consume: consumeChunk)
+        } else {
+            while let chunk = try handle.read(upToCount: 256 * 1024), !chunk.isEmpty {
+                autoreleasepool { consumeChunk(chunk) }
+            }
+        }
+        // 普通日志正在写入的末行留到下次刷新；压缩归档的无效末行仍应提示。
+        if !pending.isEmpty, isCompressed || (try? JSONSerialization.jsonObject(with: pending)) != nil { consume(pending) }
         return CachedFile(size: size, modified: modified, records: records, invalidLines: invalid)
     }
 
