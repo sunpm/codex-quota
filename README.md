@@ -2,7 +2,7 @@
 
 在一个 macOS 原生窗口中查看 AI 编程服务的剩余额度、Token 用量和费用，额度恢复时收到通知。支持 Codex、Claude Code、Antigravity 和 Cursor，也可在菜单栏显示剩余百分比。
 
-[下载最新版](https://github.com/sunpm/codex-quota-dock/releases/latest) · [更新记录](https://github.com/sunpm/codex-quota-dock/releases) · [功能计划](docs/ROADMAP.md) · [反馈问题](https://github.com/sunpm/codex-quota-dock/issues)
+[下载最新版](https://github.com/sunpm/codex-quota-dock/releases/latest) · [更新记录](https://github.com/sunpm/codex-quota-dock/releases) · [反馈问题](https://github.com/sunpm/codex-quota-dock/issues)
 
 ![四个服务的额度、进度与重置倒计时](docs/images/quota.png)
 
@@ -17,7 +17,7 @@
 | Antigravity | 通过运行中的 IDE 查询 | 本机 IDE / CLI 导出的 transcript | 自定义模型价格的 API 等价估算 |
 | Cursor | 通过已有客户端登录态查询 | 当前账号全设备的服务端记录 | Cursor 返回的费用 |
 
-本机日志统计与 Cursor 账号统计分开展示。“全部”汇总本机 Codex / Claude Code / Antigravity 用量；选择“Cursor → 概览”查看账号用量。各项实施与验收状态见[功能计划](docs/ROADMAP.md)，发行版包含的功能以对应更新记录为准。
+本机日志统计与 Cursor 账号统计分开展示。“全部”汇总本机 Codex / Claude Code / Antigravity 用量；选择“Cursor → 概览”查看账号用量。发行版包含的功能以对应更新记录为准。
 
 ## 安装
 
@@ -150,7 +150,7 @@ open "dist/Codex Quota Dock.app"
 bash scripts/test.sh
 ```
 
-检查覆盖解析、通知去重、限流、服务隔离、设置及窗口生命周期，使用模拟客户端，不读取真实凭据或调用服务接口。编译与离线检查通过不等于真实账号已连接；新增功能的验收状态见[计划](docs/ROADMAP.md)。
+检查覆盖解析、通知去重、限流、服务隔离、设置及窗口生命周期，使用模拟客户端，不读取真实凭据或调用服务接口。编译与离线检查通过不等于真实账号已连接。
 
 <details>
 <summary>打包、发布与诊断</summary>
