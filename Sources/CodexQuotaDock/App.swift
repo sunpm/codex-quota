@@ -37,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let menu = NSMenu()
         let root = NSMenuItem()
         menu.addItem(root)
-        let appMenu = NSMenu(title: "Codex 额度")
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
+        let appMenu = NSMenu(title: appName)
         root.submenu = appMenu
         let show = NSMenuItem(title: "打开主窗口", action: #selector(showPanel), keyEquivalent: "0")
         show.target = self
@@ -46,8 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         settings.target = self
         appMenu.addItem(settings)
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "隐藏 Codex 额度", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        appMenu.addItem(withTitle: "退出 Codex 额度", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "隐藏 \(appName)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "退出 \(appName)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         let fileMenu = NSMenu(title: "文件")
         menu.addItem(withTitle: "文件", action: nil, keyEquivalent: "").submenu = fileMenu

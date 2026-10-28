@@ -56,8 +56,11 @@ struct MainView: View {
         }
     }
 
+    private var appName: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
+    }
+
     private var persistentNotificationGuide: String {
-        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
         let style: String
         if #available(macOS 26, *) {
             style = "开启桌面提醒，并将样式设为“持续”。"
@@ -209,7 +212,7 @@ struct MainView: View {
             Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
             HStack {
-                Text("Codex 额度 0.6.2")
+                Text("\(appName) \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
                 Spacer()
                 Link("致谢 cc-bar · MIT", destination: URL(string: "https://github.com/nanvon/cc-bar")!)
             }.font(.system(size: 10)).foregroundStyle(.tertiary)
