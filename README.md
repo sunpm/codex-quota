@@ -29,6 +29,16 @@
 
 当前安装包使用 ad-hoc 签名，尚未进行 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。Release 同时提供 `SHA256SUMS.txt`。
 
+### 首次打开被阻止
+
+如果提示“无法验证开发者”或“Apple 无法检查其是否包含恶意软件”，确认应用来自本仓库的 [Releases](https://github.com/sunpm/codex-quota-dock/releases/latest) 后：
+
+1. 从“应用程序”尝试打开 `Codex Quota Dock`，关闭拦截提示。
+2. 打开“系统设置 → 隐私与安全性”，向下滚动，在该应用的拦截信息旁点击“仍要打开”。
+3. 按系统提示确认，再点击“打开”。此后可正常双击启动。
+
+如果没有看到“仍要打开”，先再次尝试启动应用，再返回设置查看。详见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。
+
 ## 日常使用
 
 - **查看额度**：按 Codex、Claude Code、Antigravity、Cursor 顺序连续展示，随窗口宽度自动排列；每 30 秒查询已启用服务，分别显示更新时间与错误。倒计时在本地计算；失败保留上次读数并标明过期，手动刷新也遵守服务端限流。

@@ -54,7 +54,13 @@ jobs:
           (cd dist && shasum -a 256 \
             "CodexQuotaDock-${RELEASE_TAG}-macOS-AppleSilicon.dmg" \
             "CodexQuotaDock-${RELEASE_TAG}-macOS-Intel.dmg" > SHA256SUMS.txt)
-          printf '适用于 macOS 13 及以上。Apple Silicon（M 系列芯片）下载 AppleSilicon.dmg，Intel 芯片下载 Intel.dmg。打开 DMG，将应用拖入 Applications。\n\n当前使用 ad-hoc 签名，未经过 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。\n' > dist/release-notes.md
+          cat > dist/release-notes.md <<'EOF'
+          适用于 macOS 13 及以上。Apple Silicon（M 系列芯片）下载 AppleSilicon.dmg，Intel 芯片下载 Intel.dmg。打开 DMG，将应用拖入 Applications。
+
+          当前使用 ad-hoc 签名，未经过 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。
+
+          **首次打开被阻止**：如果提示“无法验证开发者”或“Apple 无法检查其是否包含恶意软件”，确认应用来自本仓库后，先从“应用程序”尝试启动并关闭提示，再到“系统设置 → 隐私与安全性”点击该应用的“仍要打开”，按系统提示确认并点击“打开”。详见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。
+          EOF
 
       - name: Publish release
         env:
