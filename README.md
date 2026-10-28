@@ -21,18 +21,20 @@ open "dist/Codex Quota Dock.app"
 
 ## 自动发布与 Changelog
 
-推送 `vX.Y.Z` 标签后，[Release 工作流](.github/workflows/release.yml) 在 `macos-15` / Xcode 16.4 上运行现有离线检查、构建 Apple Silicon / Intel 通用应用，并发布到 GitHub Releases。`vX.Y.Z-beta.1`、`vX.Y.Z-rc.1` 等带后缀的标签会标记为预发布，不设为 Latest。
+推送 `vX.Y.Z` 标签后，[Release 工作流](.github/workflows/release.yml) 在 `macos-15` / Xcode 16.4 上运行现有离线检查，分别编译 Apple Silicon（arm64）和 Intel（x86_64）应用、生成两个 DMG，并发布到 GitHub Releases。`vX.Y.Z-beta.1`、`vX.Y.Z-rc.1` 等带后缀的标签会标记为预发布，不设为 Latest。
 
 先将待发布代码及工作流提交、推送到 GitHub，再在对应提交上创建标签，例如：
 
 ```sh
-git tag -a v0.7.0 -m "发布 v0.7.0"
-git push origin v0.7.0
+git tag -a v0.7.1 -m "发布 v0.7.1"
+git push origin v0.7.1
 ```
 
-Release 附件包含 `CodexQuotaDock-v0.7.0-macOS-universal.zip` 和 `SHA256SUMS.txt`。Changelog 使用 GitHub 原生 Release Notes，自动汇总合并的 PR、贡献者和完整变更链接。已有正式版本时，预发布与正式版统一从当前历史中最近正式版本累计，避免遗漏 beta / rc 中的 PR；没有正式标签时由 GitHub 自动选择范围。每次改动通过 PR 合并，PR 标题简洁描述结果即可，无需添加分类标签。直接提交不保证单独列入更新条目；发布说明保存在 Releases，不自动回写仓库中的 `CHANGELOG.md`。
+Release 附件包含 `CodexQuotaDock-v0.7.1-macOS-AppleSilicon.dmg`、`CodexQuotaDock-v0.7.1-macOS-Intel.dmg` 和 `SHA256SUMS.txt`。M 系列芯片下载 Apple Silicon 版，Intel 芯片下载 Intel 版；打开 DMG 后，将应用拖到镜像内的 Applications 快捷方式即可安装。
 
-CI 使用标签的 `X.Y.Z` 写入应用版本、工作流运行编号写入构建号；仅修改构建产物，不改写源码中的 `Info.plist`。本地构建仍默认使用源码版本与当前机器架构，可用 `bash scripts/build.sh --arch arm64 --arch x86_64` 构建通用版本（需要完整 Xcode）。
+Changelog 使用 GitHub 原生 Release Notes，自动汇总合并的 PR、贡献者和完整变更链接。已有正式版本时，预发布与正式版统一从当前历史中最近正式版本累计，避免遗漏 beta / rc 中的 PR；没有正式标签时由 GitHub 自动选择范围。每次改动通过 PR 合并，PR 标题简洁描述结果即可，无需添加分类标签。直接提交不保证单独列入更新条目；发布说明保存在 Releases，不自动回写仓库中的 `CHANGELOG.md`。
+
+CI 使用标签的 `X.Y.Z` 写入应用版本、工作流运行编号写入构建号；仅修改构建产物，不改写源码中的 `Info.plist`。本地构建仍默认使用源码版本与当前机器架构；生成 DMG 可分别运行 `bash scripts/package-dmg.sh arm64` 和 `bash scripts/package-dmg.sh x86_64`，产物保存在 `dist/`。脚本使用系统自带的 `hdiutil`，包含编译、签名验证和镜像校验，无需安装额外打包工具。需要指定版本时可在命令前设置 `APP_VERSION=0.7.1`。
 
 发布使用 Actions 自带的 `GITHUB_TOKEN` 和 `contents: write` 权限，无需额外 PAT；仓库或组织策略需要允许此工作流运行。构建仍使用 ad-hoc 签名，没有接入 Developer ID 签名与公证。构建或检查失败不会发布；附件上传失败时可能留下草稿，确认原因并删除该未发布草稿后，可在 Actions 中重新运行。已发布版本使用新标签更新，不覆盖原附件。
 
