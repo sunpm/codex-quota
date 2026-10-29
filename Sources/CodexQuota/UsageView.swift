@@ -235,10 +235,23 @@ struct UsageView: View {
     }
 
     var body: some View {
-        if page == .overview {
-            ScrollView { content }
-        } else {
-            content
+        Group {
+            if page == .overview {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 18) { content }.padding(24)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 18) { content }
+                    .padding(24).frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .sheet(item: $selectedSession) { session in
+            let interval = range.intervals(now: Date(), customStart: customStart, customEnd: customEnd).current
+            let rangeLabel = range == .custom
+                ? customStart.formatted(date: .numeric, time: .omitted) + " – " + customEnd.formatted(date: .numeric, time: .omitted)
+                : range.rawValue
+            UsageSessionDetailView(model: model, title: session.name, range: rangeLabel,
+                                   records: records(in: interval).filter { $0.session == session.id })
         }
     }
 
@@ -251,7 +264,7 @@ struct UsageView: View {
         let costs = model.costTotal(records)
         let customRangeLabel = customStart.formatted(date: .numeric, time: .omitted)
             + " – " + customEnd.formatted(date: .numeric, time: .omitted)
-        return VStack(alignment: .leading, spacing: 18) {
+        return Group {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 16) {
                     PanelSegmentedPicker(title: "时间范围", options: UsageRange.allCases,
@@ -344,13 +357,6 @@ struct UsageView: View {
                 Divider().padding(.vertical, 4)
                 UsageHeatmapView(model: model)
             }
-        }
-        .padding(24)
-        .frame(maxHeight: page == .overview ? nil : .infinity, alignment: .top)
-        .sheet(item: $selectedSession) { session in
-            UsageSessionDetailView(model: model, title: session.name,
-                range: range == .custom ? customRangeLabel : range.rawValue,
-                records: records.filter { $0.session == session.id })
         }
     }
 

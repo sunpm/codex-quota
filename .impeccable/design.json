@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T02:50:35Z",
+  "generatedAt": "2026-10-29T14:00:00Z",
   "title": "Design System: Codex Quota",
   "extensions": {
     "colorMeta": {
@@ -112,7 +112,13 @@
       }
     },
     "shadows": [],
-    "motion": [],
+    "motion": [
+      {
+        "name": "selection-slide",
+        "value": "Animation.easeOut(duration: 0.16)",
+        "purpose": "PanelSelectionIndicator：侧栏与分段选择器共用选中背景和文字遮罩；关闭动画特性或启用系统减少动态效果时直接切换，页面内容不跟随动画。"
+      }
+    ],
     "breakpoints": []
   },
   "components": [
@@ -144,6 +150,14 @@
       "description": "MainView.navigationButton：选中底使用系统强调色实色，文字为白色并加粗。此处省略 SF Symbols，只示意选中、字级和行密度。",
       "html": "<nav aria-label=\"页面示意\"><button class=\"ds-nav-selected\" type=\"button\" aria-current=\"page\">额度</button></nav>",
       "css": ".ds-nav-selected{font:600 13px system-ui;min-height:34px;padding:0 10px;border:0;border-radius:6px;color:white;background:Highlight}.ds-nav-selected:hover{cursor:default}.ds-nav-selected:focus-visible{outline:auto}"
+    },
+    {
+      "name": "分段选择器",
+      "kind": "custom",
+      "refersTo": "segmented-picker",
+      "description": "PanelSegmentedPicker：等宽选项、系统强调色选中底和白色 semibold 文字。示例宽度来自额度趋势范围；以浏览器单选控件示意选中和键盘焦点，不复刻滑块及文字遮罩动效。",
+      "html": "<div class=\"ds-segments\" role=\"group\" aria-label=\"额度趋势范围\"><label class=\"ds-segment\"><input type=\"radio\" name=\"ds-quota-range\" value=\"day\" checked><span>24 小时</span></label><label class=\"ds-segment\"><input type=\"radio\" name=\"ds-quota-range\" value=\"week\"><span>7 天</span></label></div>",
+      "css": ".ds-segments{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:160px;padding:3px;border-radius:8px;background:color-mix(in srgb,CanvasText 5%,transparent);color:CanvasText;font:13px system-ui}.ds-segment{position:relative}.ds-segment input{position:absolute;width:1px;height:1px;opacity:0}.ds-segment span{display:grid;place-items:center;min-height:26px;border-radius:6px;white-space:nowrap;font-weight:400}.ds-segment input:checked+span{background:Highlight;color:white;font-weight:600}.ds-segment:hover{cursor:default}.ds-segment input:focus-visible+span{outline:auto}.ds-segment input:disabled+span{color:GrayText}"
     },
     {
       "name": "设置卡片",

@@ -24,6 +24,7 @@ final class MonitorModel: ObservableObject {
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     @Published var launchError: String?
     @Published private(set) var showsMenuBar: Bool
+    @Published private(set) var animationsEnabled: Bool
 
     let readsLocalUsage: Bool
     let resetAnnouncements: ResetAnnouncementMonitor
@@ -47,11 +48,11 @@ final class MonitorModel: ObservableObject {
     var monitoringEnabled: Bool { preferences.isEnabled(.codex) }
     var recoveryNotificationsEnabled: Bool { preferences.notificationsEnabled(.codex) }
     var hasMenuBarItem: Bool { showsMenuBar && monitoringEnabled }
-    var refreshing: Bool { resetAnnouncements.refreshing || snapshot.refreshing }
 
     init(defaults: UserDefaults = .standard, client: QuotaClient? = nil) {
         self.defaults = defaults
         refreshInterval = max(30, defaults.object(forKey: "quota.refreshIntervalSeconds") as? Int ?? 300)
+        animationsEnabled = defaults.object(forKey: "appearance.animationsEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: quotaHistoryKey),
            let saved = try? JSONDecoder().decode(QuotaHistory.self, from: data) {
             quotaHistory = saved
@@ -107,6 +108,11 @@ final class MonitorModel: ObservableObject {
     func setShowsMenuBar(_ shown: Bool) {
         showsMenuBar = shown
         defaults.set(shown, forKey: "menuBar.codex.visible")
+    }
+
+    func setAnimationsEnabled(_ enabled: Bool) {
+        animationsEnabled = enabled
+        defaults.set(enabled, forKey: "appearance.animationsEnabled")
     }
 
     private func persistRecovery() {

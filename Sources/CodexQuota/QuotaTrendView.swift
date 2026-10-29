@@ -76,7 +76,7 @@ private struct QuotaWindowTrend: View {
             .chartXScale(domain: interval.start...interval.end)
             .chartYScale(domain: 0...100)
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+                AxisMarks(preset: .aligned, values: .automatic(desiredCount: 5)) { _ in
                     AxisGridLine()
                     AxisTick()
                     if daily { AxisValueLabel(format: .dateTime.month().day()) }

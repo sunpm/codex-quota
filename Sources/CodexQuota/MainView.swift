@@ -16,6 +16,7 @@ struct MainView: View {
     @State private var showsRefreshIntervalEditor = false
     @FocusState private var refreshIntervalFocused: Bool
     @Namespace private var navigationSelection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
@@ -27,12 +28,17 @@ struct MainView: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            #if compiler(>=6.2)
             if #available(macOS 26, *) {
                 sidebar.glassEffect(in: RoundedRectangle(cornerRadius: 16)).padding(8)
             } else {
                 sidebar.background(Color(nsColor: .windowBackgroundColor))
                 Divider()
             }
+            #else
+            sidebar.background(Color(nsColor: .windowBackgroundColor))
+            Divider()
+            #endif
             VStack(spacing: 0) {
                 header
                 Divider()
@@ -48,10 +54,13 @@ struct MainView: View {
         }
         .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
         .contentShape(Rectangle())
-        .onTapGesture {
-            if showsRefreshIntervalEditor { commitRefreshInterval() }
-        }
+        .gesture(TapGesture().onEnded { commitRefreshInterval() },
+                 including: showsRefreshIntervalEditor ? .all : .subviews)
         .buttonStyle(PanelButtonStyle())
+        .environment(\.panelAnimationsEnabled, model.animationsEnabled && !reduceMotion)
+        .onChange(of: model.monitoringEnabled) { enabled in
+            if !enabled { commitRefreshInterval() }
+        }
         .sheet(isPresented: $updates.showsInstalledReleaseNotes) {
             InstalledReleaseNotesView(version: updates.currentVersion, markdown: updates.installedReleaseNotes)
                 .onAppear { updates.markInstalledReleaseNotesShown() }
@@ -109,23 +118,26 @@ struct MainView: View {
     }
 
     private func navigationButton(_ page: PanelPage) -> some View {
-        Button { navigation.page = page } label: {
+        Button {
+            guard navigation.page != page else { return }
+            navigation.page = page
+            if page == .quota { Task { await model.refresh(force: true) } }
+        } label: {
             HStack(spacing: 8) {
                 Image(systemName: page.symbol).frame(width: 22, height: 22)
                 Text(page.rawValue)
                 Spacer(minLength: 0)
                 if page == .settings, let release = updates.release, release.isNewer {
                     Image(systemName: "arrow.down.circle.fill")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(navigation.page == .settings && (!model.animationsEnabled || reduceMotion)
+                                         ? Color.white : Color.accentColor)
                         .accessibilityLabel(release.status).help(release.status)
                 }
             }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
-                .foregroundStyle(.primary)
-                .modifier(PanelSelectionLabel(selection: navigation.page, namespace: navigationSelection))
+                .modifier(PanelSelectionLabel(value: page, selection: navigation.page, namespace: navigationSelection))
                 .contentShape(Rectangle())
-        }.matchedGeometryEffect(id: page, in: navigationSelection)
-            .help(page.rawValue)
+        }.help(page.rawValue)
             .accessibilityAddTraits(navigation.page == page ? .isSelected : [])
     }
 
@@ -133,16 +145,13 @@ struct MainView: View {
         HStack(spacing: 12) {
             Text(navigation.page == .overview ? "用量统计" : navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
             Spacer()
-            if navigation.page != .settings && (navigation.page == .quota ? model.refreshing : usage.refreshing) {
-                ProgressView().controlSize(.small)
-            }
-            if navigation.page != .settings {
+            if navigation.page != .settings && navigation.page != .quota {
+                if usage.refreshing { ProgressView().controlSize(.small) }
                 Button {
-                    if navigation.page == .quota { Task { await model.refresh(force: true) } }
-                    else { Task { await usage.refresh() } }
+                    Task { await usage.refresh() }
                 } label: { Label("刷新", systemImage: "arrow.clockwise") }
                     .keyboardShortcut("r", modifiers: .command)
-                    .disabled(navigation.page == .quota ? model.refreshing || !model.monitoringEnabled : usage.refreshing)
+                    .disabled(usage.refreshing)
             }
         }.padding(.horizontal, 24).frame(height: 56)
     }
@@ -152,8 +161,7 @@ struct MainView: View {
         return ScrollView {
             VStack(spacing: 16) {
                 if model.monitoringEnabled {
-                    QuotaBlock(windows: snapshot.windows, error: snapshot.errorMessage,
-                               lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
+                    QuotaBlock(windows: snapshot.windows, error: snapshot.errorMessage)
                         .panelCard()
                     QuotaTrendView(history: model.quotaHistory, windows: snapshot.windows)
                     ResetAnnouncementView(model: resetAnnouncements).panelCard()
@@ -172,44 +180,61 @@ struct MainView: View {
             AppUpdateView(model: updates)
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
-                    Text("监测额度")
+                    Text("额度监测").font(.headline)
                     Spacer()
-                    Toggle("监测额度", isOn: Binding(get: { model.monitoringEnabled }, set: { model.setMonitoringEnabled($0) })).labelsHidden()
+                    Toggle("额度监测", isOn: Binding(get: { model.monitoringEnabled }, set: { model.setMonitoringEnabled($0) })).labelsHidden()
                 }
-                Divider()
-                HStack {
-                    Text("刷新间隔")
-                    Spacer()
-                    if showsRefreshIntervalEditor {
-                        HStack(spacing: 8) {
-                            TextField("至少 30", text: $refreshIntervalInput)
-                                .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
-                                .monospacedDigit().frame(width: 64)
-                                .accessibilityLabel("刷新间隔（秒）")
-                                .focused($refreshIntervalFocused)
-                                .onSubmit(commitRefreshInterval)
-                                .onChange(of: refreshIntervalFocused) { focused in
-                                    if !focused { commitRefreshInterval() }
-                                }
-                                .help("最少 30 秒")
-                            Text("秒").foregroundStyle(.secondary)
-                        }
-                            .onAppear {
-                                // 等输入框挂载并结束按钮点击，再转移键盘焦点。
-                                DispatchQueue.main.async { refreshIntervalFocused = true }
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("刷新间隔")
+                        Spacer()
+                        if showsRefreshIntervalEditor {
+                            HStack(spacing: 8) {
+                                TextField("至少 30", text: $refreshIntervalInput)
+                                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                                    .monospacedDigit().frame(width: 64)
+                                    .accessibilityLabel("刷新间隔（秒）")
+                                    .focused($refreshIntervalFocused)
+                                    .onSubmit(commitRefreshInterval)
+                                    .onChange(of: refreshIntervalFocused) { focused in
+                                        if !focused { commitRefreshInterval() }
+                                    }
+                                    .help("最少 30 秒")
+                                Text("秒").foregroundStyle(.secondary)
                             }
-                            .onDisappear(perform: commitRefreshInterval)
-                    } else {
-                        Button {
-                            refreshIntervalInput = String(model.refreshInterval)
-                            showsRefreshIntervalEditor = true
-                        } label: {
-                            Text(refreshIntervalLabel(model.refreshInterval)).monospacedDigit()
-                        }.accessibilityLabel("编辑刷新间隔")
-                            .accessibilityValue(refreshIntervalLabel(model.refreshInterval))
+                                .onAppear {
+                                    // 等输入框挂载并结束按钮点击，再转移键盘焦点。
+                                    DispatchQueue.main.async { refreshIntervalFocused = true }
+                                }
+                                .onDisappear(perform: commitRefreshInterval)
+                        } else {
+                            Button {
+                                refreshIntervalInput = String(model.refreshInterval)
+                                showsRefreshIntervalEditor = true
+                            } label: {
+                                Text(refreshIntervalLabel(model.refreshInterval)).monospacedDigit()
+                            }.accessibilityLabel("编辑刷新间隔")
+                                .accessibilityValue(refreshIntervalLabel(model.refreshInterval))
+                        }
                     }
-                }
-                Divider()
+                    HStack {
+                        Text("额度恢复时通知")
+                        Spacer()
+                        Toggle("额度恢复时通知", isOn: Binding(get: { model.recoveryNotificationsEnabled }, set: { model.setRecoveryNotificationsEnabled($0) })).labelsHidden()
+                    }
+                    HStack {
+                        Text("Codex 重置动态通知")
+                        Spacer()
+                        Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
+                            set: { model.setResetNotificationsEnabled($0) })).labelsHidden()
+                            .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
+                    }
+                }.padding(.leading, 12)
+                    .foregroundStyle(model.monitoringEnabled ? .primary : .secondary)
+                    .disabled(!model.monitoringEnabled)
+            }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
+            VStack(alignment: .leading, spacing: 14) {
+                Text("通用").font(.headline)
                 HStack {
                     Text("在菜单栏显示额度")
                     Spacer()
@@ -228,33 +253,27 @@ struct MainView: View {
                     Spacer()
                     Toggle("自动检查更新", isOn: Binding(get: { updates.automaticallyChecks }, set: { updates.setAutomaticallyChecks($0) })).labelsHidden()
                 }
+                Divider()
+                HStack {
+                    Text("动画特性")
+                    Spacer()
+                    Toggle("动画特性", isOn: Binding(get: { model.animationsEnabled }, set: { model.setAnimationsEnabled($0) })).labelsHidden()
+                        .help("控制侧栏和选项切换时的滑动与文字过渡效果。")
+                }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
             VStack(alignment: .leading, spacing: 8) {
-                Text("通知").font(.headline)
-                HStack {
-                    Text("额度恢复时通知")
-                    Spacer()
-                    Toggle("额度恢复时通知", isOn: Binding(get: { model.recoveryNotificationsEnabled }, set: { model.setRecoveryNotificationsEnabled($0) }))
-                        .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(!model.monitoringEnabled)
-                }
+                Text("系统通知").font(.headline)
                 Text(model.notificationStatus).font(PanelTypography.detail).foregroundStyle(.secondary)
                 HStack {
                     if !model.persistentNotificationsEnabled {
                         Button("开启持久通知") { model.showPersistentNotificationGuide() }
                     }
                     Button("测试通知") { Task { await model.sendTestNotification() } }
+                        .disabled(!model.monitoringEnabled || !model.notificationsEnabled
+                                  || !(model.recoveryNotificationsEnabled || resetAnnouncements.notificationsEnabled))
                     Button("系统设置") { model.openNotificationSettings() }
                 }
                 if let error = model.notificationError { Text(error).font(PanelTypography.detail).foregroundStyle(.primary) }
-                Divider().padding(.vertical, 4)
-                HStack {
-                    Text("Codex 重置动态通知")
-                    Spacer()
-                    Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
-                        set: { model.setResetNotificationsEnabled($0) }))
-                        .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(!model.monitoringEnabled)
-                        .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
-                }
             }.padding(16).panelCard()
             usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
@@ -268,8 +287,11 @@ struct MainView: View {
     }
 
     private func commitRefreshInterval() {
-        let seconds = Int(refreshIntervalInput.trimmingCharacters(in: .whitespacesAndNewlines))
-        model.setRefreshInterval(seconds ?? model.refreshInterval)
+        guard showsRefreshIntervalEditor else { return }
+        if model.monitoringEnabled {
+            let seconds = Int(refreshIntervalInput.trimmingCharacters(in: .whitespacesAndNewlines))
+            model.setRefreshInterval(seconds ?? model.refreshInterval)
+        }
         refreshIntervalInput = String(model.refreshInterval)
         refreshIntervalFocused = false
         showsRefreshIntervalEditor = false
@@ -300,8 +322,6 @@ struct MainView: View {
 private struct QuotaBlock: View {
     let windows: [QuotaWindow]
     let error: String?
-    let lastSuccess: Date?
-    let refreshing: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -312,7 +332,7 @@ private struct QuotaBlock: View {
                 Text("剩余").font(PanelTypography.detail).foregroundStyle(.secondary)
             }
             if windows.isEmpty {
-                Text(refreshing ? "正在读取额度…" : "暂无额度读数")
+                Text("暂无额度读数")
                     .font(.body).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
             }
@@ -346,13 +366,9 @@ private struct QuotaBlock: View {
                     }.font(PanelTypography.detail).foregroundStyle(.secondary)
                 }
             }
-            if !windows.isEmpty {
-                Text(refreshing ? "正在查询…" : lastSuccess.map { "\(error == nil ? "更新于" : "数据已过期 · 更新于") \($0.formatted(date: .omitted, time: .standard))" } ?? "等待首次读取")
-                    .font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
-            }
             if let error {
                 Label {
-                    Text(error).foregroundStyle(.primary)
+                    Text(windows.isEmpty ? error : "数据已过期 · \(error)").foregroundStyle(.primary)
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(quotaColor(remaining: 10))
                 }.font(.callout).fixedSize(horizontal: false, vertical: true)

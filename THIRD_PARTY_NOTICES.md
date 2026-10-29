@@ -23,7 +23,7 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 旧版 Claude Code、Cursor 和 Antigravity 接入曾参考 cc-bar 与 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的凭据、额度和用量实现；这些接入现已移除。为保留历史来源，继续附带 CodexBar 的 MIT 声明（Copyright (c) 2026 Peter Steinberger），完整原文位于 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`。
 
-本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新或应用更新服务。
+本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新服务；应用内更新使用下文的 Sparkle。
 
 主窗口、侧栏菜单及设置分组的视觉层级参考 [cc-switch v4 主界面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/main-zh.png)、[用量页面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/usage-zh.png) 与 `src/index.css` 的中性色分层（参考日期：2026-10-28）。使用本项目的 SwiftUI / AppKit 控件实现，未复制其前端组件或加入依赖；沿用下文的 cc-switch MIT 许可声明。
 
@@ -47,7 +47,13 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
-软件更新入口参考 cc-bar 的 `Core/UpdateChecker.swift` 中公开版本查询与数字版本比较的设计，并核对 GitHub Releases API 文档；本项目支持自动或手动查询最新正式版，并打开对应架构的 DMG，不引入 Sparkle 或自动安装。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`（2026-10-29），沿用随包分发的 cc-bar MIT 许可与版权声明。
+软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。构建脚本的嵌套签名流程按该项目改编。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
+
+## Sparkle 应用内更新
+
+通过 Swift Package Manager 固定接入 [sparkle-project/Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1)，提交 `ab7d71291238df6e0492143b120c9b696a35f603`。使用官方预编译 framework、安装助手及发布签名工具，不修改上游二进制代码。
+
+Sparkle 主体采用 MIT License，并包含 BSD、zlib 等组件许可；完整上游 `LICENSE` 保存在 `Resources/ThirdPartyNotices/Sparkle-LICENSE.txt`，随应用分发。依赖版本与制品 checksum 由 `Package.swift`、`Package.resolved` 及上游 package manifest 固定。
 
 ## Zstandard 压缩日志
 

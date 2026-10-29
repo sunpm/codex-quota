@@ -24,12 +24,22 @@ jobs:
       RELEASE_TAG: ${{ github.ref_name }}
       RELEASE_NOTES_FILE: dist/release-changes.md
       GH_REPO: ${{ github.repository }}
+      SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Check update signing configuration
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          if [[ -z "$SPARKLE_PUBLIC_ED_KEY" || -z "$SPARKLE_PRIVATE_ED_KEY" ]]; then
+            echo "::error::请先配置 SPARKLE_PUBLIC_ED_KEY variable 和 SPARKLE_PRIVATE_ED_KEY secret；见 docs/updating.md。"
+            exit 1
+          fi
 
       - name: Read version
         run: |
@@ -64,11 +74,19 @@ jobs:
       - name: Build Intel DMG
         run: bash scripts/package-dmg.sh x86_64
 
+      - name: Sign and verify update feeds
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          python3 scripts/generate-appcasts.py --tag "$RELEASE_TAG" \
+            --repository "$GH_REPO" --build-number "$APP_BUILD_NUMBER"
+
       - name: Prepare release assets
         run: |
           (cd dist && shasum -a 256 \
             "CodexQuota-macOS-AppleSilicon.dmg" \
-            "CodexQuota-macOS-Intel.dmg" > SHA256SUMS.txt)
+            "CodexQuota-macOS-Intel.dmg" \
+            appcast-AppleSilicon.xml appcast-Intel.xml > SHA256SUMS.txt)
           cat > dist/release-notes.md <<'EOF'
           适用于 macOS 13 及以上。Apple Silicon（M 系列芯片）下载 CodexQuota-macOS-AppleSilicon.dmg，Intel 芯片下载 CodexQuota-macOS-Intel.dmg。打开 DMG，将应用拖入 Applications。
 
@@ -76,20 +94,32 @@ jobs:
 
           **首次打开被阻止**：如果提示“无法验证开发者”或“Apple 无法检查其是否包含恶意软件”，确认应用来自本仓库后，先从“应用程序”尝试启动并关闭提示，再到“系统设置 → 隐私与安全性”点击该应用的“仍要打开”，按系统提示确认并点击“打开”。详见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。
 
+          也可在确认来源并将应用放入 `/Applications` 后，在终端执行：
+
+          ```bash
+          xattr -dr com.apple.quarantine "/Applications/Codex Quota.app"
+          open "/Applications/Codex Quota.app"
+          ```
+
+          这只移除该应用的下载隔离标记，不代表已通过 Apple 公证。如果安装在其他目录，请替换命令中的应用路径。
+
           EOF
           cat "$RELEASE_NOTES_FILE" >> dist/release-notes.md
 
-      - name: Publish release
+      - name: Upload draft and publish complete release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          options=()
+          options=(--latest=true)
           if [[ "$RELEASE_TAG" == *-* ]]; then
-            options+=(--prerelease --latest=false)
+            options=(--prerelease --latest=false)
           fi
+          # 清单与两个安装包全部上传后再发布，latest 不会指向附件不完整的版本。
           gh release create "$RELEASE_TAG" \
             "dist/CodexQuota-macOS-AppleSilicon.dmg" \
             "dist/CodexQuota-macOS-Intel.dmg" \
+            dist/appcast-AppleSilicon.xml dist/appcast-Intel.xml \
             dist/SHA256SUMS.txt \
-            --verify-tag --title "$RELEASE_TAG" \
-            --notes-file dist/release-notes.md "${options[@]}"
+            --verify-tag --title "$RELEASE_TAG" --draft \
+            --notes-file dist/release-notes.md
+          gh release edit "$RELEASE_TAG" --draft=false "${options[@]}"
