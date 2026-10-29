@@ -3,8 +3,10 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/clang-module-cache"
-swift build -c release --product CodexQuotaDock --disable-sandbox "$@"
-BIN_DIR="$(swift build -c release --show-bin-path "$@")"
+# Swift Build 目前会把最低系统版本写成链接 SDK 版本，导致系统沿用旧外观。
+# 使用 native 保留真实 SDK 版本：https://github.com/swiftlang/swift-build/issues/1887
+swift build --build-system native -c release --product CodexQuotaDock --disable-sandbox "$@"
+BIN_DIR="$(swift build --build-system native -c release --show-bin-path "$@")"
 APP_DIR="$PROJECT_DIR/dist/Codex Quota Dock.app"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$BIN_DIR/CodexQuotaDock" "$APP_DIR/Contents/MacOS/CodexQuotaDock"
@@ -19,6 +21,11 @@ if [[ -n "${RELEASE_TAG:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Add :ReleaseVersion string ${RELEASE_TAG#v}" "$APP_DIR/Contents/Info.plist"
 fi
 cp Resources/codex.svg "$APP_DIR/Contents/Resources/codex.svg"
+if [[ -n "${RELEASE_NOTES_FILE:-}" ]]; then
+    cp "$RELEASE_NOTES_FILE" "$APP_DIR/Contents/Resources/ReleaseNotes.md"
+else
+    rm -f "$APP_DIR/Contents/Resources/ReleaseNotes.md"
+fi
 mkdir -p "$APP_DIR/Contents/Resources/ThirdPartyNotices"
 cp Resources/ThirdPartyNotices/*.txt "$APP_DIR/Contents/Resources/ThirdPartyNotices/"
 swift scripts/make-icon.swift "$PROJECT_DIR/.build/AppIcon.iconset"

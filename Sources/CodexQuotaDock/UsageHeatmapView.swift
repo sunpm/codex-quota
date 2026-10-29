@@ -4,7 +4,6 @@ import QuotaCore
 
 struct UsageHeatmapView: View {
     @ObservedObject var model: UsageModel
-    let service: QuotaService?
     @State private var metric = "Tokens"
 
     private struct Day: Identifiable {
@@ -37,7 +36,7 @@ struct UsageHeatmapView: View {
 
     private func dailyUsage(start: Date, now: Date, calendar: Calendar) -> [Day] {
         var totals: [Date: Day] = [:]
-        for record in model.scan.records where record.date >= start && record.date <= now && (service == nil || record.service == service) {
+        for record in model.scan.records where record.date >= start && record.date <= now {
             let date = calendar.startOfDay(for: record.date)
             var day = totals[date] ?? Day(id: date)
             day.tokens += record.tokens.total

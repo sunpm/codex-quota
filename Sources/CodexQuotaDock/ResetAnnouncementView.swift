@@ -13,7 +13,7 @@ struct ResetAnnouncementView: View {
                     Spacer()
                     Link(destination: URL(string: "https://aihot.news/codex-reset")!) {
                         Label("AIHOT", systemImage: "arrow.up.right")
-                    }.font(PanelTypography.detail)
+                    }.buttonStyle(.link).font(PanelTypography.detail)
                 }
                 if let feed = model.feed {
                     if feed.events.isEmpty {
@@ -36,6 +36,7 @@ struct ResetAnnouncementView: View {
                                         .foregroundStyle(isToday ? .primary : .secondary).monospacedDigit()
                                     Spacer()
                                     Link("查看原帖", destination: post.url)
+                                        .buttonStyle(.link)
                                 }.font(PanelTypography.detail)
                             }
                             if event.status == .announced {

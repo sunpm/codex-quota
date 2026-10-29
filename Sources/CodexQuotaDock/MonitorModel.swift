@@ -14,7 +14,7 @@ struct ServiceSnapshot {
 @MainActor
 final class MonitorModel: ObservableObject {
     static let refreshInterval: TimeInterval = 30
-    @Published private(set) var services: [QuotaService: ServiceSnapshot] = [:]
+    @Published private(set) var snapshot = ServiceSnapshot()
     @Published var notificationStatus = "正在检查通知权限…"
     @Published var notificationError: String?
     @Published var notificationsEnabled = false
@@ -25,16 +25,14 @@ final class MonitorModel: ObservableObject {
     @Published private(set) var showsMenuBar: Bool
 
     let readsLocalUsage: Bool
-    let cursorUsage: CursorUsageModel
     let resetAnnouncements: ResetAnnouncementMonitor
     let updates: AppUpdateModel
     private let defaults: UserDefaults
     private let preferences: ServicePreferences
-    private let clients: [QuotaService: QuotaClient]
+    private let client: QuotaClient
     private var tracker: ServiceRecoveryTracker
     private var timer: Timer?
-    private var schedules: [QuotaService: RefreshSchedule] = [:]
-    private var requiresManualRetry: Set<QuotaService> = []
+    private var schedule = RefreshSchedule()
     private var stopped = false
     private var wakeObserver: NSObjectProtocol?
     private var sleepObserver: NSObjectProtocol?
@@ -42,59 +40,44 @@ final class MonitorModel: ObservableObject {
     private let stateKey = "recoveryState.v2"
     private let notificationGuideKey = "notifications.persistentGuideShown"
 
-    var enabledServices: [QuotaService] { QuotaService.allCases.filter { isEnabled($0) } }
-    var menuBarServices: [QuotaService] { enabledServices.filter { isShownInMenuBar($0) } }
-    var hasMenuBarItem: Bool { showsMenuBar && !menuBarServices.isEmpty }
-    var refreshing: Bool { resetAnnouncements.refreshing || enabledServices.contains { snapshot($0).refreshing } }
-    var lastSuccess: Date? { enabledServices.compactMap { snapshot($0).lastSuccess }.max() }
-    var errorMessage: String? {
-        let errors = enabledServices.compactMap { service in snapshot(service).errorMessage.map { "\(service.title)：\($0)" } }
-        return errors.isEmpty ? nil : errors.joined(separator: "\n")
-    }
-    var notificationServiceCount: Int { enabledServices.filter { notificationsEnabled(for: $0) }.count }
-    func snapshot(_ service: QuotaService) -> ServiceSnapshot { services[service] ?? ServiceSnapshot() }
-    func isEnabled(_ service: QuotaService) -> Bool { preferences.isEnabled(service) }
-    func notificationsEnabled(for service: QuotaService) -> Bool { preferences.notificationsEnabled(service) }
-    func isShownInMenuBar(_ service: QuotaService) -> Bool { preferences.isShownInMenuBar(service) }
+    var monitoringEnabled: Bool { preferences.isEnabled(.codex) }
+    var recoveryNotificationsEnabled: Bool { preferences.notificationsEnabled(.codex) }
+    var hasMenuBarItem: Bool { showsMenuBar && monitoringEnabled }
+    var refreshing: Bool { resetAnnouncements.refreshing || snapshot.refreshing }
 
-    init(defaults: UserDefaults = .standard, clients: [QuotaService: QuotaClient]? = nil) {
+    init(defaults: UserDefaults = .standard, client: QuotaClient? = nil) {
         self.defaults = defaults
-        showsMenuBar = defaults.object(forKey: "menuBar.visible") as? Bool ?? true
-        readsLocalUsage = clients == nil
-        updates = AppUpdateModel(defaults: defaults)
         preferences = ServicePreferences(defaults: defaults)
-        let resolvedClients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
-        self.clients = resolvedClients
-        cursorUsage = CursorUsageModel(client: resolvedClients[.cursor] as? CursorClient, enabled: preferences.isEnabled(.cursor))
+        showsMenuBar = defaults.object(forKey: "menuBar.codex.visible") as? Bool
+            ?? ((defaults.object(forKey: "menuBar.visible") as? Bool ?? true) && preferences.isShownInMenuBar(.codex))
+        readsLocalUsage = client == nil
+        updates = AppUpdateModel(defaults: defaults)
+        self.client = client ?? CodexClient()
         resetAnnouncements = ResetAnnouncementMonitor(defaults: defaults, enabled: preferences.isEnabled(.codex),
-                                                       client: clients == nil ? ResetAnnouncementClient() : nil)
+                                                       client: client == nil ? ResetAnnouncementClient() : nil)
         if let data = defaults.data(forKey: stateKey), let saved = try? JSONDecoder().decode(ServiceRecoveryTracker.self, from: data) {
             tracker = saved
         } else {
             let legacy = defaults.data(forKey: "recoveryState.v1").flatMap { try? JSONDecoder().decode(RecoveryState.self, from: $0) }
             tracker = ServiceRecoveryTracker(states: legacy.map { [QuotaService.codex.rawValue: $0] } ?? [:])
         }
-        for service in QuotaService.allCases where !preferences.isEnabled(service) { tracker.clear(service) }
+        if !monitoringEnabled { tracker.clear(.codex) }
     }
 
-    func setEnabled(_ enabled: Bool, for service: QuotaService) {
+    func setMonitoringEnabled(_ enabled: Bool) {
         objectWillChange.send()
-        preferences.setEnabled(enabled, for: service)
-        if service == .cursor { cursorUsage.setEnabled(enabled) }
-        if service == .codex {
-            resetAnnouncements.setEnabled(enabled)
-            if enabled { Task { await refreshResetAnnouncements() } }
-        }
+        preferences.setEnabled(enabled, for: .codex)
+        resetAnnouncements.setEnabled(enabled)
         // 停止监测时没有连续观测；再次开启先建立基线。
-        tracker.clear(service)
+        tracker.clear(.codex)
         persistRecovery()
-        if service == .codex, !enabled { clients[service]?.stop() }
-        if enabled { Task { await refresh(service, force: true) } }
+        if enabled { Task { await refresh(force: true) } }
+        else { client.stop() }
     }
 
-    func setNotificationsEnabled(_ enabled: Bool, for service: QuotaService) {
+    func setRecoveryNotificationsEnabled(_ enabled: Bool) {
         objectWillChange.send()
-        preferences.setNotificationsEnabled(enabled, for: service)
+        preferences.setNotificationsEnabled(enabled, for: .codex)
         if enabled { Task { await requestNotificationsIfNeeded() } }
     }
 
@@ -105,12 +88,7 @@ final class MonitorModel: ObservableObject {
 
     func setShowsMenuBar(_ shown: Bool) {
         showsMenuBar = shown
-        defaults.set(shown, forKey: "menuBar.visible")
-    }
-
-    func setShownInMenuBar(_ shown: Bool, for service: QuotaService) {
-        objectWillChange.send()
-        preferences.setShownInMenuBar(shown, for: service)
+        defaults.set(shown, forKey: "menuBar.codex.visible")
     }
 
     private func persistRecovery() {
@@ -122,13 +100,12 @@ final class MonitorModel: ObservableObject {
         if readsLocalUsage { updates.startAutomaticChecks() }
         resetAnnouncements.setPaused(false)
         // 保持后台定时刷新，仍允许系统正常睡眠。
-        activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取已启用服务的额度")
+        activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取 Codex 额度")
         startPolling()
         sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 self?.timer?.invalidate()
                 self?.timer = nil
-                self?.cursorUsage.setPaused(true)
                 self?.resetAnnouncements.setPaused(true)
                 self?.updates.stopAutomaticChecks()
             }
@@ -136,10 +113,9 @@ final class MonitorModel: ObservableObject {
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 self?.startPolling()
-                self?.cursorUsage.setPaused(false)
                 self?.resetAnnouncements.setPaused(false)
                 if self?.readsLocalUsage == true { self?.updates.startAutomaticChecks() }
-                await self?.refresh(force: true, retryCredentials: false)
+                await self?.refresh(force: true)
             }
         }
         Task { await refresh(force: true) }
@@ -159,7 +135,6 @@ final class MonitorModel: ObservableObject {
 
     func stop() {
         stopped = true
-        cursorUsage.setPaused(true)
         resetAnnouncements.stop()
         updates.stopAutomaticChecks()
         timer?.invalidate()
@@ -168,15 +143,13 @@ final class MonitorModel: ObservableObject {
         if let sleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver) }
         if let activity { ProcessInfo.processInfo.endActivity(activity) }
         activity = nil
-        for client in clients.values { client.stop() }
+        client.stop()
     }
 
-    func refresh(force: Bool = false, retryCredentials: Bool = true) async {
+    func refresh(force: Bool = false) async {
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await self.refreshResetAnnouncements() }
-            for service in enabledServices {
-                group.addTask { await self.refresh(service, force: force, retryCredentials: retryCredentials) }
-            }
+            group.addTask { await self.refreshQuota(force: force) }
         }
     }
 
@@ -185,7 +158,7 @@ final class MonitorModel: ObservableObject {
         guard !events.isEmpty else { return }
         await updateNotificationStatus()
         for event in events {
-            guard !stopped, isEnabled(.codex), notificationsEnabled, resetAnnouncements.notificationsEnabled else { return }
+            guard !stopped, monitoringEnabled, notificationsEnabled, resetAnnouncements.notificationsEnabled else { return }
             if let post = event.latestPost {
                 await sendNotification(title: event.notificationTitle, body: post.text,
                                        identifier: "reset-announcement:\(post.id):\(event.status.rawValue)", resetPostID: post.id)
@@ -193,34 +166,25 @@ final class MonitorModel: ObservableObject {
         }
     }
 
-    private func refresh(_ service: QuotaService, force: Bool, retryCredentials: Bool = true) async {
-        guard !stopped, isEnabled(service), !snapshot(service).refreshing,
-              (force && retryCredentials) || !requiresManualRetry.contains(service),
-              schedules[service, default: RefreshSchedule()].canRefresh(force: force), let client = clients[service] else { return }
-        requiresManualRetry.remove(service)
-        services[service, default: ServiceSnapshot()].refreshing = true
-        defer { services[service, default: ServiceSnapshot()].refreshing = false }
+    private func refreshQuota(force: Bool) async {
+        guard !stopped, monitoringEnabled, !snapshot.refreshing, schedule.canRefresh(force: force) else { return }
+        snapshot.refreshing = true
+        defer { snapshot.refreshing = false }
         do {
             let sample = try await client.sample()
-            guard !stopped, isEnabled(service) else { return }
-            if service == .cursor { cursorUsage.observeAccount(sample.fingerprint) }
-            services[service] = ServiceSnapshot(windows: sample.windows, lastSuccess: Date(), refreshing: true)
-            schedules[service, default: RefreshSchedule()].succeeded()
-            let recovered = tracker.observe(service: service, account: sample.fingerprint, windows: sample.windows,
-                                            notify: notificationsEnabled(for: service))
+            guard !stopped, monitoringEnabled else { return }
+            snapshot = ServiceSnapshot(windows: sample.windows, lastSuccess: Date(), refreshing: true)
+            schedule.succeeded()
+            let recovered = tracker.observe(service: .codex, account: sample.fingerprint, windows: sample.windows,
+                                            notify: recoveryNotificationsEnabled)
             persistRecovery()
-            if !recovered.isEmpty { await notifyRecovery(recovered, service: service) }
+            if !recovered.isEmpty { await notifyRecovery(recovered) }
         } catch {
-            guard !stopped, isEnabled(service) else { return }
-            if service == .codex { client.stop() }
-            if error is KeychainAccessDeclined {
-                requiresManualRetry.insert(service)
-                services[service, default: ServiceSnapshot()].errorMessage = error.localizedDescription
-                return
-            }
+            guard !stopped, monitoringEnabled else { return }
+            client.stop()
             let retryAfter = (error as? QuotaHTTPError)?.retryAfter
-            let delay = schedules[service, default: RefreshSchedule()].failed(retryAfter: retryAfter)
-            services[service, default: ServiceSnapshot()].errorMessage = "\(error.localizedDescription) \(Int(min(delay, Double(Int.max / 2)))) 秒后重试。"
+            let delay = schedule.failed(retryAfter: retryAfter)
+            snapshot.errorMessage = "\(error.localizedDescription) \(Int(min(delay, Double(Int.max / 2)))) 秒后重试。"
         }
     }
 
@@ -288,17 +252,17 @@ final class MonitorModel: ObservableObject {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") { NSWorkspace.shared.open(url) }
     }
 
-    private func notifyRecovery(_ recovered: [QuotaWindow], service: QuotaService) async {
+    private func notifyRecovery(_ recovered: [QuotaWindow]) async {
         await updateNotificationStatus()
-        guard !stopped, isEnabled(service), notificationsEnabled, notificationsEnabled(for: service) else { return }
+        guard !stopped, monitoringEnabled, notificationsEnabled, recoveryNotificationsEnabled else { return }
         let descriptions = recovered.map(\.displayLabel)
-        await sendNotification(title: "\(service.title) 额度已恢复至 100%", body: descriptions.joined(separator: "、") + "已恢复，可以继续使用。")
+        await sendNotification(title: "Codex 额度已恢复至 100%", body: descriptions.joined(separator: "、") + "已恢复，可以继续使用。")
     }
 
     func sendTestNotification() async {
         await requestNotificationsIfNeeded()
         guard notificationsEnabled else { return }
-        await sendNotification(title: "额度通知测试", body: "通知已就绪。启用提醒的服务在实际额度恢复至 100% 时，会在这里通知。")
+        await sendNotification(title: "额度通知测试", body: "通知已就绪。Codex 实际额度恢复至 100% 时，会在这里提醒。")
     }
 
     private func sendNotification(title: String, body: String, identifier: String = UUID().uuidString, resetPostID: String? = nil) async {

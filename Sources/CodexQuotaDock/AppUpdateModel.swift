@@ -17,6 +17,8 @@ final class AppUpdateModel: ObservableObject {
 
     let currentVersion: String
     let architecture: String
+    let installedReleaseNotes: String
+    @Published var showsInstalledReleaseNotes: Bool
     @Published private(set) var checking = false
     @Published private(set) var release: Release?
     @Published private(set) var error: String?
@@ -29,8 +31,15 @@ final class AppUpdateModel: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         automaticallyChecks = defaults.object(forKey: "updates.automaticallyChecks") as? Bool ?? true
-        currentVersion = Bundle.main.object(forInfoDictionaryKey: "ReleaseVersion") as? String
+        let version = Bundle.main.object(forInfoDictionaryKey: "ReleaseVersion") as? String
             ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "未知"
+        currentVersion = version
+        let notes = Bundle.main.url(forResource: "ReleaseNotes", withExtension: "md")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        installedReleaseNotes = notes
+        showsInstalledReleaseNotes = !notes.isEmpty
+            && defaults.string(forKey: "updates.lastShownReleaseNotesVersion") != version
         #if arch(arm64)
         architecture = "Apple Silicon"
         #else
@@ -40,6 +49,10 @@ final class AppUpdateModel: ObservableObject {
         let result = sysctlbyname("sysctl.proc_translated", &translated, &size, nil, 0)
         architecture = result == 0 && translated == 1 ? "Apple Silicon" : "Intel"
         #endif
+    }
+
+    func markInstalledReleaseNotesShown() {
+        defaults.set(currentVersion, forKey: "updates.lastShownReleaseNotesVersion")
     }
 
     func setAutomaticallyChecks(_ enabled: Bool) {

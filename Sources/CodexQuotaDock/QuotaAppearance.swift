@@ -9,6 +9,25 @@ enum PanelTypography {
     static let detail = Font.system(size: 12)
 }
 
+struct PanelButtonStyle: PrimitiveButtonStyle {
+    var prominent = false
+
+    @ViewBuilder
+    func makeBody(configuration: Configuration) -> some View {
+        if #available(macOS 26, *) {
+            if prominent {
+                Button(configuration).buttonStyle(.glassProminent)
+            } else {
+                Button(configuration).buttonStyle(.glass)
+            }
+        } else if prominent {
+            Button(configuration).buttonStyle(.borderedProminent)
+        } else {
+            Button(configuration).buttonStyle(.bordered)
+        }
+    }
+}
+
 func quotaColor(remaining: Double?) -> Color {
     guard let remaining else { return .secondary }
     let light: (CGFloat, CGFloat, CGFloat)
@@ -55,20 +74,5 @@ struct CodexServiceTile: View {
                     Image(systemName: "terminal").font(.system(size: 12)).foregroundStyle(.black)
                 }
             }
-    }
-}
-
-struct ServiceTile: View {
-    let service: QuotaService
-    var body: some View {
-        if service == .codex { CodexServiceTile() }
-        else {
-            Image(systemName: service.symbol)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.primary)
-                .frame(width: 22, height: 22)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.12)))
-                .accessibilityLabel(service.title)
-        }
     }
 }

@@ -7,7 +7,7 @@ struct UsageTrendView: View {
         let tokens: Int
         let cost: UsageCost
     }
-    private let buckets: [Date: [QuotaService: Total]]
+    private let buckets: [Date: Total]
     let hourly: Bool
     let interval: DateInterval
     private var unit: Calendar.Component { hourly ? .hour : .day }
@@ -19,9 +19,7 @@ struct UsageTrendView: View {
     init(model: UsageModel, buckets: [Date: [UsageRecord]], hourly: Bool, interval: DateInterval, metric: String) {
         // 汇总随数据更新，鼠标移动只读取汇总结果。
         self.buckets = buckets.mapValues { records in
-            Dictionary(grouping: records, by: \.service).mapValues {
-                Total(tokens: $0.reduce(0) { $0 + $1.tokens.total }, cost: model.costTotal($0))
-            }
+            Total(tokens: records.reduce(0) { $0 + $1.tokens.total }, cost: model.costTotal(records))
         }
         self.hourly = hourly
         self.interval = interval
@@ -33,14 +31,12 @@ struct UsageTrendView: View {
             Text((hourly ? "每小时" : "每日") + (metric == "费用" ? "估算费用" : "用量")).font(.headline)
             Chart {
                 ForEach(buckets.keys.sorted(), id: \.self) { bucket in
-                    ForEach([QuotaService.codex, .claude, .antigravity]) { service in
-                        if let total = buckets[bucket]?[service], metric != "费用" || total.cost.pricedCount > 0 {
-                            let amount = metric == "费用" ? NSDecimalNumber(decimal: total.cost.amount).doubleValue : Double(total.tokens)
-                            BarMark(x: .value("时间", bucket, unit: unit), y: .value(metric == "费用" ? "USD" : "Tokens", amount))
-                                .foregroundStyle(by: .value("服务", service.title))
-                                .accessibilityLabel("\(bucket.formatted(date: .abbreviated, time: hourly ? .shortened : .omitted)) \(service.title)")
-                                .accessibilityValue(metric == "费用" ? formattedCost(total.cost) : "\(total.tokens) Tokens")
-                        }
+                    if let total = buckets[bucket], metric != "费用" || total.cost.pricedCount > 0 {
+                        let amount = metric == "费用" ? NSDecimalNumber(decimal: total.cost.amount).doubleValue : Double(total.tokens)
+                        BarMark(x: .value("时间", bucket, unit: unit), y: .value(metric == "费用" ? "USD" : "Tokens", amount))
+                            .foregroundStyle(Color.blue)
+                            .accessibilityLabel(bucket.formatted(date: .abbreviated, time: hourly ? .shortened : .omitted))
+                            .accessibilityValue(metric == "费用" ? formattedCost(total.cost) : "\(total.tokens) Tokens")
                     }
                 }
                 if let hoveredBucket, buckets[hoveredBucket] != nil {
@@ -50,7 +46,6 @@ struct UsageTrendView: View {
                         .accessibilityHidden(true)
                 }
             }
-            .chartForegroundStyleScale(["Codex": Color.blue, "Claude Code": Color.orange, "Antigravity": Color.purple])
             .chartXScale(domain: interval.start...interval.end)
             .chartXAxis {
                 AxisMarks(values: hourly ? .stride(by: .hour, count: 3) : .automatic(desiredCount: 6)) { _ in
@@ -84,12 +79,12 @@ struct UsageTrendView: View {
                                 hoveredBucket = nil
                             }
                         }
-                    if let hoveredBucket, let entries = buckets[hoveredBucket] {
+                    if let hoveredBucket, let total = buckets[hoveredBucket] {
                         let width: CGFloat = 269
-                        let height: CGFloat = 36 + 40 * CGFloat(entries.count)
+                        let height: CGFloat = 92
                         let x = hoverPoint.x + (hoverPoint.x + width + 12 < geometry.size.width ? width / 2 + 12 : -width / 2 - 12)
                         let y = hoverPoint.y - height / 2 - 12
-                        details(bucket: hoveredBucket, entries: entries)
+                        details(bucket: hoveredBucket, total: total)
                             .frame(width: 245, alignment: .leading)
                             .padding(12)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
@@ -109,24 +104,19 @@ struct UsageTrendView: View {
         .onChange(of: hourly) { _ in hoveredBucket = nil }
     }
 
-    private func details(bucket: Date, entries: [QuotaService: Total]) -> some View {
+    private func details(bucket: Date, total: Total) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(bucket, format: hourly ? .dateTime.year().month().day().hour().minute() : .dateTime.year().month().day())
                 .fontWeight(.semibold)
-            ForEach([QuotaService.codex, .claude, .antigravity]) { service in
-                if let total = entries[service] {
-                    HStack(alignment: .top) {
-                        Circle().fill(service == .codex ? Color.blue : service == .claude ? .orange : .purple)
-                            .frame(width: 6, height: 6).padding(.top, 4)
-                        Text(service.title)
-                        Spacer(minLength: 8)
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(metric == "费用" ? formattedCost(total.cost) : "\(total.tokens.formatted()) Tokens")
-                            Text(metric == "费用" ? "\(total.tokens.formatted()) Tokens" : formattedCost(total.cost))
-                                .foregroundStyle(.secondary)
-                        }.monospacedDigit()
-                    }
-                }
+            HStack {
+                Text("Tokens")
+                Spacer()
+                Text(total.tokens.formatted()).monospacedDigit()
+            }
+            HStack {
+                Text("估算费用")
+                Spacer()
+                Text(formattedCost(total.cost)).monospacedDigit()
             }
         }.font(PanelTypography.detail)
     }

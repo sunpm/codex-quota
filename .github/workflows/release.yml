@@ -20,8 +20,9 @@ jobs:
       run:
         shell: bash
     env:
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       RELEASE_TAG: ${{ github.ref_name }}
+      RELEASE_NOTES_FILE: dist/release-changes.md
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Checkout
@@ -43,6 +44,20 @@ jobs:
       - name: Run existing checks
         run: bash scripts/test.sh
 
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          options=()
+          # 从最近已发布的正式版本累计，保留 beta / rc 和发布失败标签中的 PR。
+          previous_tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
+          if [[ -n "$previous_tag" ]]; then
+            options+=(-f "previous_tag_name=$previous_tag")
+          fi
+          gh api --method POST "repos/$GH_REPO/releases/generate-notes" \
+            -f "tag_name=$RELEASE_TAG" "${options[@]}" --jq .body > "$RELEASE_NOTES_FILE"
+
       - name: Build Apple Silicon DMG
         run: bash scripts/package-dmg.sh arm64
 
@@ -60,7 +75,9 @@ jobs:
           当前使用 ad-hoc 签名，未经过 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。
 
           **首次打开被阻止**：如果提示“无法验证开发者”或“Apple 无法检查其是否包含恶意软件”，确认应用来自本仓库后，先从“应用程序”尝试启动并关闭提示，再到“系统设置 → 隐私与安全性”点击该应用的“仍要打开”，按系统提示确认并点击“打开”。详见 [Apple 官方说明](https://support.apple.com/zh-cn/102445)。
+
           EOF
+          cat "$RELEASE_NOTES_FILE" >> dist/release-notes.md
 
       - name: Publish release
         env:
@@ -70,14 +87,9 @@ jobs:
           if [[ "$RELEASE_TAG" == *-* ]]; then
             options+=(--prerelease --latest=false)
           fi
-          # 从最近已发布的正式版本累计，保留 beta / rc 和发布失败标签中的 PR。
-          previous_tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
-          if [[ -n "$previous_tag" ]]; then
-            options+=(--notes-start-tag "$previous_tag")
-          fi
           gh release create "$RELEASE_TAG" \
             "dist/CodexQuotaDock-${RELEASE_TAG}-macOS-AppleSilicon.dmg" \
             "dist/CodexQuotaDock-${RELEASE_TAG}-macOS-Intel.dmg" \
             dist/SHA256SUMS.txt \
             --verify-tag --title "$RELEASE_TAG" \
-            --generate-notes --notes-file dist/release-notes.md "${options[@]}"
+            --notes-file dist/release-notes.md "${options[@]}"

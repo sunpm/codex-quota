@@ -7,17 +7,14 @@ import QuotaCore
 
 struct MainView: View {
     @ObservedObject var model: MonitorModel
-    @ObservedObject private var cursorUsage: CursorUsageModel
     @ObservedObject private var resetAnnouncements: ResetAnnouncementMonitor
     @StateObject private var navigation: PanelNavigation
     @StateObject private var usage = UsageModel()
     @ObservedObject private var updates: AppUpdateModel
-    @State private var selectedService: QuotaService?
     @State private var confirmsHistoryClear = false
 
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
-        _cursorUsage = ObservedObject(wrappedValue: model.cursorUsage)
         _resetAnnouncements = ObservedObject(wrappedValue: model.resetAnnouncements)
         _updates = ObservedObject(wrappedValue: model.updates)
         _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
@@ -25,8 +22,12 @@ struct MainView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar
-            Divider()
+            if #available(macOS 26, *) {
+                sidebar.glassEffect(in: RoundedRectangle(cornerRadius: 16)).padding(8)
+            } else {
+                sidebar.background(Color(nsColor: .windowBackgroundColor))
+                Divider()
+            }
             VStack(spacing: 0) {
                 header
                 Divider()
@@ -34,15 +35,18 @@ struct MainView: View {
                     ScrollView { settings.frame(maxWidth: 760).padding(24).frame(maxWidth: .infinity) }
                 } else if navigation.page == .quota {
                     quotaContent
-                } else if selectedService == .cursor {
-                    ScrollView { CursorUsageView(model: cursorUsage, page: navigation.page) }
                 } else {
-                    ScrollView { UsageView(model: usage, service: selectedService, page: navigation.page) }
+                    ScrollView { UsageView(model: usage, page: navigation.page) }
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
+        .buttonStyle(PanelButtonStyle())
+        .sheet(isPresented: $updates.showsInstalledReleaseNotes) {
+            InstalledReleaseNotesView(version: updates.currentVersion, markdown: updates.installedReleaseNotes)
+                .onAppear { updates.markInstalledReleaseNotesShown() }
+        }
         .alert("开启持久通知", isPresented: $model.showsPersistentNotificationGuide) {
             Button("前往设置") { model.openNotificationSettings() }
             Button("暂不设置", role: .cancel) {}
@@ -51,11 +55,10 @@ struct MainView: View {
         }
         .task {
             guard model.readsLocalUsage else { return }
-            // 仅在面板可见时扫描；Cursor 历史另有五分钟刷新间隔。
+            // 仅在面板可见时扫描本机日志。
             while !Task.isCancelled {
                 if NSApp.windows.contains(where: { $0.isVisible && $0.identifier?.rawValue == "control-panel" }) {
                     await usage.refresh()
-                    if selectedService == .cursor, navigation.page == .overview { await cursorUsage.refresh() }
                 }
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
@@ -64,7 +67,6 @@ struct MainView: View {
             guard model.readsLocalUsage, (event.object as? NSWindow)?.identifier?.rawValue == "control-panel" else { return }
             Task {
                 await usage.refresh()
-                if selectedService == .cursor, navigation.page == .overview { await cursorUsage.refresh() }
             }
         }
     }
@@ -85,10 +87,6 @@ struct MainView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("服务").font(PanelTypography.detail).foregroundStyle(.secondary).padding(.horizontal, 10).padding(.vertical, 8)
-            serviceButton(nil)
-            ForEach(QuotaService.allCases) { service in serviceButton(service) }
-            Divider().padding(.vertical, 12)
             ForEach(PanelPage.allCases.filter { $0 != .settings }) { page in
                 navigationButton(page)
             }
@@ -96,33 +94,10 @@ struct MainView: View {
             navigationButton(.settings)
         }
         .buttonStyle(.plain).font(.system(size: 13)).padding(12).frame(width: 188)
-        .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    private func serviceButton(_ service: QuotaService?) -> some View {
-        Button {
-            selectedService = service
-            if navigation.page == .settings || (service == .cursor && (navigation.page == .sessions || navigation.page == .projects)) {
-                navigation.page = .overview
-            }
-        } label: {
-            HStack(spacing: 8) {
-                if let service { ServiceTile(service: service) }
-                else { Image(systemName: "square.grid.2x2").frame(width: 22, height: 22) }
-                Text(service?.title ?? "全部")
-                    .fontWeight(selectedService == service && navigation.page != .settings ? .semibold : .regular)
-                Spacer(minLength: 0)
-            }
-                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
-                .padding(.horizontal, 10)
-                .background(selectedService == service && navigation.page != .settings ? Color.accentColor.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
-        }.accessibilityAddTraits(selectedService == service && navigation.page != .settings ? .isSelected : [])
     }
 
     private func navigationButton(_ page: PanelPage) -> some View {
-        let unavailable = selectedService == .cursor && (page == .sessions || page == .projects)
-        return Button { navigation.page = page } label: {
+        Button { navigation.page = page } label: {
             HStack(spacing: 8) {
                 Image(systemName: page.symbol).frame(width: 22, height: 22)
                 Text(page.rawValue).fontWeight(navigation.page == page ? .semibold : .regular)
@@ -133,11 +108,10 @@ struct MainView: View {
                 }
             }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
-                .foregroundStyle(unavailable ? .secondary : .primary)
+                .foregroundStyle(.primary)
                 .background(navigation.page == page ? Color.accentColor.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 6))
                 .contentShape(Rectangle())
-        }.disabled(unavailable)
-            .help(unavailable ? "Cursor 未提供\(page.rawValue)信息" : page.rawValue)
+        }.help(page.rawValue)
             .accessibilityAddTraits(navigation.page == page ? .isSelected : [])
     }
 
@@ -145,45 +119,36 @@ struct MainView: View {
         HStack(spacing: 12) {
             Text(navigation.page == .overview ? "用量统计" : navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
             Spacer()
-            if navigation.page != .settings && (navigation.page == .quota ? model.refreshing : selectedService == .cursor ? cursorUsage.refreshing : usage.refreshing) {
+            if navigation.page != .settings && (navigation.page == .quota ? model.refreshing : usage.refreshing) {
                 ProgressView().controlSize(.small)
             }
             if navigation.page != .settings {
                 Button {
                     if navigation.page == .quota { Task { await model.refresh(force: true) } }
-                    else if selectedService == .cursor { Task { await cursorUsage.refresh(force: true) } }
                     else { Task { await usage.refresh() } }
                 } label: { Label("刷新", systemImage: "arrow.clockwise") }
                     .keyboardShortcut("r", modifiers: .command)
-                    .disabled(navigation.page == .quota ? model.refreshing
-                              : selectedService == .cursor ? cursorUsage.refreshing || !cursorUsage.enabled : usage.refreshing)
+                    .disabled(navigation.page == .quota ? model.refreshing || !model.monitoringEnabled : usage.refreshing)
             }
         }.padding(.horizontal, 24).frame(height: 56)
     }
 
     private var quotaContent: some View {
-        let services = model.enabledServices.filter { selectedService == nil || $0 == selectedService }
+        let snapshot = model.snapshot
         return ScrollView {
             VStack(spacing: 16) {
-                if services.isEmpty {
-                    VStack(spacing: 12) {
-                        Text("尚未启用服务，请在设置中开启监测。")
-                            .foregroundStyle(.secondary)
-                        Button("打开设置") { navigation.page = .settings }
-                    }.font(.body).frame(maxWidth: .infinity, minHeight: 240)
-                }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 16, alignment: .top)], spacing: 16) {
-                    ForEach(services) { service in
-                        let snapshot = model.snapshot(service)
-                        QuotaServiceBlock(service: service, windows: snapshot.windows, error: snapshot.errorMessage,
-                                          lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
-                            .panelCard()
-                    }
-                }
-                if services.contains(.codex) {
+                if model.monitoringEnabled {
+                    QuotaBlock(windows: snapshot.windows, error: snapshot.errorMessage,
+                               lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
+                        .panelCard()
                     ResetAnnouncementView(model: resetAnnouncements).panelCard()
+                } else {
+                    VStack(spacing: 12) {
+                        Text("额度监测已关闭").foregroundStyle(.secondary)
+                        Button("开启监测") { model.setMonitoringEnabled(true) }
+                    }.frame(maxWidth: .infinity, minHeight: 240)
                 }
-            }.padding(24)
+            }.frame(maxWidth: 760).padding(24).frame(maxWidth: .infinity)
         }
     }
 
@@ -191,6 +156,12 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 16) {
             AppUpdateView(model: updates)
             VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    Text("监测额度")
+                    Spacer()
+                    Toggle("监测额度", isOn: Binding(get: { model.monitoringEnabled }, set: { model.setMonitoringEnabled($0) })).labelsHidden()
+                }
+                Divider()
                 HStack {
                     Text("在菜单栏显示额度")
                     Spacer()
@@ -204,37 +175,14 @@ struct MainView: View {
                 }
                 if let error = model.launchError { Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10)) }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("服务").font(.headline).foregroundStyle(.primary)
-                    Spacer()
-                    Text("监测").frame(width: 46)
-                    Text("恢复通知").frame(width: 60)
-                    Text("菜单栏").frame(width: 46)
-                }.font(PanelTypography.detail).foregroundStyle(.secondary)
-                ForEach(QuotaService.allCases) { service in
-                    HStack(spacing: 8) {
-                        ServiceTile(service: service)
-                        Text(service.title)
-                        Spacer(minLength: 0)
-                        Toggle("监测 \(service.title)", isOn: Binding(get: { model.isEnabled(service) }, set: { model.setEnabled($0, for: service) }))
-                            .labelsHidden().frame(width: 46)
-                        Toggle("\(service.title) 恢复通知", isOn: Binding(get: { model.notificationsEnabled(for: service) }, set: { model.setNotificationsEnabled($0, for: service) }))
-                            .labelsHidden().frame(width: 60).disabled(!model.isEnabled(service))
-                        Toggle("在菜单栏显示 \(service.title)", isOn: Binding(get: { model.isShownInMenuBar(service) }, set: { model.setShownInMenuBar($0, for: service) }))
-                            .labelsHidden().frame(width: 46).disabled(!model.showsMenuBar || !model.isEnabled(service))
-                    }.toggleStyle(.switch).controlSize(.small).padding(.vertical, 3)
-                }
-                Text("监测开关控制额度查询；用量统计独立读取本机日志。")
-                    .font(PanelTypography.detail).foregroundStyle(.secondary)
-                HStack {
-                    Text("查询间隔")
-                    Spacer()
-                    Text("30 秒").foregroundStyle(.secondary)
-                }.padding(.top, 4)
-            }.padding(16).panelCard()
             VStack(alignment: .leading, spacing: 8) {
-                Text("恢复通知").font(.headline)
+                Text("通知").font(.headline)
+                HStack {
+                    Text("额度恢复时通知")
+                    Spacer()
+                    Toggle("额度恢复时通知", isOn: Binding(get: { model.recoveryNotificationsEnabled }, set: { model.setRecoveryNotificationsEnabled($0) }))
+                        .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(!model.monitoringEnabled)
+                }
                 Text(model.notificationStatus).font(PanelTypography.detail).foregroundStyle(.secondary)
                 HStack {
                     if !model.persistentNotificationsEnabled {
@@ -250,18 +198,17 @@ struct MainView: View {
                     Spacer()
                     Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
                         set: { model.setResetNotificationsEnabled($0) }))
-                        .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(!model.isEnabled(.codex))
+                        .labelsHidden().toggleStyle(.switch).controlSize(.small).disabled(!model.monitoringEnabled)
                         .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
                 }
             }.padding(16).panelCard()
             usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
-            Text("Antigravity 需保持运行。首次读取登录态可能需要钥匙串授权。")
-                .font(PanelTypography.detail).foregroundStyle(.secondary)
             HStack {
                 Text(appName)
                 Spacer()
                 Link("致谢 cc-bar · MIT", destination: URL(string: "https://github.com/nanvon/cc-bar")!)
+                    .buttonStyle(.link)
             }.font(PanelTypography.detail).foregroundStyle(.secondary)
         }
         .font(.system(size: 13))
@@ -283,14 +230,13 @@ struct MainView: View {
                 Button("取消", role: .cancel) {}
                 Button("清除并重新扫描", role: .destructive) { Task { await usage.clearHistory() } }
             } message: {
-                Text("仅清除本应用保存的全部服务用量历史，随后重新扫描现存日志。已删除源日志对应的历史将无法恢复；源日志与模型定价不会被删除。")
+                Text("仅清除本应用保存的 Codex 用量历史，随后重新扫描现存日志。已删除源日志对应的历史将无法恢复；源日志与模型定价不会被删除。")
             }
     }
 
 }
 
-private struct QuotaServiceBlock: View {
-    let service: QuotaService
+private struct QuotaBlock: View {
     let windows: [QuotaWindow]
     let error: String?
     let lastSuccess: Date?
@@ -299,8 +245,8 @@ private struct QuotaServiceBlock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 9) {
-                ServiceTile(service: service)
-                Text(service.title).font(.headline)
+                CodexServiceTile()
+                Text("Codex").font(.headline)
                 Spacer(minLength: 0)
                 Text("剩余").font(PanelTypography.detail).foregroundStyle(.secondary)
             }

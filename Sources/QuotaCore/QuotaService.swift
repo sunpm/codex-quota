@@ -1,7 +1,11 @@
 import Foundation
 
 public enum QuotaService: String, CaseIterable, Codable, Identifiable, Sendable {
-    case codex, claude, antigravity, cursor
+    case codex
+    // 仅用于解码并保留旧版历史与自定义价格，不再提供这些服务的接入。
+    case claude, antigravity, cursor
+
+    public static let allCases: [QuotaService] = [.codex]
 
     public var id: String { rawValue }
     public var title: String {

@@ -19,13 +19,9 @@ AIHOT 数据服务并非 OpenAI 官方服务，数据使用遵循 [AIHOT 使用�
 
 Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resources/ThirdPartyNotices/cc-bar-LICENSE.txt`，构建时一并复制到应用包中。
 
-本次多服务接入还参考了 cc-bar 的 `Core/Credentials/ClaudeAuth.swift`、`CursorAuth.swift` 和 `Core/Quota/ClaudeQuotaClient.swift`、`CursorQuotaClient.swift` 的登录存储格式、解析及 Cursor 解密方式。`AGENTS.md` 吸收了适用于本项目的协作规则，未引入其自动发版约定。
+`AGENTS.md` 吸收了 cc-bar 中适用于本项目的协作规则，未引入其自动发版约定。
 
-Cursor 账号用量的接口字段、分页完整性校验和美分换算参考并改编自 cc-bar `4cc95d092e4aaf23738459abb166fb1173352691` 的 `Core/Usage/CursorUsageFetcher.swift`（2026-10-28）。同时比较 CodexBar 的 `Sources/CodexBarCore/Providers/Cursor/CursorUsageEventsFetcher.swift` 与 [历史接口 403 重试问题 #3910](https://github.com/steipete/CodexBar/issues/3910)。沿用两项目随包分发的 MIT 声明；使用本项目现有 HTTP、登录态与退避，未引入新依赖、浏览器登录、递归分窗或上游数据库。
-
-Antigravity 本地进程发现、接口格式及响应解析参考 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的 `Sources/CodexBarCore/Providers/Antigravity/AntigravityStatusProbe.swift`、`AntigravityStatusProbe+ResponseModels.swift`、`AntigravityQuotaSummaryParser.swift` 和 `AntigravityLocalhostSession.swift`。参考日期：2026-10-25。
-
-Copyright (c) 2026 Peter Steinberger。采用 MIT License；完整声明保存在 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`，构建时一并复制到应用包中。
+旧版 Claude Code、Cursor 和 Antigravity 接入曾参考 cc-bar 与 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的凭据、额度和用量实现；这些接入现已移除。为保留历史来源，继续附带 CodexBar 的 MIT 声明（Copyright (c) 2026 Peter Steinberger），完整原文位于 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`。
 
 本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新或应用更新服务。
 
@@ -37,7 +33,7 @@ Copyright (c) 2026 Peter Steinberger。采用 MIT License；完整声明保存�
 
 对话用量明细的字段组织参考 cc-switch `32db0e5` 的 `src/components/usage/RequestDetailPanel.tsx`（参考日期：2026-10-28），使用原生 SwiftUI 面板与表格实现。费用缺价的显示同时核对 [issue #7321](https://github.com/farion1231/cc-switch/issues/7321)（已关闭），保留本项目的“未定价 / 部分”口径；未复制其 React 组件或增加依赖，沿用随包分发的 cc-switch MIT 声明。
 
-本地用量统计的日志字段、缓存拆分与重复事件处理参考并改编自 cc-bar 的 `Core/Usage/CodexJSONLScanner.swift`、`ClaudeJSONLScanner.swift` 和 `UsageModels.swift`（参考日期：2026-10-28）。沿用上述 MIT 声明。实现仅保留本项目使用的日志字段与内存文件缓存，未引入其数据库、费用定价或日志监视依赖。
+本地 Codex 用量统计的日志字段、缓存拆分与重复事件处理参考并改编自 cc-bar 的 `Core/Usage/CodexJSONLScanner.swift` 和 `UsageModels.swift`（参考日期：2026-10-28）。沿用上述 MIT 声明。实现仅保留本项目使用的日志字段与内存文件缓存，未引入其数据库、费用定价或日志监视依赖。旧版参考 `ClaudeJSONLScanner.swift` 的 Claude 解析已移除。
 
 Codex 分段日志的线程归属核对 cc-switch 的 [分段重复会话问题 #7273](https://github.com/farion1231/cc-switch/issues/7273)、[分页线程识别问题 #7084](https://github.com/farion1231/cc-switch/issues/7084) 与 `session_usage_codex.rs` 的双 UUID 文件名解析（2026-10-28）。本项目根据文件名与首条元数据确认对应关系，仅纠正对话归属，保留已有记录去重键与计量字段；未复制上游导入器或测试代码，沿用随包分发的 cc-switch MIT 声明。
 
@@ -45,13 +41,13 @@ Codex 分段日志的线程归属核对 cc-switch 的 [分段重复会话问题 
 
 Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core/Usage/ProjectWorktreeResolver.swift`（参考日期：2026-10-28），并核对 [Git 仓库布局](https://git-scm.com/docs/gitrepository-layout)。沿用随包分发的 cc-bar MIT 声明；本项目按每轮扫描解析目录归属，保留原始路径，不复制其分支读取、目录名回退或长期路径缓存。
 
-统计口径与流式用量处理同时参考 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 的 `src/components/usage/UsageHero.tsx`、`src-tauri/src/services/session_usage.rs`、`session_usage_codex.rs` 和用量统计文档（参考日期：2026-10-28）。Copyright (c) 2025 Jason Young。采用 MIT License；完整原文保存在 `Resources/ThirdPartyNotices/cc-switch-LICENSE.txt`，随应用分发。未引入其 Tauri、路由代理或数据库。费用计算进一步参考并改编其 `src-tauri/src/proxy/usage/calculator.rs` 的 Decimal 分项公式和 Claude 缓存写入口径；模型价格导入参考 `src/lib/modelsDevPricing.ts` 的公开目录结构，并保留缺价状态。
+统计口径与用量处理同时参考 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 的 `src/components/usage/UsageHero.tsx`、`src-tauri/src/services/session_usage.rs`、`session_usage_codex.rs` 和用量统计文档（参考日期：2026-10-28）。Copyright (c) 2025 Jason Young。采用 MIT License；完整原文保存在 `Resources/ThirdPartyNotices/cc-switch-LICENSE.txt`，随应用分发。未引入其 Tauri、路由代理或数据库。费用计算进一步参考并改编其 `src-tauri/src/proxy/usage/calculator.rs` 的 Decimal 分项公式；模型价格导入参考 `src/lib/modelsDevPricing.ts` 的公开目录结构，并保留缺价状态。旧版 Claude 缓存计费规则已移除。
 
-Antigravity 本地用量的目录布局、已完成步骤、计数与重复导出语义参考并改编自 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）。实施前复查双目录遮蔽问题 #8941 与旧版日志缺失计数的 PR #8914，均仍开放。沿用随包分发的 cc-switch MIT 声明；本项目直接扫描两处实际 transcript，以会话与步骤合并，不引入其索引、数据库、Protobuf、模型切换正文解析或模型价格回退。
+旧版 Antigravity 本地用量曾参考并改编 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）；相关采集与解析现已移除。
 
-内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI / Anthropic 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
+内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
-软件更新入口参考 cc-bar 的 `Core/UpdateChecker.swift` 中公开版本查询与数字版本比较的设计，并核对 GitHub Releases API 文档；本项目仅手动查询最新正式版并打开对应架构的 DMG，不引入 Sparkle 或自动安装。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`（2026-10-29），沿用随包分发的 cc-bar MIT 许可与版权声明。
+软件更新入口参考 cc-bar 的 `Core/UpdateChecker.swift` 中公开版本查询与数字版本比较的设计，并核对 GitHub Releases API 文档；本项目支持自动或手动查询最新正式版，并打开对应架构的 DMG，不引入 Sparkle 或自动安装。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`（2026-10-29），沿用随包分发的 cc-bar MIT 许可与版权声明。
 
 ## Zstandard 压缩日志
 

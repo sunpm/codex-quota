@@ -24,15 +24,11 @@ struct QuotaCoreTests {
         tests.testAccountOrWindowChangeDoesNotNotify()
         tests.testPartialRecoveryAndRoundedFullAreNotFull()
         tests.testEachWindowRecoversIndependently()
-        try tests.testClaudeWindowsAndGenericPrecedence()
-        try tests.testMissingAndInvalidServiceMeasurements()
-        try tests.testCursorBillingAndTeamQuota()
-        try tests.testAntigravitySummaryAndLegacyModels()
-        try tests.testServiceIsolationAndMutedRecovery()
-        tests.testServicePreferencesPersistIndependently()
+        try tests.testMutedRecoverySurvivesRestart()
+        tests.testCodexPreferencesPersistIndependently()
         tests.testRefreshSchedulesRespectRateLimits()
         try tests.testLegacyStateMigration()
-        print("PASS: 17 个测试场景，\(checks) 个断言")
+        print("PASS: 13 个测试场景，\(checks) 个断言")
     }
     func decode(_ json: String) throws -> LimitsResponse {
         try JSONDecoder().decode(LimitsResponse.self, from: Data(json.utf8))
@@ -110,95 +106,35 @@ struct QuotaCoreTests {
         expectEqual(recovered.map(\.id), ["short"])
     }
 
-    func testClaudeWindowsAndGenericPrecedence() throws {
-        let data = Data(#"{"five_hour":{"utilization":30,"resets_at":"2026-10-25T12:00:00.000Z"},"seven_day":{"utilization":70},"seven_day_sonnet":{"utilization":10},"limits":[{"kind":"session","percent":0},{"kind":"weekly_scoped","percent":12,"scope":{"model":{"id":"sonnet","display_name":"Sonnet"}}}]}"#.utf8)
-        let windows = try ServiceQuotaParser.claude(data)
-        expectEqual(windows.count, 3)
-        expectEqual(windows.map(\.usedPercent), [0, 70, 12])
-        expectEqual(windows.first?.id, "claude:five_hour")
-        expectTrue(windows.first?.resetsAt != nil)
-        expectEqual(windows.last?.displayLabel, "Sonnet · 7 天")
-        let inactive = try ServiceQuotaParser.claude(Data(#"{"five_hour":{"utilization":20},"limits":[{"kind":"session","percent":0,"is_active":false}]}"#.utf8))
-        expectTrue(inactive.isEmpty)
-    }
-
-    func testMissingAndInvalidServiceMeasurements() throws {
-        expectTrue(try ServiceQuotaParser.claude(Data(#"{"five_hour":{},"seven_day":{"utilization":true},"seven_day_opus":{"utilization":-1}}"#.utf8)).isEmpty)
-        expectTrue(try ServiceQuotaParser.cursor(Data(#"{"individualUsage":{"plan":{"totalPercentUsed":null,"autoPercentUsed":false,"apiPercentUsed":-1}}}"#.utf8)).isEmpty)
-        expectTrue(try ServiceQuotaParser.cursor(Data(#"{"individualUsage":{"plan":{"used":0,"limit":0}}}"#.utf8)).isEmpty)
-        expectTrue(try ServiceQuotaParser.cursor(Data(#"{"individualUsage":{"plan":{"enabled":false,"totalPercentUsed":0}}}"#.utf8)).isEmpty)
-        expectTrue(try ServiceQuotaParser.antigravitySummary(Data(#"{"groups":[{"displayName":"Gemini","buckets":[{"bucketId":"weekly","remainingFraction":null},{"bucketId":"session","remainingFraction":2},{"bucketId":"disabled","remainingFraction":1,"disabled":true}]}]}"#.utf8)).isEmpty)
-        expectTrue(try ServiceQuotaParser.antigravitySummary(Data(#"{"code":401,"groups":[{"buckets":[{"bucketId":"x","remainingFraction":1}]}]}"#.utf8)).isEmpty)
-        expectEqual(ServiceQuotaParser.number(0), 0)
-        expectEqual(ServiceQuotaParser.number(1), 1)
-        expectEqual(ServiceQuotaParser.number(true), nil)
-        expectEqual(ServiceQuotaParser.number("nan"), nil)
-    }
-
-    func testCursorBillingAndTeamQuota() throws {
-        let windows = try ServiceQuotaParser.cursor(Data(#"{"billingCycleStart":"2026-10-01T00:00:00Z","billingCycleEnd":"2026-11-01T00:00:00Z","individualUsage":{"plan":{"totalPercentUsed":1,"autoPercentUsed":0,"apiPercentUsed":120}}}"#.utf8))
-        expectEqual(windows.map(\.percentageText), ["99%", "100%", "0%"])
-        expectEqual(windows.first?.durationMinutes, 31 * 1440)
-        expectEqual(windows.first?.displayLabel, "账期总额度")
-        expectTrue(windows.first?.resetsAt != nil)
-        let team = try ServiceQuotaParser.cursor(Data(#"{"limitType":"team","individualUsage":{"plan":{"totalPercentUsed":0}},"teamUsage":{"pooled":{"used":50,"limit":200}}}"#.utf8))
-        expectEqual(team.first?.usedPercent, 25)
-        let nextMonth = try ServiceQuotaParser.cursor(Data(#"{"billingCycleStart":"2026-11-01T00:00:00Z","billingCycleEnd":"2026-12-01T00:00:00Z","individualUsage":{"plan":{"used":0,"limit":200}}}"#.utf8))
-        expectEqual(nextMonth.first?.id, windows.first?.id)
-        var tracker = RecoveryTracker()
-        _ = tracker.observe(account: "a", windows: windows)
-        expectEqual(tracker.observe(account: "a", windows: nextMonth).count, 1)
-    }
-
-    func testAntigravitySummaryAndLegacyModels() throws {
-        let summary = try ServiceQuotaParser.antigravitySummary(Data(#"{"response":{"groups":[{"displayName":"Gemini","buckets":[{"bucketId":"weekly","displayName":"Weekly","remainingFraction":0.8,"resetTime":"2026-11-01T00:00:00Z"},{"bucketId":"session","displayName":"5 hours","remaining":{"case":"remainingFraction","value":1}}]},{"displayName":"Claude","buckets":[{"bucketId":"weekly","remainingFraction":0.2}]}]}}"#.utf8))
-        expectEqual(summary.count, 3)
-        expectTrue(abs(summary[0].usedPercent - 20) < 0.00001)
-        expectEqual(summary[1].usedPercent, 0)
-        expectTrue(summary[0].id != summary[2].id)
-        expectTrue(summary[0].resetsAt != nil)
-        let status = Data(#"{"userStatus":{"email":"fixture@example.invalid","cascadeModelConfigData":{"clientModelConfigs":[{"label":"Gemini","modelOrAlias":{"model":"gemini"},"quotaInfo":{"remainingFraction":0.5}},{"label":"Unknown","modelOrAlias":{"model":"unknown"},"quotaInfo":{}}]}}}"#.utf8)
-        expectEqual(try ServiceQuotaParser.antigravityStatus(status).map(\.percentageText), ["50%"])
-        expectEqual(try ServiceQuotaParser.antigravityAccount(status), "fixture@example.invalid")
-        expectEqual(try ServiceQuotaParser.antigravityAccount(Data("{}".utf8)), nil)
-    }
-
-    func testServiceIsolationAndMutedRecovery() throws {
+    func testMutedRecoverySurvivesRestart() throws {
         var tracker = ServiceRecoveryTracker()
-        for service in QuotaService.allCases {
-            expectTrue(tracker.observe(service: service, account: "same", windows: [window(20)], notify: true).isEmpty)
-        }
-        expectTrue(tracker.observe(service: .claude, account: "same", windows: [window(0)], notify: false).isEmpty)
+        expectTrue(tracker.observe(service: .codex, account: "same", windows: [window(20)], notify: true).isEmpty)
+        expectTrue(tracker.observe(service: .codex, account: "same", windows: [window(0)], notify: false).isEmpty)
         let saved = try JSONEncoder().encode(tracker)
         tracker = try JSONDecoder().decode(ServiceRecoveryTracker.self, from: saved)
-        expectTrue(tracker.observe(service: .claude, account: "same", windows: [window(0)], notify: true).isEmpty)
-        expectEqual(tracker.observe(service: .cursor, account: "same", windows: [window(0)], notify: true).count, 1)
-        expectTrue(tracker.observe(service: .antigravity, account: "changed", windows: [window(0)], notify: true).isEmpty)
-        expectEqual(tracker.observe(service: .codex, account: "same", windows: [window(0)], notify: true).count, 1)
-        _ = tracker.observe(service: .claude, account: "same", windows: [window(1)], notify: true)
-        expectEqual(tracker.observe(service: .claude, account: "same", windows: [window(0)], notify: true).count, 1)
-        _ = tracker.observe(service: .cursor, account: "same", windows: [window(1)], notify: true)
-        tracker.clear(.cursor)
-        expectTrue(tracker.observe(service: .cursor, account: "same", windows: [window(0)], notify: true).isEmpty)
+        expectTrue(tracker.observe(service: .codex, account: "same", windows: [window(0)], notify: true).isEmpty)
+        expectTrue(tracker.observe(service: .codex, account: "changed", windows: [window(0)], notify: true).isEmpty)
+        _ = tracker.observe(service: .codex, account: "changed", windows: [window(1)], notify: true)
+        expectEqual(tracker.observe(service: .codex, account: "changed", windows: [window(0)], notify: true).count, 1)
+        _ = tracker.observe(service: .codex, account: "changed", windows: [window(1)], notify: true)
+        tracker.clear(.codex)
+        expectTrue(tracker.observe(service: .codex, account: "changed", windows: [window(0)], notify: true).isEmpty)
     }
 
-    func testServicePreferencesPersistIndependently() {
+    func testCodexPreferencesPersistIndependently() {
         let suite = "QuotaCoreChecks.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let preferences = ServicePreferences(defaults: defaults)
-        for service in QuotaService.allCases {
-            expectTrue(preferences.isEnabled(service))
-            expectTrue(preferences.notificationsEnabled(service))
-        }
-        preferences.setNotificationsEnabled(false, for: .claude)
-        preferences.setEnabled(false, for: .cursor)
+        expectTrue(preferences.isEnabled(.codex))
+        expectTrue(preferences.notificationsEnabled(.codex))
+        preferences.setNotificationsEnabled(false, for: .codex)
         let reopened = ServicePreferences(defaults: UserDefaults(suiteName: suite)!)
-        expectTrue(!reopened.notificationsEnabled(.claude))
-        expectTrue(reopened.isEnabled(.claude))
-        expectTrue(!reopened.isEnabled(.cursor))
-        expectTrue(reopened.notificationsEnabled(.cursor))
-        expectTrue(reopened.notificationsEnabled(.codex))
+        expectTrue(!reopened.notificationsEnabled(.codex))
+        expectTrue(reopened.isEnabled(.codex))
+        preferences.setEnabled(false, for: .codex)
+        expectTrue(!reopened.isEnabled(.codex))
+        expectTrue(!reopened.notificationsEnabled(.codex))
     }
 
     func testRefreshSchedulesRespectRateLimits() {
