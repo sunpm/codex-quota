@@ -4,7 +4,8 @@ import SwiftUI
 
 struct AppUpdateView: View {
     @ObservedObject var model: AppUpdateModel
-    @State private var showsNotes = true
+    @State private var showsCheckCompletion = false
+    @State private var confirmsInstallation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -16,42 +17,58 @@ struct AppUpdateView: View {
                 }
                 Spacer()
                 if model.checking { ProgressView().controlSize(.small).accessibilityLabel("正在检查更新") }
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    Button(model.checking ? "正在检查…" : "检查更新") { Task { await model.check() } }
-                        .disabled(model.checking || (model.retryAt.map { $0 > context.date } ?? false))
+                Button(model.checking ? "正在检查…" : showsCheckCompletion ? "检查完成" : "检查更新") {
+                    model.check()
                 }
+                    .disabled(!model.canCheckForUpdates || showsCheckCompletion)
             }
             if let error = model.error {
                 Label(error, systemImage: "exclamationmark.triangle").fixedSize(horizontal: false, vertical: true)
-                if let retryAt = model.retryAt, retryAt > Date() {
-                    Text("可重试时间：\(retryAt.formatted(date: .omitted, time: .standard))")
-                        .font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
+            }
+            if let status = model.status {
+                HStack {
+                    Text(status).fontWeight(.medium)
+                    Spacer()
+                    if model.canInstall {
+                        Button("下载并安装…") { confirmsInstallation = true }
+                            .buttonStyle(PanelButtonStyle(prominent: true))
+                    } else if model.canCancel {
+                        Button("取消", action: model.cancelDownloadOrCheck)
+                    } else if model.canRetryInstallation {
+                        Button("重试安装", action: model.retryInstallation)
+                    }
                 }
             }
-            if let release = model.release {
+            if model.phase == .downloading {
+                ProgressView(value: model.downloadProgress).accessibilityLabel("更新下载进度")
+                Text(ByteCountFormatter.string(fromByteCount: Int64(clamping: model.downloadedBytes), countStyle: .file))
+                    .font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
+            } else if model.phase == .preparing {
+                ProgressView(value: model.extractionProgress).accessibilityLabel("更新准备进度")
+            } else if model.phase == .installing {
+                ProgressView().controlSize(.small).accessibilityLabel("正在安装并重启")
+            } else if model.checking, model.canCancel {
                 HStack {
-                    Text(release.status).fontWeight(.medium)
                     Spacer()
-                    if release.isNewer, let url = release.downloadURL {
-                        Link("下载 \(model.architecture) 版", destination: url).buttonStyle(PanelButtonStyle(prominent: true))
-                    }
-                }
-                if release.isNewer, release.downloadURL == nil {
-                    Text("该版本暂未提供 \(model.architecture) 安装包，请到发布页查看。")
-                        .foregroundStyle(.secondary)
-                }
-                if release.isNewer {
-                    DisclosureGroup("\(release.version) 更新说明", isExpanded: $showsNotes) {
-                        ScrollView {
-                            ReleaseNotesView(markdown: release.notes.isEmpty ? "此版本未提供更新说明。" : release.notes)
-                                .padding(.vertical, 8).padding(.trailing, 12)
-                        }.frame(maxHeight: 240)
-                    }
+                    Button("取消", action: model.cancelDownloadOrCheck)
                 }
             }
             Link("在 GitHub 查看发布页", destination: model.release?.pageURL ?? AppUpdateModel.releasesURL)
                 .buttonStyle(.link).font(PanelTypography.detail)
         }.padding(16).panelCard()
+            .alert("安装 \(model.release?.version ?? "更新")？", isPresented: $confirmsInstallation) {
+                Button("取消", role: .cancel) {}
+                Button("安装并重启", action: model.installConfirmedUpdate)
+            } message: {
+                Text("下载完成后将退出并重新打开 Codex Quota。")
+            }
+            .onChange(of: model.completedManualChecks) { _ in showsCheckCompletion = true }
+            .task(id: showsCheckCompletion) {
+                guard showsCheckCompletion else { return }
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled else { return }
+                showsCheckCompletion = false
+            }
     }
 }
 

@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         UNUserNotificationCenter.current().delegate = self
         buildMenu()
         controlPanel = ControlPanelController(model: model)
+        model.updates.showSettings = { [weak self] in self?.showSettings() }
         menuBar = MenuBarController(model: model) { [weak self] in self?.showPanel() }
         model.start()
         showPanel()

@@ -9,7 +9,6 @@ struct ResetAnnouncementView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Text("Codex 重置动态").font(.headline)
-                    if model.refreshing { ProgressView().controlSize(.mini) }
                     Spacer()
                     Link(destination: URL(string: "https://aihot.news/codex-reset")!) {
                         Label("AIHOT", systemImage: "arrow.up.right")
@@ -52,12 +51,8 @@ struct ResetAnnouncementView: View {
                         }
                         Divider()
                     }
-                    if let updated = feed.sourceUpdatedAt {
-                        Text("来源核实 · \(updated.formatted(.dateTime.month().day().hour().minute()))")
-                            .font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
-                    }
                 } else {
-                    Text(model.refreshing ? "正在读取…" : "等待首次读取")
+                    Text("暂无重置动态")
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 if let error = model.errorMessage ?? model.feed?.sourceStatus(at: context.date) {

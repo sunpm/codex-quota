@@ -14,6 +14,7 @@ struct PanelButtonStyle: PrimitiveButtonStyle {
 
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
+        #if compiler(>=6.2)
         if #available(macOS 26, *), prominent {
             Button(configuration).buttonStyle(.glassProminent)
         } else if prominent {
@@ -21,41 +22,76 @@ struct PanelButtonStyle: PrimitiveButtonStyle {
         } else {
             Button(configuration).buttonStyle(.bordered)
         }
+        #else
+        if prominent {
+            Button(configuration).buttonStyle(.borderedProminent)
+        } else {
+            Button(configuration).buttonStyle(.bordered)
+        }
+        #endif
+    }
+}
+
+private struct PanelAnimationsEnabledKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var panelAnimationsEnabled: Bool {
+        get { self[PanelAnimationsEnabledKey.self] }
+        set { self[PanelAnimationsEnabledKey.self] = newValue }
     }
 }
 
 struct PanelSelectionIndicator<Value: Hashable>: View {
     let selection: Value
     let namespace: Namespace.ID
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.panelAnimationsEnabled) private var animationsEnabled
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 6)
-            .fill(Color.accentColor)
-            .matchedGeometryEffect(id: selection, in: namespace, isSource: false)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selection)
-            .allowsHitTesting(false)
+        if animationsEnabled {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.accentColor)
+                .matchedGeometryEffect(id: selection, in: namespace, isSource: false)
+                .animation(.easeOut(duration: 0.16), value: selection)
+                .allowsHitTesting(false)
+        }
     }
 }
 
 struct PanelSelectionLabel<Value: Hashable>: ViewModifier {
+    let value: Value
     let selection: Value
     let namespace: Namespace.ID
+    @Environment(\.panelAnimationsEnabled) private var animationsEnabled
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content.fontWeight(.regular)
-            .mask {
-                Rectangle().overlay {
-                    PanelSelectionIndicator(selection: selection, namespace: namespace)
-                        .blendMode(.destinationOut)
-                }.compositingGroup()
-            }
-            .overlay {
-                // 字色和字重都由滑块覆盖范围决定，不在点击时提前切换。
-                Color.white.mask(content.fontWeight(.semibold))
-                    .mask { PanelSelectionIndicator(selection: selection, namespace: namespace) }
-                    .allowsHitTesting(false).accessibilityHidden(true)
-            }
+        if animationsEnabled {
+            content.fontWeight(.regular).foregroundStyle(.primary)
+                .mask {
+                    Rectangle().overlay {
+                        PanelSelectionIndicator(selection: selection, namespace: namespace)
+                            .blendMode(.destinationOut)
+                    }.compositingGroup()
+                }
+                .overlay {
+                    // 字色和字重都由滑块覆盖范围决定，不在点击时提前切换。
+                    Color.white.mask(content.fontWeight(.semibold))
+                        .mask { PanelSelectionIndicator(selection: selection, namespace: namespace) }
+                        .allowsHitTesting(false).accessibilityHidden(true)
+                }
+                .matchedGeometryEffect(id: value, in: namespace)
+        } else {
+            // 关闭动效时直接绘制选中项，省去几何匹配和文字遮罩合成。
+            content.fontWeight(value == selection ? .semibold : .regular)
+                .foregroundStyle(value == selection ? Color.white : Color.primary)
+                .background {
+                    if value == selection {
+                        RoundedRectangle(cornerRadius: 6).fill(Color.accentColor)
+                    }
+                }
+        }
     }
 }
 
@@ -72,13 +108,11 @@ struct PanelSegmentedPicker<Value: Hashable>: View {
             ForEach(options, id: \.self) { option in
                 Button { selection = option } label: {
                     Text(option[keyPath: optionTitle])
-                        .foregroundStyle(.primary)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, minHeight: 26)
-                        .modifier(PanelSelectionLabel(selection: selection, namespace: indicator))
+                        .modifier(PanelSelectionLabel(value: option, selection: selection, namespace: indicator))
                         .contentShape(Rectangle())
                 }
-                .matchedGeometryEffect(id: option, in: indicator)
                 .focused($focusedOption, equals: option)
                 .accessibilityAddTraits(selection == option ? .isSelected : [])
             }
