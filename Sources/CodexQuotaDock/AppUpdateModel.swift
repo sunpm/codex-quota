@@ -21,8 +21,14 @@ final class AppUpdateModel: ObservableObject {
     @Published private(set) var release: Release?
     @Published private(set) var error: String?
     @Published private(set) var retryAt: Date?
+    @Published private(set) var automaticallyChecks: Bool
+    private let defaults: UserDefaults
+    private var automaticChecksTask: Task<Void, Never>?
+    private var lastCheckAttempt: Date?
 
-    init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        automaticallyChecks = defaults.object(forKey: "updates.automaticallyChecks") as? Bool ?? true
         currentVersion = Bundle.main.object(forInfoDictionaryKey: "ReleaseVersion") as? String
             ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "未知"
         #if arch(arm64)
@@ -36,13 +42,43 @@ final class AppUpdateModel: ObservableObject {
         #endif
     }
 
-    func check() async {
-        guard !checking, retryAt.map({ $0 <= Date() }) ?? true else { return }
+    func setAutomaticallyChecks(_ enabled: Bool) {
+        automaticallyChecks = enabled
+        defaults.set(enabled, forKey: "updates.automaticallyChecks")
+        if enabled { startAutomaticChecks() }
+        else { stopAutomaticChecks() }
+    }
+
+    func startAutomaticChecks() {
+        guard automaticallyChecks, automaticChecksTask == nil else { return }
+        automaticChecksTask = Task { [weak self] in
+            while !Task.isCancelled {
+                await self?.check(automatically: true)
+                // 每小时判断是否到期；启动后约每 24 小时查询一次，手动查询也计入间隔。
+                try? await Task.sleep(nanoseconds: 3_600_000_000_000)
+            }
+        }
+    }
+
+    func stopAutomaticChecks() {
+        automaticChecksTask?.cancel()
+        automaticChecksTask = nil
+    }
+
+    func check(automatically: Bool = false) async {
+        guard !Task.isCancelled, !checking, retryAt.map({ $0 <= Date() }) ?? true else { return }
+        if automatically {
+            guard automaticallyChecks,
+                  lastCheckAttempt.map({ Date().timeIntervalSince($0) >= 86_400 }) ?? true else { return }
+        }
         checking = true
-        release = nil
         error = nil
         retryAt = nil
-        defer { checking = false }
+        defer {
+            checking = false
+            // 失败也按正常间隔重试；睡眠或关闭开关造成的取消不推迟下次检查。
+            if !Task.isCancelled { lastCheckAttempt = Date() }
+        }
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpCookieStorage = nil
@@ -58,6 +94,7 @@ final class AppUpdateModel: ObservableObject {
 
         do {
             let (data, rawResponse) = try await session.data(for: request)
+            guard !Task.isCancelled else { return }
             guard let response = rawResponse as? HTTPURLResponse else {
                 error = "GitHub 未返回有效响应，请重试或打开发布页。"
                 return
@@ -107,6 +144,7 @@ final class AppUpdateModel: ObservableObject {
                               status: isNewer ? "发现新版本 \(latest.text)" : comparison == 0
                                 ? "已是最新正式版" : "当前版本高于最新正式版 \(latest.text)")
         } catch {
+            guard !Task.isCancelled else { return }
             self.error = error is DecodingError ? "无法读取 GitHub 版本信息，请重试或打开发布页。"
                 : "无法连接 GitHub，请检查网络后重试，或打开发布页。"
         }

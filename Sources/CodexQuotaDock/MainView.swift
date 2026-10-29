@@ -11,7 +11,7 @@ struct MainView: View {
     @ObservedObject private var resetAnnouncements: ResetAnnouncementMonitor
     @StateObject private var navigation: PanelNavigation
     @StateObject private var usage = UsageModel()
-    @StateObject private var updates = AppUpdateModel()
+    @ObservedObject private var updates: AppUpdateModel
     @State private var selectedService: QuotaService?
     @State private var confirmsHistoryClear = false
 
@@ -19,6 +19,7 @@ struct MainView: View {
         self.model = model
         _cursorUsage = ObservedObject(wrappedValue: model.cursorUsage)
         _resetAnnouncements = ObservedObject(wrappedValue: model.resetAnnouncements)
+        _updates = ObservedObject(wrappedValue: model.updates)
         _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
     }
 
@@ -126,6 +127,10 @@ struct MainView: View {
                 Image(systemName: page.symbol).frame(width: 22, height: 22)
                 Text(page.rawValue).fontWeight(navigation.page == page ? .semibold : .regular)
                 Spacer(minLength: 0)
+                if page == .settings, let release = updates.release, release.isNewer {
+                    Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
+                        .accessibilityLabel(release.status).help(release.status)
+                }
             }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
                 .foregroundStyle(unavailable ? .secondary : .primary)
