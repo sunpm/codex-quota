@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 30
     defaults:
       run:
@@ -70,9 +70,8 @@ jobs:
           if [[ "$RELEASE_TAG" == *-* ]]; then
             options+=(--prerelease --latest=false)
           fi
-          # 已有正式版本时，统一从该版本累计，保留 beta / rc 中的 PR。
-          previous_tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' \
-            --exclude '*-*' --exclude "$RELEASE_TAG" "$RELEASE_TAG" 2>/dev/null || true)"
+          # 从最近已发布的正式版本累计，保留 beta / rc 和发布失败标签中的 PR。
+          previous_tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
           if [[ -n "$previous_tag" ]]; then
             options+=(--notes-start-tag "$previous_tag")
           fi

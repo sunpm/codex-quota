@@ -21,6 +21,8 @@ struct AppUpdateView: View {
                         .disabled(model.checking || (model.retryAt.map { $0 > context.date } ?? false))
                 }
             }
+            Toggle("自动检查更新", isOn: Binding(get: { model.automaticallyChecks }, set: { model.setAutomaticallyChecks($0) }))
+                .toggleStyle(.switch).controlSize(.small)
             if let error = model.error {
                 Label(error, systemImage: "exclamationmark.triangle").fixedSize(horizontal: false, vertical: true)
                 if let retryAt = model.retryAt, retryAt > Date() {

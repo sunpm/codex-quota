@@ -27,6 +27,7 @@ final class MonitorModel: ObservableObject {
     let readsLocalUsage: Bool
     let cursorUsage: CursorUsageModel
     let resetAnnouncements: ResetAnnouncementMonitor
+    let updates: AppUpdateModel
     private let defaults: UserDefaults
     private let preferences: ServicePreferences
     private let clients: [QuotaService: QuotaClient]
@@ -60,6 +61,7 @@ final class MonitorModel: ObservableObject {
         self.defaults = defaults
         showsMenuBar = defaults.object(forKey: "menuBar.visible") as? Bool ?? true
         readsLocalUsage = clients == nil
+        updates = AppUpdateModel(defaults: defaults)
         preferences = ServicePreferences(defaults: defaults)
         let resolvedClients = clients ?? [.codex: CodexClient(), .claude: ClaudeClient(), .antigravity: AntigravityClient(), .cursor: CursorClient()]
         self.clients = resolvedClients
@@ -117,6 +119,7 @@ final class MonitorModel: ObservableObject {
 
     func start() {
         stopped = false
+        if readsLocalUsage { updates.startAutomaticChecks() }
         resetAnnouncements.setPaused(false)
         // 保持后台定时刷新，仍允许系统正常睡眠。
         activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取已启用服务的额度")
@@ -127,6 +130,7 @@ final class MonitorModel: ObservableObject {
                 self?.timer = nil
                 self?.cursorUsage.setPaused(true)
                 self?.resetAnnouncements.setPaused(true)
+                self?.updates.stopAutomaticChecks()
             }
         }
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
@@ -134,6 +138,7 @@ final class MonitorModel: ObservableObject {
                 self?.startPolling()
                 self?.cursorUsage.setPaused(false)
                 self?.resetAnnouncements.setPaused(false)
+                if self?.readsLocalUsage == true { self?.updates.startAutomaticChecks() }
                 await self?.refresh(force: true, retryCredentials: false)
             }
         }
@@ -156,6 +161,7 @@ final class MonitorModel: ObservableObject {
         stopped = true
         cursorUsage.setPaused(true)
         resetAnnouncements.stop()
+        updates.stopAutomaticChecks()
         timer?.invalidate()
         timer = nil
         if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
