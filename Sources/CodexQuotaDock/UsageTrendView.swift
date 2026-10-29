@@ -58,7 +58,7 @@ struct UsageTrendView: View {
             .chartYAxis { AxisMarks(position: .leading) { value in
                 AxisGridLine()
                 AxisValueLabel { if let number = value.as(Double.self) {
-                    Text(metric == "费用" ? number.formatted(.currency(code: "USD")) : formattedTokens(Int(number)))
+                    Text(metric == "费用" ? number.formatted(.currency(code: "USD").presentation(.narrow)) : formattedTokens(Int(number)))
                 } }
             } }
             .chartOverlay { proxy in

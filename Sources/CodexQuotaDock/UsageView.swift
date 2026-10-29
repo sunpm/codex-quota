@@ -245,6 +245,7 @@ struct UsageView: View {
     private var content: some View {
         // 汇总、图表和比较共用同一截止时刻与筛选，避免临界时刻口径不同。
         let intervals = range.intervals(now: Date(), customStart: customStart, customEnd: customEnd)
+        let previous = page == .overview ? intervals.previous : nil
         let records = records(in: intervals.current)
         let tokens = total(records)
         let costs = model.costTotal(records)
@@ -281,7 +282,7 @@ struct UsageView: View {
                     }
                 }.font(PanelTypography.detail).foregroundStyle(.secondary)
                 HStack {
-                    Text("USD · API 等价估算，非订阅账单")
+                    Text("API 等价估算，非订阅账单")
                     Spacer(minLength: 8)
                     if range == .custom { Text(customRangeLabel).monospacedDigit() }
                 }.font(PanelTypography.detail).foregroundStyle(.secondary)
@@ -302,10 +303,10 @@ struct UsageView: View {
             if model.updatedAt == nil {
                 ProgressView("正在读取本地用量…").frame(maxWidth: .infinity, minHeight: 260)
             } else if records.isEmpty && page != .overview {
-                summary(records, tokens: tokens, previous: intervals.previous)
+                summary(records, tokens: tokens, previous: previous)
                 empty("所选范围内没有用量", detail: "使用 Codex 后刷新；这里只统计本机日志中记录的用量。")
             } else if page == .overview {
-                summary(records, tokens: tokens, previous: intervals.previous)
+                summary(records, tokens: tokens, previous: previous)
                 if records.isEmpty {
                     empty("所选范围内没有用量", detail: "使用 Codex 后刷新；这里只统计本机日志中记录的用量。")
                 } else {
@@ -334,7 +335,7 @@ struct UsageView: View {
                     }.padding(.vertical, 18).panelCard()
                 }
             } else {
-                summary(records, tokens: tokens, previous: intervals.previous)
+                summary(records, tokens: tokens, previous: previous)
                 groupTable(groups(records, by: page.rawValue), total: tokens.total, cost: costs,
                            opensSession: page == .sessions)
                     .padding(.vertical, 8).panelCard()
@@ -374,8 +375,8 @@ struct UsageView: View {
                 Text("输入缓存命中率 \(tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—")")
                 Spacer(minLength: 0)
                 if let previous {
-                    Text("对比 \(previous.start.formatted(.dateTime.month().day()))–\(previous.end.formatted(.dateTime.month().day()))")
-                        .help("上期：\(previous.start.formatted(date: .numeric, time: .shortened)) – \(previous.end.formatted(date: .numeric, time: .shortened))")
+                    Text("上期 \(previous.start.formatted(.dateTime.month().day()))–\(previous.end.formatted(.dateTime.month().day()))")
+                        .help("与前一个等长时段比较。上期：\(previous.start.formatted(date: .numeric, time: .shortened)) – \(previous.end.formatted(date: .numeric, time: .shortened))")
                 }
             }.font(PanelTypography.detail).foregroundStyle(.secondary).monospacedDigit()
         }
@@ -396,7 +397,6 @@ struct UsageView: View {
                 Text(label).foregroundStyle(.secondary)
                 Text(value).fontWeight(.semibold).monospacedDigit()
             }.font(.callout).frame(maxWidth: .infinity, alignment: .leading)
-                .help([change, previous.map { "上期：\($0)" }].compactMap { $0 }.joined(separator: "\n"))
         }
     }
     private func change(current: Decimal, previous: Decimal, money: Bool) -> String {
@@ -551,6 +551,6 @@ extension View {
 func formattedCost(_ cost: UsageCost) -> String {
     guard cost.pricedCount > 0 else { return cost.unpricedCount > 0 ? "未定价" : "—" }
     let amount = cost.amount > 0 && cost.amount < Decimal(string: "0.01")!
-        ? "< $0.01" : cost.amount.formatted(.currency(code: "USD").precision(.fractionLength(2)))
+        ? "< $0.01" : cost.amount.formatted(.currency(code: "USD").presentation(.narrow).precision(.fractionLength(2)))
     return cost.unpricedCount > 0 ? amount + "（部分）" : amount
 }

@@ -19,16 +19,14 @@ final class MenuBarController: NSObject {
         if let button = statusItem.button {
             button.imagePosition = .imageOnly
             button.imageScaling = .scaleNone
-            button.target = self
-            button.action = #selector(handleClick)
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
-        let item = NSMenuItem(title: "打开主窗口", action: #selector(showPanel), keyEquivalent: "")
+        let item = NSMenuItem(title: "打开面板", action: #selector(showPanel), keyEquivalent: "")
         item.target = self
         menu.addItem(item)
         menu.addItem(.separator())
         let quit = menu.addItem(withTitle: "退出 Codex Quota Dock", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
+        statusItem.menu = menu
 
         render()
         subscription = model.objectWillChange
@@ -37,16 +35,6 @@ final class MenuBarController: NSObject {
     }
 
     @objc private func showPanel() { openPanel() }
-
-    @objc private func handleClick() {
-        let event = NSApp.currentEvent
-        if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true,
-           let button = statusItem.button {
-            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY), in: button)
-        } else {
-            openPanel()
-        }
-    }
 
     func stop() {
         subscription?.cancel()
@@ -68,7 +56,7 @@ final class MenuBarController: NSObject {
         }.joined(separator: "；")
         let status = snapshot.errorMessage.map { "额度可能已过期：\($0)" }
             ?? (description.isEmpty ? "等待数据" : description)
-        button.setAccessibilityLabel("Codex 额度。\(status)。单击打开主窗口。")
-        button.toolTip = "\(status)\n单击打开主窗口 · 右键打开菜单"
+        button.setAccessibilityLabel("Codex 额度。\(status)。单击打开菜单。")
+        button.toolTip = "\(status)\n单击打开菜单"
     }
 }

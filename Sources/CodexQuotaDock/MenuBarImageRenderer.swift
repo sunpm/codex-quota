@@ -33,8 +33,19 @@ enum MenuBarImageRenderer {
         result.lockFocus()
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: result.size).fill()
-        let logo = CodexLogo.image ?? NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
-        logo?.draw(in: NSRect(x: 0, y: 2, width: iconSize, height: iconSize))
+        // 沿用应用图标的原创缺口 Q，按菜单栏尺寸绘制单色轮廓。
+        NSColor.black.setStroke()
+        let arc = NSBezierPath()
+        arc.appendArc(withCenter: NSPoint(x: 9, y: 11), radius: 6.65,
+                      startAngle: -12, endAngle: 282, clockwise: false)
+        arc.lineWidth = 2.7
+        arc.stroke()
+        let tail = NSBezierPath()
+        tail.move(to: NSPoint(x: 12, y: 8))
+        tail.line(to: NSPoint(x: 15.4, y: 4.6))
+        tail.lineWidth = 2.7
+        tail.lineCapStyle = .round
+        tail.stroke()
         text.draw(at: NSPoint(x: iconSize + 3, y: floor((height - textSize.height) / 2)), withAttributes: attributes)
         result.unlockFocus()
         result.isTemplate = true

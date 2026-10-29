@@ -222,6 +222,12 @@ struct MainView: View {
                     Toggle("登录 Mac 时启动", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) })).labelsHidden()
                 }
                 if let error = model.launchError { Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10)) }
+                Divider()
+                HStack {
+                    Text("自动检查更新")
+                    Spacer()
+                    Toggle("自动检查更新", isOn: Binding(get: { updates.automaticallyChecks }, set: { updates.setAutomaticallyChecks($0) })).labelsHidden()
+                }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
             VStack(alignment: .leading, spacing: 8) {
                 Text("通知").font(.headline)
@@ -252,12 +258,6 @@ struct MainView: View {
             }.padding(16).panelCard()
             usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
-            HStack {
-                Text(appName)
-                Spacer()
-                Link("致谢 cc-bar · MIT", destination: URL(string: "https://github.com/nanvon/cc-bar")!)
-                    .buttonStyle(.link)
-            }.font(PanelTypography.detail).foregroundStyle(.secondary)
         }
         .font(.system(size: 13))
     }
