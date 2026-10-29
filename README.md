@@ -4,9 +4,9 @@
 
 [下载最新版](https://github.com/sunpm/codex-quota-dock/releases/latest) · [更新记录](https://github.com/sunpm/codex-quota-dock/releases) · [反馈问题](https://github.com/sunpm/codex-quota-dock/issues)
 
-![Codex 额度、进度与重置倒计时](docs/images/quota.png)
+![Codex Quota Dock 实机截图：剩余额度、消耗趋势与重置倒计时](docs/images/quota.png)
 
-*界面预览由当前源码的原生组件渲染，使用示例数据，不含真实账号或用量。*
+*v0.15.0 源码构建的 macOS 实机截图，不含账号、项目路径或对话标识。*
 
 ## 功能范围
 
@@ -54,11 +54,9 @@
 | `⌘Q` | 退出应用并停止监测 |
 
 <details>
-<summary>监测与通知设置预览</summary>
+<summary>监测与通知设置</summary>
 
 ![Codex 监测、菜单栏、恢复通知与用量历史设置](docs/images/settings.png)
-
-使用示例状态。监测、通知和菜单栏显示可分别控制。
 
 </details>
 
