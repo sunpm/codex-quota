@@ -14,16 +14,92 @@ struct PanelButtonStyle: PrimitiveButtonStyle {
 
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
-        if #available(macOS 26, *) {
-            if prominent {
-                Button(configuration).buttonStyle(.glassProminent)
-            } else {
-                Button(configuration).buttonStyle(.glass)
-            }
+        if #available(macOS 26, *), prominent {
+            Button(configuration).buttonStyle(.glassProminent)
         } else if prominent {
             Button(configuration).buttonStyle(.borderedProminent)
         } else {
             Button(configuration).buttonStyle(.bordered)
+        }
+    }
+}
+
+struct PanelSelectionIndicator<Value: Hashable>: View {
+    let selection: Value
+    let namespace: Namespace.ID
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(Color.accentColor)
+            .matchedGeometryEffect(id: selection, in: namespace, isSource: false)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: selection)
+            .allowsHitTesting(false)
+    }
+}
+
+struct PanelSelectionLabel<Value: Hashable>: ViewModifier {
+    let selection: Value
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        content.fontWeight(.regular)
+            .mask {
+                Rectangle().overlay {
+                    PanelSelectionIndicator(selection: selection, namespace: namespace)
+                        .blendMode(.destinationOut)
+                }.compositingGroup()
+            }
+            .overlay {
+                // 字色和字重都由滑块覆盖范围决定，不在点击时提前切换。
+                Color.white.mask(content.fontWeight(.semibold))
+                    .mask { PanelSelectionIndicator(selection: selection, namespace: namespace) }
+                    .allowsHitTesting(false).accessibilityHidden(true)
+            }
+    }
+}
+
+struct PanelSegmentedPicker<Value: Hashable>: View {
+    let title: String
+    let options: [Value]
+    @Binding var selection: Value
+    let optionTitle: KeyPath<Value, String>
+    @Namespace private var indicator
+    @FocusState private var focusedOption: Value?
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options, id: \.self) { option in
+                Button { selection = option } label: {
+                    Text(option[keyPath: optionTitle])
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: 26)
+                        .modifier(PanelSelectionLabel(selection: selection, namespace: indicator))
+                        .contentShape(Rectangle())
+                }
+                .matchedGeometryEffect(id: option, in: indicator)
+                .focused($focusedOption, equals: option)
+                .accessibilityAddTraits(selection == option ? .isSelected : [])
+            }
+        }
+        .background {
+            PanelSelectionIndicator(selection: selection, namespace: indicator)
+        }
+        .buttonStyle(.plain).font(.system(size: 13)).foregroundStyle(.primary)
+        .padding(3)
+        .background(.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .contain).accessibilityLabel(title)
+        .onMoveCommand { direction in
+            guard let index = options.firstIndex(of: focusedOption ?? selection) else { return }
+            let next: Int
+            switch direction {
+            case .left: next = max(0, index - 1)
+            case .right: next = min(options.count - 1, index + 1)
+            default: return
+            }
+            selection = options[next]
+            focusedOption = selection
         }
     }
 }

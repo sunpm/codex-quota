@@ -91,7 +91,7 @@ components:
 
 ### Primary
 
-- **系统强调色**：`Color.accentColor`，用于选中导航的淡色底与更新标记；原生突出按钮和链接遵循系统样式。不要从截图提取一个蓝色常量代替它。
+- **系统强调色**：`Color.accentColor`，用于导航、分段控件的实色选中底及更新标记；选中项的文字与图标使用白色。原生突出按钮和链接遵循系统样式。不要从截图提取一个蓝色常量代替它。
 - **额度状态色**：统一调用 `quotaColor(remaining:)`，定义位于 [QuotaAppearance.swift](Sources/CodexQuotaDock/QuotaAppearance.swift)。`quota-normal-*` 为额度灰，`quota-warning-*` 为预警橙，`quota-exhausted-*` 为耗尽红；文件头的 `light` / `dark` 成对使用。
 
 | 实际剩余值 | 色彩角色 | 当前应用 |
@@ -150,7 +150,7 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 | 页面栏 | 高 56pt，左右 padding 使用 `page`，标题与刷新操作分列 |
 | 内容外边距 | `page` |
 | 额度与设置 | 内容最大宽 760pt，居中 |
-| 用量内容 | 随剩余窗口宽度伸缩，主体纵向滚动 |
+| 用量内容 | 概览主体纵向滚动；对话与项目的筛选、汇总保持在表格上方，表格填满窗口剩余高度并自行滚动 |
 | 卡片内边距 | 设置与额度常用 `section`，分析常用 `analysis`，概览指标用 `metric` |
 | 密切关联信息 | 使用 `tight`、`label`、`related`，不强制整理为单一倍数网格 |
 
@@ -172,15 +172,15 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 
 ## Elevation & Depth
 
-主要依靠系统底色、细边框、分隔线与留白分组。源码没有自定义阴影层级、动画时长或缓动曲线；原生控件和 sheet 的系统效果继续由平台管理，不声明“全应用没有阴影”。
+主要依靠系统底色、细边框、分隔线与留白分组。源码没有自定义阴影层级；原生控件和 sheet 的系统效果继续由平台管理，不声明“全应用没有阴影”。导航与分段选择器各保留一个选中背景，匹配目标选项的位置与大小，使用 0.25 秒 ease-out 滑动。滑块覆盖区域显示白色 semibold 标签，外部显示主文字色 regular 标签；两层使用互补遮罩，避免文字提前变白、变粗或叠出重影。开启系统“减少动态效果”时直接切换；数据与页面内容不随选中背景做整体动画。
 
-macOS 26 及以上侧栏使用 `glassEffect`，操作按钮使用 `.glass` / `.glassProminent`；旧系统侧栏使用窗口背景与分隔线，按钮使用 `.bordered` / `.borderedProminent`。图表浮层使用 `.regularMaterial` 和主文字色 10% 透明度的细边框，不添加自行绘制的模糊或阴影。
+普通操作按钮统一使用 `.bordered`。macOS 26 及以上侧栏使用 `glassEffect`，突出操作按钮使用 `.glassProminent`；旧系统侧栏使用窗口背景与分隔线，突出操作按钮使用 `.borderedProminent`。开关保留系统外观。图表浮层使用 `.regularMaterial` 和主文字色 10% 透明度的细边框，不添加自行绘制的模糊或阴影。
 
 **The 系统材质 Rule.** 材质与控件状态交给平台；用自定义表面时，复用 `panelCard()` 的底色和边框。
 
 ## Shapes
 
-圆角按角色区分：卡片使用 `card`，导航选中底与 Codex 小标识使用 `navigation`，图表浮层使用 `tooltip`，新系统侧栏玻璃使用 `sidebar-glass`，热力单元使用 `heatmap-cell`。原生按钮、输入框、分段选择器与开关的外形由系统样式决定，不强加卡片圆角。
+圆角按角色区分：卡片使用 `card`，导航选中底与 Codex 小标识使用 `navigation`，图表浮层使用 `tooltip`，新系统侧栏玻璃使用 `sidebar-glass`，热力单元使用 `heatmap-cell`。分段选择器轨道圆角为 8pt，选中底为 6pt；原生按钮、输入框与开关的外形由系统样式决定，不强加卡片圆角。
 
 额度条和 Token 拆分条使用 `Capsule`。额度组件默认高度为 7pt，额度页显式使用 `quota-window-progress`；拆分条高 8pt。卡片描边为 1pt；Codex 小标识的黑色 12% 透明度描边为 0.5pt。图标优先使用 SF Symbols，服务标识使用已授权的 [codex.svg](Resources/codex.svg)，来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
@@ -188,7 +188,7 @@ macOS 26 及以上侧栏使用 `glassEffect`，操作按钮使用 `.glass` / `.g
 
 ### Buttons
 
-使用 [PanelButtonStyle](Sources/CodexQuotaDock/QuotaAppearance.swift)，普通与 prominent 两种样式按系统版本分派。保存、下载和已安装更新说明的完成操作可使用突出样式；链接使用 `.link`，导航与列表内入口使用 `.plain`。不自绘 hover、focus 或按下背景来覆盖原生控件。
+使用 [PanelButtonStyle](Sources/CodexQuotaDock/QuotaAppearance.swift)，普通按钮使用标准原生样式，仅 prominent 样式按系统版本分派。保存、下载和已安装更新说明的完成操作可使用突出样式；链接使用 `.link`，导航与列表内入口使用 `.plain`。不自绘 hover、focus 或按下背景来覆盖原生控件。
 
 默认操作与取消操作使用对应 `keyboardShortcut`；禁用通过 `.disabled` 表达，刷新或提交中的等待通过 `ProgressView` 或动作名称体现。保留必要的按钮名称；纯图标必须有可理解的辅助标签。
 
@@ -198,17 +198,19 @@ macOS 26 及以上侧栏使用 `glassEffect`，操作按钮使用 `.glass` / `.g
 
 ### Inputs / Fields
 
-定价搜索与编辑使用 `.roundedBorder` 的 `TextField`；表单保留字段标签，错误就近显示。时间与指标筛选使用 `.segmented` 的 `Picker`；可隐藏可见标签，但保留构造时的控件名称。日期使用原生 `DatePicker`。布尔设置使用 `.switch` 与 `.small`，可见行标签和隐藏控件标签表达同一设置。
+定价搜索与编辑使用 `.roundedBorder` 的 `TextField`；表单保留字段标签，错误就近显示。时间、指标与分组筛选复用 `PanelSegmentedPicker`，以 SwiftUI 按钮和 `matchedGeometryEffect` 实现滑动选中背景；选中底使用系统强调色实色，文字为白色，不另加边框。`PanelSelectionIndicator` 与 `PanelSelectionLabel` 共用背景和文字遮罩的几何动画。保留控件名称、选中语义、焦点与左右方向键切换。点击或重新点击“自定义”打开原生 popover，其中的 `DatePicker` 保留开始、结束标签及日期先后约束，修改立即生效；点击“完成”或浮层外部关闭。日期范围显示在已有说明行内，展开与关闭浮层不改变筛选区域高度。布尔设置使用 `.switch` 与 `.small`，可见行标签和隐藏控件标签表达同一设置。
 
 ### Navigation
 
-五个现有入口为概览、对话、项目、额度、设置；设置靠侧栏底部。图标槽为 22 × 22pt，图文间距为 `related`，每行最小高度 34pt。选中行使用强调色 12% 透明度的底和 semibold 文字，并设置 `.isSelected`；未选中行保持主文字色。侧栏自定义为按钮列表，不宣称它具备尚未验证的原生列表键盘行为。
+五个现有入口为概览、对话、项目、额度、设置；设置位于额度下方，顶部额外留 12pt 区分主导航与设置。图标槽为 22 × 22pt，图文间距为 `related`，每行最小高度 34pt。选中行使用系统强调色实色背景、白色文字与图标，文字为 semibold，并设置 `.isSelected`；未选中行保持主文字色。设置入口的更新标记在选中时也使用白色。侧栏自定义为按钮列表，不宣称它具备尚未验证的原生列表键盘行为。
 
 ### Tables / Details
 
-汇总表使用 `.inset(alternatesRowBackgrounds: true)`，数值靠右、等宽数字，费用允许两行。名称区域可点击打开对话详情，并带 chevron；可见身份由项目名、所选范围内最近用量时间、短 ID 组成，完整信息通过悬停或详情查看。详情用 sheet 承载，提供明确的完成操作。
+汇总表使用 `.inset(alternatesRowBackgrounds: true)`，数值靠右、等宽数字，费用允许两行。对话与项目表格填满可用高度，不嵌套在页面级 `ScrollView` 内；概览中的嵌入表格按行数确定高度，最多 420pt。名称区域可点击打开对话详情，并带 chevron；可见身份由项目名、所选范围内最近用量时间、短 ID 组成，完整信息通过悬停或详情查看。详情用 sheet 承载，提供明确的完成操作。
 
 来源、扫描时间、API 等价估算与非订阅账单口径位于用量筛选下方。未定价与读取警告位于汇总之前；未知、未定价、部分、真实零值和过期不能折叠成同一显示状态。
+
+切换页面时，分组名称与路径只在首次遇到该组时生成；已知项目路径是目录，取名称时不通过文件系统推断类型。概览的横排与竖排候选布局共用一次排行计算，表格复用当前范围的费用汇总，避免重复统计挡住点击响应。
 
 ### Quota / Charts
 

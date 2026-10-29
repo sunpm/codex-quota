@@ -25,10 +25,8 @@ struct UsageHeatmapView: View {
                 Text("用量热力图").font(.headline)
                 Text("最近 53 周").font(PanelTypography.detail).foregroundStyle(.secondary)
                 Spacer()
-                Picker("热力图指标", selection: $metric) {
-                    Text("Tokens").tag("Tokens")
-                    Text("费用").tag("费用")
-                }.pickerStyle(.segmented).labelsHidden().frame(width: 150)
+                PanelSegmentedPicker(title: "热力图指标", options: ["Tokens", "费用"],
+                                     selection: $metric, optionTitle: \.self).frame(width: 150)
             }
             CalendarGrid(days: days, metric: metric, today: today)
         }.padding(18).panelCard()
