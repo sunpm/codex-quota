@@ -145,11 +145,14 @@ final class AppUpdateModel: ObservableObject {
                 : current.numbers.lexicographicallyPrecedes(latest.numbers) ? 1 : 0
             let isNewer = comparison > 0 || (comparison == 0 && current.isPrerelease)
             let platform = architecture == "Apple Silicon" ? "AppleSilicon" : "Intel"
-            let filename = "CodexQuotaDock-\(payload.tagName)-macOS-\(platform).dmg"
-            let asset = payload.assets.first { $0.name == filename && $0.state == "uploaded" }
+            let filename = "CodexQuotaDock-macOS-\(platform).dmg"
+            let legacyFilename = "CodexQuotaDock-\(payload.tagName)-macOS-\(platform).dmg"
+            let asset = payload.assets.first {
+                ($0.name == filename || $0.name == legacyFilename) && $0.state == "uploaded"
+            }
             // 只提供当前 release 中确实存在的附件，不回退到另一种架构。
-            let downloadURL = asset.map { _ in
-                URL(string: "https://github.com/sunpm/codex-quota-dock/releases/download/\(payload.tagName)/\(filename)")!
+            let downloadURL = asset.map {
+                URL(string: "https://github.com/sunpm/codex-quota-dock/releases/download/\(payload.tagName)/\($0.name)")!
             }
             release = Release(version: latest.text, notes: payload.body ?? "",
                               pageURL: URL(string: "https://github.com/sunpm/codex-quota-dock/releases/tag/\(payload.tagName)")!,

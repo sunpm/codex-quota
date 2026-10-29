@@ -27,7 +27,7 @@
 
 普通按钮使用标准原生样式；macOS 26 及以上的侧栏和突出操作按钮采用 Liquid Glass，开关遵循系统外观。macOS 13–15 使用系统常规样式，功能一致。
 
-1. 从 [Releases](https://github.com/sunpm/codex-quota-dock/releases/latest) 下载安装包：M 系列芯片选 `AppleSilicon.dmg`，Intel 芯片选 `Intel.dmg`。
+1. 从 [Releases](https://github.com/sunpm/codex-quota-dock/releases/latest) 下载安装包：M 系列芯片选 `CodexQuotaDock-macOS-AppleSilicon.dmg`，Intel 芯片选 `CodexQuotaDock-macOS-Intel.dmg`。
 2. 打开 DMG，将应用拖入 `Applications`，再从“应用程序”启动。
 3. 在 Codex 中登录，打开本应用查看额度与用量；按需允许系统通知。
 
@@ -153,7 +153,7 @@ bash scripts/package-dmg.sh arm64
 bash scripts/package-dmg.sh x86_64
 ```
 
-脚本复用标准构建，使用系统 `hdiutil` 生成并校验镜像，产物位于 `dist/`。构建固定使用 native 引擎，避开 Swift Build 将 SDK 版本误写为最低系统版本、使系统沿用旧外观的问题。可通过 `APP_VERSION` 指定版本；本地默认使用源码版本与当前架构。`RELEASE_NOTES_FILE` 可指定要嵌入安装包的 UTF-8 Markdown 更新说明；未提供时，本地构建不弹出首次更新说明。
+脚本复用标准构建，使用系统 `hdiutil` 生成并校验镜像，产物位于 `dist/`。安装包固定命名为 `CodexQuotaDock-macOS-AppleSilicon.dmg` 和 `CodexQuotaDock-macOS-Intel.dmg`，不含版本号。构建固定使用 native 引擎，避开 Swift Build 将 SDK 版本误写为最低系统版本、使系统沿用旧外观的问题。可通过 `APP_VERSION` 指定版本；本地默认使用源码版本与当前架构。`RELEASE_NOTES_FILE` 可指定要嵌入安装包的 UTF-8 Markdown 更新说明；未提供时，本地构建不弹出首次更新说明。
 
 推送 `vX.Y.Z` 标签会触发 [Release 工作流](.github/workflows/release.yml)，在 `macos-15-intel` / Xcode 26.3 上运行检查、分别构建 Apple Silicon / Intel DMG，并发布校验值。`-beta.1`、`-rc.1` 等后缀标记为预发布，不设为 Latest。标签完整版本写入产物的 `ReleaseVersion`，让更新检查区分同版本号的预发布与正式版；标签版本与运行编号只写入构建产物，不回写源码元数据。
 
