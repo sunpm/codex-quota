@@ -75,7 +75,7 @@ struct UsageSessionDetailView: View {
                     costLabel([record]).frame(maxWidth: .infinity, alignment: .trailing)
                 }.width(min: 100, ideal: 115)
             }.monospacedDigit()
-            Text("API 等价估算 · USD · 缺少速度档位的旧日志按 Standard 估算")
+            Text("API 等价估算 · 缺少速度档位的旧日志按 Standard 估算")
                 .font(PanelTypography.detail).foregroundStyle(.secondary)
         }
         .padding(20)

@@ -40,7 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
         let appMenu = NSMenu(title: appName)
         root.submenu = appMenu
-        let show = NSMenuItem(title: "打开主窗口", action: #selector(showPanel), keyEquivalent: "0")
+        let show = NSMenuItem(title: "打开面板", action: #selector(showPanel), keyEquivalent: "0")
         show.target = self
         appMenu.addItem(show)
         let settings = NSMenuItem(title: "设置…", action: #selector(showSettings), keyEquivalent: ",")
