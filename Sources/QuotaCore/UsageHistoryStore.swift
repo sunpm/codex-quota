@@ -5,7 +5,7 @@ struct UsageHistory: Codable, Equatable {
     var version = 1
     var records: [String: UsageRecord] = [:]
     var projectRoots: [String: String] = [:]
-    /// 可选字段兼容已有快照，避免较新 transcript 被清理后由旧副本回退计数。
+    /// 保留旧版服务的历史元数据；当前只采集 Codex。
     var antigravityModified: [String: Date]?
 }
 
@@ -37,6 +37,14 @@ struct UsageHistoryStore {
     }
 
     func clear() throws {
+        var history = try load()
+        history.records = history.records.filter { $0.value.service != .codex }
+        let projects = Set(history.records.values.map(\.project))
+        history.projectRoots = history.projectRoots.filter { projects.contains($0.key) }
+        if !history.records.isEmpty {
+            try save(history)
+            return
+        }
         do { try FileManager.default.removeItem(at: url) }
         catch CocoaError.fileNoSuchFile { return }
     }

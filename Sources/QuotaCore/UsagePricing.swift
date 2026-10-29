@@ -61,6 +61,7 @@ public struct ModelPricing: Codable, Identifiable, Sendable {
     }
 
     public func cost(_ record: UsageRecord) -> Decimal? {
+        guard record.service == .codex else { return nil }
         let incoming = record.tokens.input + record.tokens.cached + record.tokens.cacheWrite
         let selected: TokenRates
         if let threshold = contextThreshold, incoming > threshold {
@@ -79,7 +80,7 @@ public struct ModelPricing: Codable, Identifiable, Sendable {
             multiplier = ultrafastMultiplier
         case nil: return nil
         }
-        return base * multiplier * (record.isUSOnly ? Decimal(string: "1.1")! : 1)
+        return base * multiplier
     }
 }
 
@@ -95,14 +96,14 @@ public struct UsageCost: Sendable {
 }
 
 public enum UsagePricing {
-    /// 只规范化已知厂商前缀、Claude 版本小数和日期；不猜测 auto-review 等别名。
+    /// 只规范化 OpenAI 前缀和日期；不猜测 auto-review 等别名。
     public static func lookup(service: QuotaService, model: String, prices: [String: ModelPricing]) -> ModelPricing? {
+        guard service == .codex else { return nil }
         let raw = model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if let exact = prices[ModelPricing.key(service, raw)] { return exact }
         var name = raw
-        let prefix = service == .codex ? "openai/" : "anthropic/"
+        let prefix = "openai/"
         if name.hasPrefix(prefix) { name = String(name.dropFirst(prefix.count)) }
-        if service == .claude { name = name.replacingOccurrences(of: ".", with: "-") }
         if let exact = prices[ModelPricing.key(service, name)] { return exact }
         name = name.replacingOccurrences(of: #"-\d{4}-?\d{2}-?\d{2}$"#, with: "", options: .regularExpression)
         return prices[ModelPricing.key(service, name)]
@@ -110,51 +111,47 @@ public enum UsagePricing {
 
     /// models.dev 单位为 USD / 百万 Tokens；缺失字段保留 nil，不能当免费。
     public static func decodeCatalog(_ data: Data) throws -> [String: ModelPricing] {
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw PricingError.invalidCatalog }
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let vendor = root["openai"] as? [String: Any],
+              let models = vendor["models"] as? [String: Any], !models.isEmpty else { throw PricingError.invalidCatalog }
         var result: [String: ModelPricing] = [:]
-        for (provider, service) in [("openai", QuotaService.codex), ("anthropic", .claude)] {
-            guard let vendor = root[provider] as? [String: Any], let models = vendor["models"] as? [String: Any], !models.isEmpty else {
-                throw PricingError.invalidCatalog
+        for (name, value) in models {
+            guard let model = value as? [String: Any], let cost = model["cost"] as? [String: Any] else { continue }
+            let output = (model["modalities"] as? [String: Any])?["output"] as? [String]
+            guard output == nil || output == ["text"] else { continue }
+            let rates = decodeRates(cost)
+            guard rates.input != nil, rates.output != nil else { continue }
+            var price = ModelPricing(service: .codex, model: name, rates: rates)
+            let tiers = cost["tiers"] as? [[String: Any]] ?? []
+            let context = tiers.first { ($0["tier"] as? [String: Any])?["type"] as? String == "context" }
+            if let context, let threshold = (context["tier"] as? [String: Any])?["size"] as? Int, threshold > 0 {
+                price.contextThreshold = threshold
+                price.longContextRates = decodeRates(context)
+            } else if let long = cost["context_over_200k"] as? [String: Any] {
+                price.contextThreshold = 200_000
+                price.longContextRates = decodeRates(long)
             }
-            for (name, value) in models {
-                guard let model = value as? [String: Any], let cost = model["cost"] as? [String: Any] else { continue }
-                let output = (model["modalities"] as? [String: Any])?["output"] as? [String]
-                guard output == nil || output == ["text"] else { continue }
-                let rates = decodeRates(cost, service: service)
-                guard rates.input != nil, rates.output != nil else { continue }
-                var price = ModelPricing(service: service, model: name, rates: rates)
-                let tiers = cost["tiers"] as? [[String: Any]] ?? []
-                let context = tiers.first { ($0["tier"] as? [String: Any])?["type"] as? String == "context" }
-                if let context, let threshold = (context["tier"] as? [String: Any])?["size"] as? Int, threshold > 0 {
-                    price.contextThreshold = threshold
-                    price.longContextRates = decodeRates(context, service: service)
-                } else if let long = cost["context_over_200k"] as? [String: Any] {
-                    price.contextThreshold = 200_000
-                    price.longContextRates = decodeRates(long, service: service)
-                }
-                // 已核对的 Fast 档位；其他模型保留未定价，不外推倍率。
-                if ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"].contains(name)
-                    || ["claude-opus-5-5", "claude-opus-5", "claude-opus-4-8"].contains(name) {
-                    price.fastMultiplier = 2
-                }
-                if ["gpt-6-astra", "gpt-6.1-sol"].contains(name) { price.ultrafastMultiplier = 6 }
-                if price.isValid { result[price.id] = price }
+            // 已核对的 Fast 档位；其他模型保留未定价，不外推倍率。
+            if ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"].contains(name) {
+                price.fastMultiplier = 2
             }
+            if ["gpt-6-astra", "gpt-6.1-sol"].contains(name) { price.ultrafastMultiplier = 6 }
+            if price.isValid { result[price.id] = price }
         }
         guard !result.isEmpty else { throw PricingError.invalidCatalog }
         return result
     }
 
-    private static func decodeRates(_ value: [String: Any], service: QuotaService) -> TokenRates {
+    private static func decodeRates(_ value: [String: Any]) -> TokenRates {
         func rate(_ key: String) -> Decimal? {
             guard let number = value[key] as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
                   number.doubleValue.isFinite, number.doubleValue >= 0, number.doubleValue < 1_000_000_000 else { return nil }
             return number.decimalValue
         }
         let write = rate("cache_write")
-        // Claude 1h 是 5m 的 1.6 倍；OpenAI 12h 是 30m 的 2 倍。
+        // OpenAI 12h 是 30m 的 2 倍。
         return TokenRates(input: rate("input"), output: rate("output"), cached: rate("cache_read"), cacheWrite: write,
-                          cacheWriteLong: write.map { $0 * (service == .claude ? Decimal(string: "1.6")! : 2) })
+                          cacheWriteLong: write.map { $0 * 2 })
     }
 }
 

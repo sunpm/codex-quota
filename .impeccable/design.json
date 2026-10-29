@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T02:50:35Z",
+  "title": "Design System: Codex Quota Dock",
+  "extensions": {
+    "colorMeta": {
+      "quota-normal-light": {
+        "role": "neutral",
+        "displayName": "额度灰 · 浅色",
+        "tonalRamp": [
+          "oklch(15% 0.0015 286.19)",
+          "oklch(26% 0.0034 286.19)",
+          "oklch(38% 0.0049 286.19)",
+          "oklch(49% 0.0062 286.19)",
+          "oklch(61% 0.0062 286.19)",
+          "oklch(72% 0.0049 286.19)",
+          "oklch(84% 0.0031 286.19)",
+          "oklch(95% 0.0009 286.19)"
+        ]
+      },
+      "quota-normal-dark": {
+        "role": "neutral",
+        "displayName": "额度灰 · 深色",
+        "tonalRamp": [
+          "oklch(15% 0.0018 286.21)",
+          "oklch(26% 0.0040 286.21)",
+          "oklch(38% 0.0058 286.21)",
+          "oklch(49% 0.0073 286.21)",
+          "oklch(61% 0.0073 286.21)",
+          "oklch(72% 0.0058 286.21)",
+          "oklch(84% 0.0036 286.21)",
+          "oklch(95% 0.0011 286.21)"
+        ]
+      },
+      "quota-warning-light": {
+        "role": "primary",
+        "displayName": "预警橙 · 浅色",
+        "tonalRamp": [
+          "oklch(15% 0.0413 45.60)",
+          "oklch(26% 0.0909 45.60)",
+          "oklch(38% 0.1323 45.60)",
+          "oklch(49% 0.1654 45.60)",
+          "oklch(61% 0.1654 45.60)",
+          "oklch(72% 0.1323 45.60)",
+          "oklch(84% 0.0827 45.60)",
+          "oklch(95% 0.0248 45.60)"
+        ]
+      },
+      "quota-warning-dark": {
+        "role": "primary",
+        "displayName": "预警橙 · 深色",
+        "tonalRamp": [
+          "oklch(15% 0.0346 54.31)",
+          "oklch(26% 0.0762 54.31)",
+          "oklch(38% 0.1108 54.31)",
+          "oklch(49% 0.1385 54.31)",
+          "oklch(61% 0.1385 54.31)",
+          "oklch(72% 0.1108 54.31)",
+          "oklch(84% 0.0693 54.31)",
+          "oklch(95% 0.0208 54.31)"
+        ]
+      },
+      "quota-exhausted-light": {
+        "role": "primary",
+        "displayName": "耗尽红 · 浅色",
+        "tonalRamp": [
+          "oklch(15% 0.0512 21.39)",
+          "oklch(26% 0.1126 21.39)",
+          "oklch(38% 0.1638 21.39)",
+          "oklch(49% 0.2048 21.39)",
+          "oklch(61% 0.2048 21.39)",
+          "oklch(72% 0.1638 21.39)",
+          "oklch(84% 0.1024 21.39)",
+          "oklch(95% 0.0307 21.39)"
+        ]
+      },
+      "quota-exhausted-dark": {
+        "role": "primary",
+        "displayName": "耗尽红 · 深色",
+        "tonalRamp": [
+          "oklch(15% 0.0406 11.59)",
+          "oklch(26% 0.0894 11.59)",
+          "oklch(38% 0.1300 11.59)",
+          "oklch(49% 0.1625 11.59)",
+          "oklch(61% 0.1625 11.59)",
+          "oklch(72% 0.1300 11.59)",
+          "oklch(84% 0.0813 11.59)",
+          "oklch(95% 0.0244 11.59)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "page-title": {
+        "displayName": "页面标题",
+        "purpose": "MainView 页面名称。"
+      },
+      "usage-value": {
+        "displayName": "用量主数字",
+        "purpose": "概览总 Tokens 与 API 等价费用。"
+      },
+      "quota-value": {
+        "displayName": "额度主数字",
+        "purpose": "每个额度窗口的剩余百分比。"
+      },
+      "control": {
+        "displayName": "操作与导航",
+        "purpose": "侧栏与设置的系统字体。"
+      },
+      "detail": {
+        "displayName": "时间、说明与明细",
+        "purpose": "PanelTypography.detail。"
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "普通操作按钮",
+      "kind": "button",
+      "description": "PanelButtonStyle()：macOS 26 使用 glass，旧系统使用 bordered。此处用浏览器原生按钮示意状态，不模拟 Liquid Glass。",
+      "html": "<button class=\"ds-button\" type=\"button\">刷新</button>",
+      "css": ".ds-button{appearance:auto;font:13px system-ui}.ds-button:hover{cursor:default}.ds-button:focus-visible{outline:auto}.ds-button:disabled{color:GrayText}"
+    },
+    {
+      "name": "突出操作按钮",
+      "kind": "button",
+      "description": "PanelButtonStyle(prominent: true)：保存、下载等操作。HTML 采用系统强调色示意，不是原生控件的像素复刻。",
+      "html": "<button class=\"ds-button-prominent\" type=\"button\">保存</button>",
+      "css": ".ds-button-prominent{appearance:auto;font:13px system-ui;background:Highlight;color:HighlightText}.ds-button-prominent:hover{cursor:default}.ds-button-prominent:focus-visible{outline:auto}.ds-button-prominent:disabled{color:GrayText}"
+    },
+    {
+      "name": "模型搜索输入框",
+      "kind": "input",
+      "description": "PricingSettingsView 的 roundedBorder TextField；本示意保留原生浏览器输入、标签与焦点，不规定 AppKit 边框值。",
+      "html": "<input class=\"ds-input\" type=\"search\" aria-label=\"搜索模型\" placeholder=\"搜索模型\">",
+      "css": ".ds-input{appearance:auto;font:13px system-ui}.ds-input:hover{cursor:text}.ds-input:focus-visible{outline:auto}.ds-input:disabled{color:GrayText}"
+    },
+    {
+      "name": "侧栏选中项",
+      "kind": "nav",
+      "refersTo": "sidebar-item",
+      "description": "MainView.navigationButton：选中底为强调色的 12%，文字加粗。此处省略 SF Symbols，只示意选中、字级和行密度。",
+      "html": "<nav aria-label=\"页面示意\"><button class=\"ds-nav-selected\" type=\"button\" aria-current=\"page\">额度</button></nav>",
+      "css": ".ds-nav-selected{font:600 13px system-ui;min-height:34px;padding:0 10px;border:0;border-radius:6px;color:CanvasText;background:color-mix(in srgb,Highlight 12%,transparent)}.ds-nav-selected:hover{cursor:default}.ds-nav-selected:focus-visible{outline:auto}"
+    },
+    {
+      "name": "设置卡片",
+      "kind": "card",
+      "refersTo": "panel-card",
+      "description": "panelCard() 的圆角与细边框，示例内边距来自设置调用点；Canvas 是预览替代色，原生必须使用 controlBackgroundColor。",
+      "html": "<section class=\"ds-card\"><strong>用量历史</strong><button type=\"button\">重新扫描日志</button></section>",
+      "css": ".ds-card{display:grid;gap:8px;padding:16px;border:1px solid color-mix(in srgb,CanvasText 7%,transparent);border-radius:10px;background:Canvas;color:CanvasText;font:13px system-ui}.ds-card button{appearance:auto;font:inherit;justify-self:start}.ds-card button:hover{cursor:default}.ds-card button:focus-visible{outline:auto}"
+    },
+    {
+      "name": "概览指标卡",
+      "kind": "card",
+      "refersTo": "metric-card",
+      "description": "UsageView.metricCard 的概览形态：示例金额不是用户数据，副行与主数字保持不同权重。",
+      "html": "<section class=\"ds-metric\"><span>API 等价费用</span><strong>$12.34</strong><small>较上期持平</small></section>",
+      "css": ".ds-metric{display:grid;gap:6px;padding:14px;border:1px solid color-mix(in srgb,CanvasText 7%,transparent);border-radius:10px;background:Canvas;color:CanvasText;font:13px system-ui}.ds-metric strong{font-size:25px;font-weight:600;font-variant-numeric:tabular-nums}.ds-metric small{font-size:12px;color:GrayText}"
+    },
+    {
+      "name": "额度百分比与进度",
+      "kind": "custom",
+      "refersTo": "quota-window-progress",
+      "description": "QuotaBlock 与 QuotaProgressBar 的示例读数。只使用实际额度灰；未知读数不能填充成满额。",
+      "html": "<div class=\"ds-quota\"><div class=\"ds-quota-label\"><span>5 小时额度</span><strong>58%</strong></div><div class=\"ds-quota-track\" aria-hidden=\"true\"><div></div></div></div>",
+      "css": ".ds-quota{--ds-quota-normal:#6C6C70;display:grid;gap:6px;font:13px system-ui;color:CanvasText}.ds-quota-label{display:flex;align-items:baseline;justify-content:space-between;gap:12px}.ds-quota strong{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ds-quota-normal)}.ds-quota-track{height:6px;border-radius:9999px;overflow:hidden;background:color-mix(in srgb,GrayText 18%,transparent)}.ds-quota-track>div{height:100%;width:58%;border-radius:inherit;background:var(--ds-quota-normal)}@media(prefers-color-scheme:dark){.ds-quota{--ds-quota-normal:#98989D}}"
+    },
+    {
+      "name": "图表数据浮层",
+      "kind": "custom",
+      "refersTo": "chart-tooltip",
+      "description": "趋势与热力图共用的浮层形态。原生使用 regularMaterial 并 allowsHitTesting(false)；这里以实色背景示意，不伪造材质。",
+      "html": "<div class=\"ds-tooltip\"><strong>10 月 29 日</strong><div><span>Tokens</span><span>12,345</span></div><div><span>估算费用</span><span>$0.12</span></div></div>",
+      "css": ".ds-tooltip{display:grid;gap:8px;padding:12px;border:1px solid color-mix(in srgb,CanvasText 10%,transparent);border-radius:8px;background:Canvas;color:CanvasText;font:12px system-ui;font-variant-numeric:tabular-nums;pointer-events:none}.ds-tooltip>div{display:flex;justify-content:space-between;gap:12px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "原生仪表盘",
+    "overview": "克制、清晰、紧凑。界面帮助用户查看额度、比较用量，以稳定的数字、明确的分组和系统控件建立秩序。识别来自 Codex 标识与细节的一致性；正文、数据和操作优先于装饰。\n\n这是原生 macOS 视觉规范，最低系统版本为 macOS 13。保留 SwiftUI / AppKit 的字体、控件、焦点、菜单和窗口惯例；macOS 26 及以上的部分控件使用系统 Liquid Glass。使用简体中文，保留服务名、模型名、Tokens、USD 等必要标识。产品约束见 [PRODUCT.md](PRODUCT.md)，实现与协作约束见 [AGENTS.md](AGENTS.md)。",
+    "keyCharacteristics": [
+      "系统字体与语义颜色适应系统外观，额度状态使用独立的语义色。",
+      "用底色、细边框、留白和对齐表达层次，操作使用原生控件。",
+      "数值便于比较；来源、时间、单位、未知和过期状态贴近对应数据。",
+      "文案具体简短，保留表单标签与必要口径，删除重复解释布局的说明。"
+    ],
+    "rules": [
+      {
+        "name": "状态归属",
+        "body": "额度颜色只由真实剩余值决定；品牌色、图表类别和显示舍入不改变它。",
+        "section": "colors"
+      },
+      {
+        "name": "可比较数字",
+        "body": "同列数值保持相同字级、对齐和单位口径；缩写不移除完整值的查看入口。",
+        "section": "typography"
+      },
+      {
+        "name": "系统材质",
+        "body": "材质与控件状态交给平台；用自定义表面时，复用 `panelCard()` 的底色和边框。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** 复用 `PanelTypography.detail`、`PanelButtonStyle`、`panelCard()` 与 `quotaColor`。",
+      "**Do** 保留系统色和原生控件的语义，分别处理品牌、图表类别与额度状态。",
+      "**Do** 用等宽数字、右对齐和一致单位支持比较，把来源、时间与必要口径贴近数据。",
+      "**Do** 为截断名称保留完整值入口，为未知、部分和过期状态保留明确文字。",
+      "**Do** 使用简短中文控件名，保留表单标签和必要错误信息。"
+    ],
+    "donts": [
+      "**Don't** 从一张浅色截图固化系统背景、强调色、字体度量或玻璃材质。",
+      "**Don't** 为了装饰增加大面积自造背景、阴影层级、字体或动画系统。",
+      "**Don't** 用颜色独自表达类别或错误，也不要把未知额度显示成满额、缺价显示成免费。",
+      "**Don't** 让长名称挤走核心数字，或把重要读取警告放到长页面末尾。",
+      "**Don't** 把 HTML 示意、源码支持或单次窗口检查写成全尺寸、深色或无障碍验收通过。"
+    ]
+  }
+}

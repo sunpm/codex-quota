@@ -14,35 +14,6 @@ enum CodexLogo {
 /// cc-bar 的单色模板图像方案：系统负责菜单栏的深浅色和高亮着色。
 @MainActor
 enum MenuBarImageRenderer {
-    struct Entry {
-        let service: QuotaService
-        let windows: [QuotaWindow]
-        var hasError = false
-    }
-
-    static func image(entries: [Entry]) -> NSImage {
-        guard !entries.isEmpty else {
-            let paused = NSImage(systemSymbolName: "pause.circle", accessibilityDescription: "监测已关闭")!
-            paused.isTemplate = true
-            return paused
-        }
-        let images = entries.map { entry in
-            image(windows: entries.count == 1 ? displayedWindows(from: entry.windows) : Array(entry.windows.prefix(1)),
-                  hasError: entry.hasError, service: entry.service)
-        }
-        let width = images.reduce(CGFloat(0)) { $0 + $1.size.width } + CGFloat(max(0, images.count - 1)) * 9
-        let result = NSImage(size: NSSize(width: width, height: 22))
-        result.lockFocus()
-        var x: CGFloat = 0
-        for image in images {
-            image.draw(at: NSPoint(x: x, y: 0), from: .zero, operation: .sourceOver, fraction: 1)
-            x += image.size.width + 9
-        }
-        result.unlockFocus()
-        result.isTemplate = true
-        return result
-    }
-
     static func displayedWindows(from windows: [QuotaWindow]) -> [QuotaWindow] {
         let codex = windows.filter { $0.bucket == "codex" }
         return Array((codex.isEmpty ? windows : codex).sorted {
@@ -50,7 +21,7 @@ enum MenuBarImageRenderer {
         }.prefix(2))
     }
 
-    static func image(windows: [QuotaWindow], hasError: Bool, service: QuotaService = .codex) -> NSImage {
+    static func image(windows: [QuotaWindow], hasError: Bool) -> NSImage {
         let iconSize: CGFloat = 18
         let height: CGFloat = 22
         let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.menuBarFont(ofSize: 0).pointSize, weight: .regular)
@@ -62,7 +33,7 @@ enum MenuBarImageRenderer {
         result.lockFocus()
         NSColor.clear.setFill()
         NSRect(origin: .zero, size: result.size).fill()
-        let logo = (service == .codex ? CodexLogo.image : nil) ?? NSImage(systemSymbolName: service.symbol, accessibilityDescription: nil)
+        let logo = CodexLogo.image ?? NSImage(systemSymbolName: "terminal", accessibilityDescription: nil)
         logo?.draw(in: NSRect(x: 0, y: 2, width: iconSize, height: iconSize))
         text.draw(at: NSPoint(x: iconSize + 3, y: floor((height - textSize.height) / 2)), withAttributes: attributes)
         result.unlockFocus()

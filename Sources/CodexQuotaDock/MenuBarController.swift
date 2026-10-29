@@ -55,27 +55,20 @@ final class MenuBarController: NSObject {
     }
 
     private func render() {
-        let services = model.menuBarServices
         statusItem.isVisible = model.hasMenuBarItem
-        guard statusItem.isVisible else { return }
-        guard let button = statusItem.button else { return }
-        let entries = services.map { service in
-            let snapshot = model.snapshot(service)
-            return MenuBarImageRenderer.Entry(service: service, windows: snapshot.windows, hasError: snapshot.errorMessage != nil)
-        }
-        let image = MenuBarImageRenderer.image(entries: entries)
+        guard statusItem.isVisible, let button = statusItem.button else { return }
+        let snapshot = model.snapshot
+        let image = MenuBarImageRenderer.image(windows: MenuBarImageRenderer.displayedWindows(from: snapshot.windows),
+                                               hasError: snapshot.errorMessage != nil)
         statusItem.length = image.size.width + 8
         button.image = image
-        let description = entries.map { entry in
-            let details = entry.windows.map { window in
-                let reset = window.resetsAt.map { "，\($0.formatted(date: .abbreviated, time: .shortened)) 重置" } ?? ""
-                return "\(window.displayLabel)：剩余 \(window.percentageText)\(reset)"
-            }.joined(separator: "；")
-            return "\(entry.service.title)：\(details.isEmpty ? "等待数据" : details)"
-        }.joined(separator: "\n")
-        let errors = services.compactMap { service in model.snapshot(service).errorMessage.map { "\(service.title)：\($0)" } }
-        let status = errors.isEmpty ? description : "额度可能已过期：\(errors.joined(separator: "\n"))"
-        button.setAccessibilityLabel("服务额度。\(status)。单击打开主窗口。")
+        let description = snapshot.windows.map { window in
+            let reset = window.resetsAt.map { "，\($0.formatted(date: .abbreviated, time: .shortened)) 重置" } ?? ""
+            return "\(window.displayLabel)：剩余 \(window.percentageText)\(reset)"
+        }.joined(separator: "；")
+        let status = snapshot.errorMessage.map { "额度可能已过期：\($0)" }
+            ?? (description.isEmpty ? "等待数据" : description)
+        button.setAccessibilityLabel("Codex 额度。\(status)。单击打开主窗口。")
         button.toolTip = "\(status)\n单击打开主窗口 · 右键打开菜单"
     }
 }

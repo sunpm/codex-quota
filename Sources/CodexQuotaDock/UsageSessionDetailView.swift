@@ -80,6 +80,7 @@ struct UsageSessionDetailView: View {
         }
         .padding(20)
         .frame(minWidth: 800, idealWidth: 1000, minHeight: 480, idealHeight: 640)
+        .buttonStyle(PanelButtonStyle())
     }
 
     private func number(_ value: Int) -> some View {

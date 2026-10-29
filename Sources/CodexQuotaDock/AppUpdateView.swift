@@ -35,23 +35,46 @@ struct AppUpdateView: View {
                     Text(release.status).fontWeight(.medium)
                     Spacer()
                     if release.isNewer, let url = release.downloadURL {
-                        Link("下载 \(model.architecture) 版", destination: url).buttonStyle(.borderedProminent)
+                        Link("下载 \(model.architecture) 版", destination: url).buttonStyle(PanelButtonStyle(prominent: true))
                     }
                 }
                 if release.isNewer, release.downloadURL == nil {
                     Text("该版本暂未提供 \(model.architecture) 安装包，请到发布页查看。")
                         .foregroundStyle(.secondary)
                 }
-                DisclosureGroup("\(release.version) 更新说明", isExpanded: $showsNotes) {
-                    ScrollView {
-                        ReleaseNotesView(markdown: release.notes.isEmpty ? "此版本未提供更新说明。" : release.notes)
-                            .padding(.vertical, 8).padding(.trailing, 12)
-                    }.frame(maxHeight: 240)
+                if release.isNewer {
+                    DisclosureGroup("\(release.version) 更新说明", isExpanded: $showsNotes) {
+                        ScrollView {
+                            ReleaseNotesView(markdown: release.notes.isEmpty ? "此版本未提供更新说明。" : release.notes)
+                                .padding(.vertical, 8).padding(.trailing, 12)
+                        }.frame(maxHeight: 240)
+                    }
                 }
             }
             Link("在 GitHub 查看发布页", destination: model.release?.pageURL ?? AppUpdateModel.releasesURL)
-                .font(PanelTypography.detail)
+                .buttonStyle(.link).font(PanelTypography.detail)
         }.padding(16).panelCard()
+    }
+}
+
+struct InstalledReleaseNotesView: View {
+    let version: String
+    let markdown: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("\(version) 更新说明").font(.title2.weight(.semibold))
+            ScrollView {
+                ReleaseNotesView(markdown: markdown).padding(.trailing, 12)
+            }
+            HStack {
+                Spacer()
+                Button("知道了") { dismiss() }
+                    .buttonStyle(PanelButtonStyle(prominent: true))
+                    .keyboardShortcut(.defaultAction)
+            }
+        }.padding(24).frame(width: 560, height: 440)
     }
 }
 
