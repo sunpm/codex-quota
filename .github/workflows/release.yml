@@ -67,10 +67,10 @@ jobs:
       - name: Prepare release assets
         run: |
           (cd dist && shasum -a 256 \
-            "CodexQuotaDock-macOS-AppleSilicon.dmg" \
-            "CodexQuotaDock-macOS-Intel.dmg" > SHA256SUMS.txt)
+            "CodexQuota-macOS-AppleSilicon.dmg" \
+            "CodexQuota-macOS-Intel.dmg" > SHA256SUMS.txt)
           cat > dist/release-notes.md <<'EOF'
-          适用于 macOS 13 及以上。Apple Silicon（M 系列芯片）下载 CodexQuotaDock-macOS-AppleSilicon.dmg，Intel 芯片下载 CodexQuotaDock-macOS-Intel.dmg。打开 DMG，将应用拖入 Applications。
+          适用于 macOS 13 及以上。Apple Silicon（M 系列芯片）下载 CodexQuota-macOS-AppleSilicon.dmg，Intel 芯片下载 CodexQuota-macOS-Intel.dmg。打开 DMG，将应用拖入 Applications。
 
           当前使用 ad-hoc 签名，未经过 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。
 
@@ -88,8 +88,8 @@ jobs:
             options+=(--prerelease --latest=false)
           fi
           gh release create "$RELEASE_TAG" \
-            "dist/CodexQuotaDock-macOS-AppleSilicon.dmg" \
-            "dist/CodexQuotaDock-macOS-Intel.dmg" \
+            "dist/CodexQuota-macOS-AppleSilicon.dmg" \
+            "dist/CodexQuota-macOS-Intel.dmg" \
             dist/SHA256SUMS.txt \
             --verify-tag --title "$RELEASE_TAG" \
             --notes-file dist/release-notes.md "${options[@]}"

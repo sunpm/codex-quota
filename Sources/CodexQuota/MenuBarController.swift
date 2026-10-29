@@ -24,7 +24,7 @@ final class MenuBarController: NSObject {
         item.target = self
         menu.addItem(item)
         menu.addItem(.separator())
-        let quit = menu.addItem(withTitle: "退出 Codex Quota Dock", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = menu.addItem(withTitle: "退出 Codex Quota", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         statusItem.menu = menu
 

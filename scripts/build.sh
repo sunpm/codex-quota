@@ -5,11 +5,11 @@ cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/clang-module-cache"
 # Swift Build 目前会把最低系统版本写成链接 SDK 版本，导致系统沿用旧外观。
 # 使用 native 保留真实 SDK 版本：https://github.com/swiftlang/swift-build/issues/1887
-swift build --build-system native -c release --product CodexQuotaDock --disable-sandbox "$@"
+swift build --build-system native -c release --product CodexQuota --disable-sandbox "$@"
 BIN_DIR="$(swift build --build-system native -c release --show-bin-path "$@")"
-APP_DIR="$PROJECT_DIR/dist/Codex Quota Dock.app"
+APP_DIR="$PROJECT_DIR/dist/Codex Quota.app"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
-cp "$BIN_DIR/CodexQuotaDock" "$APP_DIR/Contents/MacOS/CodexQuotaDock"
+cp "$BIN_DIR/CodexQuota" "$APP_DIR/Contents/MacOS/CodexQuota"
 cp Resources/Info.plist "$APP_DIR/Contents/Info.plist"
 if [[ -n "${APP_VERSION:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$APP_DIR/Contents/Info.plist"

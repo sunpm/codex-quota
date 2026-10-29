@@ -97,7 +97,7 @@ final class CodexClient: QuotaClient {
         }
         do {
             try child.run()
-            _ = try await request("initialize", params: ["clientInfo": ["name": "codex_quota_dock", "title": "Codex Quota Dock", "version": "0.4.0"]])
+            _ = try await request("initialize", params: ["clientInfo": ["name": "codex_quota", "title": "Codex Quota", "version": "0.4.0"]])
             try send(["method": "initialized", "params": [:]])
         } catch {
             stop()

@@ -17,7 +17,7 @@ final class ControlPanelController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "Codex Quota Dock"
+        window.title = "Codex Quota"
         window.identifier = NSUserInterfaceItemIdentifier("control-panel")
         window.setFrameAutosaveName("ControlPanel")
         window.contentMinSize = NSSize(width: 860, height: 560)

@@ -3,13 +3,14 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>CodexQuotaDock</string>
+	<string>CodexQuota</string>
+	<!-- 保留原标识，沿用已有设置和系统授权。 -->
 	<key>CFBundleIdentifier</key>
 	<string>local.codexquotadock.app</string>
 	<key>CFBundleName</key>
-	<string>Codex Quota Dock</string>
+	<string>Codex Quota</string>
 	<key>CFBundleDisplayName</key>
-	<string>Codex Quota Dock</string>
+	<string>Codex Quota</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

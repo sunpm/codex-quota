@@ -23,7 +23,7 @@ final class ResetAnnouncementClient {
     func fetch(etag: String?) async throws -> Response {
         var request = URLRequest(url: URL(string: "https://aihot.news/api/v1/codex-resets/recent")!)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("CodexQuotaDock", forHTTPHeaderField: "User-Agent")
+        request.setValue("CodexQuota", forHTTPHeaderField: "User-Agent")
         request.setValue(etag, forHTTPHeaderField: "If-None-Match")
         let (data, rawResponse) = try await session.data(for: request)
         try Task.checkCancellation()

@@ -7,7 +7,7 @@ export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/clang-module-cache"
 swift run --build-system native --disable-sandbox QuotaCoreChecks
 BIN_DIR="$(swift build --build-system native --disable-sandbox --show-bin-path)"
 APP_SOURCES=()
-for source in Sources/CodexQuotaDock/*.swift; do
+for source in Sources/CodexQuota/*.swift; do
     if [[ "$source" != */App.swift ]]; then APP_SOURCES+=("$source"); fi
 done
 # 与正式 App 使用同一份实现，注入模拟客户端；不依赖 XCTest / 完整 Xcode。

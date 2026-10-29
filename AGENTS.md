@@ -19,7 +19,7 @@
 ## 项目结构
 
 - Codex 专用的原生 macOS 额度与用量应用，以主窗口为主体，菜单栏额度显示可选；Swift Package，最低 macOS 13，无需第三方 Swift 包。
-- `Sources/CodexQuotaDock/`：入口、服务客户端、监测调度、SwiftUI 面板和 AppKit 菜单栏。
+- `Sources/CodexQuota/`：入口、服务客户端、监测调度、SwiftUI 面板和 AppKit 菜单栏。
 - `Sources/QuotaCore/`：额度模型、响应解析、倒计时与通知判定；保持可离线验证。
 - `Sources/CZstd/`：随应用静态编译的 Zstandard 解码源码；版本、生成方式和许可见 `THIRD_PARTY_NOTICES.md`，不依赖系统安装的 `zstd`。
 - `Tests/QuotaCoreTests/`：可执行的自包含检查，不依赖完整 Xcode / XCTest。
@@ -29,6 +29,7 @@
 
 ## 实现与界面
 
+- 产品名为 `Codex Quota`，仓库为 `sunpm/codex-quota`；保留 Bundle ID `local.codexquotadock.app`、原配置键及 `CodexQuotaDock` 历史数据目录，更新检查兼容旧附件名。
 - 优先 SwiftUI / AppKit 系统控件、SF Symbols 和原生 macOS 风格；不添加无关装饰或大面积自造背景。
 - 百分比和倒计时使用等宽数字。额度状态色统一使用 `quotaColor`；品牌识别与额度状态分开。
 - 仅接入和展示 Codex，保留额度监测与用量分析；不恢复其他服务的接入、解析或选择器。旧服务标识仅用于兼容已有持久化数据，不参与新采集与展示。

@@ -1,5 +1,5 @@
 ---
-name: Codex Quota Dock
+name: Codex Quota
 description: 克制、清晰、紧凑的原生 macOS 额度与用量仪表盘。
 colors:
   quota-normal-light: "#6C6C70"
@@ -64,7 +64,7 @@ components:
     typography: "{typography.detail}"
 ---
 
-# Design System: Codex Quota Dock
+# Design System: Codex Quota
 
 ## Overview
 
@@ -92,7 +92,7 @@ components:
 ### Primary
 
 - **系统强调色**：`Color.accentColor`，用于导航、分段控件的实色选中底及更新标记；选中项的文字与图标使用白色。原生突出按钮和链接遵循系统样式。不要从截图提取一个蓝色常量代替它。
-- **额度状态色**：统一调用 `quotaColor(remaining:)`，定义位于 [QuotaAppearance.swift](Sources/CodexQuotaDock/QuotaAppearance.swift)。`quota-normal-*` 为额度灰，`quota-warning-*` 为预警橙，`quota-exhausted-*` 为耗尽红；文件头的 `light` / `dark` 成对使用。
+- **额度状态色**：统一调用 `quotaColor(remaining:)`，定义位于 [QuotaAppearance.swift](Sources/CodexQuota/QuotaAppearance.swift)。`quota-normal-*` 为额度灰，`quota-warning-*` 为预警橙，`quota-exhausted-*` 为耗尽红；文件头的 `light` / `dark` 成对使用。
 
 | 实际剩余值 | 色彩角色 | 当前应用 |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 
 ## Layout
 
-使用固定侧栏与可伸缩内容区。主窗口初始内容尺寸为 1140 × 760pt，最低内容尺寸为 860 × 560pt；数值来自 [ControlPanelController.swift](Sources/CodexQuotaDock/ControlPanelController.swift)，是实现约束，并非最小尺寸验收记录。
+使用固定侧栏与可伸缩内容区。主窗口初始内容尺寸为 1140 × 760pt，最低内容尺寸为 860 × 560pt；数值来自 [ControlPanelController.swift](Sources/CodexQuota/ControlPanelController.swift)，是实现约束，并非最小尺寸验收记录。
 
 | 空间角色 | 现有规则 |
 | --- | --- |
@@ -168,7 +168,7 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 | 占比 | 60 / 65 / 100 |
 | 缓存命中率 | 80 / 85 / 110 |
 
-页面当前排布以 [MainView.swift](Sources/CodexQuotaDock/MainView.swift) 与 [UsageView.swift](Sources/CodexQuotaDock/UsageView.swift) 为准，不把某一页的卡片数量提升为所有页面的规则。
+页面当前排布以 [MainView.swift](Sources/CodexQuota/MainView.swift) 与 [UsageView.swift](Sources/CodexQuota/UsageView.swift) 为准，不把某一页的卡片数量提升为所有页面的规则。
 
 ## Elevation & Depth
 
@@ -188,13 +188,13 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 
 ### Buttons
 
-使用 [PanelButtonStyle](Sources/CodexQuotaDock/QuotaAppearance.swift)，普通按钮使用标准原生样式，仅 prominent 样式按系统版本分派。保存、下载和已安装更新说明的完成操作可使用突出样式；链接使用 `.link`，导航与列表内入口使用 `.plain`。不自绘 hover、focus 或按下背景来覆盖原生控件。
+使用 [PanelButtonStyle](Sources/CodexQuota/QuotaAppearance.swift)，普通按钮使用标准原生样式，仅 prominent 样式按系统版本分派。保存、下载和已安装更新说明的完成操作可使用突出样式；链接使用 `.link`，导航与列表内入口使用 `.plain`。不自绘 hover、focus 或按下背景来覆盖原生控件。
 
 默认操作与取消操作使用对应 `keyboardShortcut`；禁用通过 `.disabled` 表达，刷新或提交中的等待通过 `ProgressView` 或动作名称体现。保留必要的按钮名称；纯图标必须有可理解的辅助标签。
 
 ### Cards / Containers
 
-`panelCard()` 位于 [UsageView.swift](Sources/CodexQuotaDock/UsageView.swift)，使用控制背景、`card` 圆角和细边框。图表、设置组、额度块及指标卡复用这一表面；字号与 padding 由内容角色决定。标题、数值和操作通过对齐建立层级，不额外加解释布局的副标题。
+`panelCard()` 位于 [UsageView.swift](Sources/CodexQuota/UsageView.swift)，使用控制背景、`card` 圆角和细边框。图表、设置组、额度块及指标卡复用这一表面；字号与 padding 由内容角色决定。标题、数值和操作通过对齐建立层级，不额外加解释布局的副标题。
 
 ### Inputs / Fields
 
@@ -230,7 +230,7 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 
 沿用应用图标的原创缺口 Q，以单色模板轮廓与最多两个额度百分比组成紧凑入口；图标为 18pt，画布高 22pt，图文间距 3pt，字体取系统菜单栏等宽数字。无读数显示 `--`，读取错误附加 `!`；系统负责外观与选中着色，不把菜单栏绘成彩色状态徽章。
 
-单击或右键均打开原生菜单，提供“打开面板”和“退出 Codex Quota Dock”。打开面板复用同一窗口；菜单栏本身不直接唤起窗口。
+单击或右键均打开原生菜单，提供“打开面板”和“退出 Codex Quota”。打开面板复用同一窗口；菜单栏本身不直接唤起窗口。
 
 ## Do's and Don'ts
 

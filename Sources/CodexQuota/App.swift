@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let menu = NSMenu()
         let root = NSMenuItem()
         menu.addItem(root)
-        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota"
         let appMenu = NSMenu(title: appName)
         root.submenu = appMenu
         let show = NSMenuItem(title: "打开面板", action: #selector(showPanel), keyEquivalent: "0")
@@ -99,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 }
 
 @main
-struct CodexQuotaDockApp {
+struct CodexQuotaApp {
     @MainActor
     static func main() {
         if let index = CommandLine.arguments.firstIndex(of: "--render-menu-previews"), CommandLine.arguments.count > index + 1 {

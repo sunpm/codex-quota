@@ -1,4 +1,4 @@
-# Codex Quota Dock
+# Codex Quota
 
 <!-- impeccable:product-schema 1 -->
 
@@ -59,7 +59,7 @@ macos
 
 ## Brand Commitments
 
-- 产品名称保持为 Codex Quota Dock。
+- 产品名称保持为 Codex Quota。
 - 延续原生 macOS 的使用习惯，优先系统控件、SF Symbols 与系统交互。
 - 现有界面以简体中文表达，保留服务、模型名称与必要技术标识。文案具体、简洁，保留必要控件标签、数据口径和可执行的错误信息，删除重复解释布局的文字。
 - 品牌识别不能代替额度状态表达；外部图标、代码与数据来源保留许可声明。
@@ -68,7 +68,7 @@ macos
 
 - [README.md](README.md)：现有能力、使用流程、统计口径与运行限制。
 - [AGENTS.md](AGENTS.md)：原生界面、数据真实性、凭据及生命周期约束。
-- `Sources/CodexQuotaDock/` 与 `Sources/QuotaCore/`：现有界面、服务集成和统计实现；当前工作区不等同于已发布版本，发行功能以对应更新记录为准。
+- `Sources/CodexQuota/` 与 `Sources/QuotaCore/`：现有界面、服务集成和统计实现；当前工作区不等同于已发布版本，发行功能以对应更新记录为准。
 - `docs/images/quota.png`、`docs/images/settings.png`：使用示例数据的界面预览，不是真实用户、账号或线上用量证据。
 - `Resources/codex.svg`、`scripts/make-icon.swift` 与 `THIRD_PARTY_NOTICES.md`：现有视觉资产、应用图标生成方式及来源许可。
 - `Tests/QuotaCoreTests/`、`Tests/AppChecks/`：已有离线检查与模拟预览能力，不能据此宣称真实服务连接已验证。

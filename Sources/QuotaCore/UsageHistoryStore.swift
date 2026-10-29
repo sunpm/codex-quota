@@ -13,6 +13,7 @@ struct UsageHistoryStore {
     let url: URL
 
     init(url: URL? = nil) {
+        // 产品更名后继续使用原目录，保留已采集历史。
         self.url = url ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("CodexQuotaDock/usage-history.json")
     }

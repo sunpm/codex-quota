@@ -1,12 +1,12 @@
-# Codex Quota Dock
+# Codex Quota
 
 在一个 macOS 原生窗口中查看 Codex 的剩余额度、Token 用量和估算费用，额度恢复时收到通知，也可在菜单栏显示剩余百分比。
 
-[下载最新版](https://github.com/sunpm/codex-quota-dock/releases/latest) · [更新记录](https://github.com/sunpm/codex-quota-dock/releases) · [反馈问题](https://github.com/sunpm/codex-quota-dock/issues)
+[下载最新版](https://github.com/sunpm/codex-quota/releases/latest) · [更新记录](https://github.com/sunpm/codex-quota/releases) · [反馈问题](https://github.com/sunpm/codex-quota/issues)
 
-![Codex Quota Dock 实机截图：剩余额度、消耗趋势与重置倒计时](docs/images/quota.png)
+![Codex Quota 实机截图：剩余额度、消耗趋势与重置倒计时](docs/images/quota.png)
 
-*v0.15.0 源码构建的 macOS 实机截图，不含账号、项目路径或对话标识。*
+*更名前 v0.15.0 源码构建的 macOS 实机截图，不含账号、项目路径或对话标识。*
 
 <details open>
 <summary>监测与通知设置</summary>
@@ -27,17 +27,19 @@
 
 普通按钮使用标准原生样式；macOS 26 及以上的侧栏和突出操作按钮采用 Liquid Glass，开关遵循系统外观。macOS 13–15 使用系统常规样式，功能一致。
 
-1. 从 [Releases](https://github.com/sunpm/codex-quota-dock/releases/latest) 下载安装包：M 系列芯片选 `CodexQuotaDock-macOS-AppleSilicon.dmg`，Intel 芯片选 `CodexQuotaDock-macOS-Intel.dmg`。
+1. 从 [Releases](https://github.com/sunpm/codex-quota/releases/latest) 下载安装包：M 系列芯片选 `CodexQuota-macOS-AppleSilicon.dmg`，Intel 芯片选 `CodexQuota-macOS-Intel.dmg`。
 2. 打开 DMG，将应用拖入 `Applications`，再从“应用程序”启动。
 3. 在 Codex 中登录，打开本应用查看额度与用量；按需允许系统通知。
+
+从 Codex Quota Dock 升级时，先退出并移除旧应用包，再安装 Codex Quota；已有设置和用量历史继续沿用。
 
 当前安装包使用 ad-hoc 签名，尚未进行 Developer ID 签名与 Apple 公证，macOS 可能阻止首次打开。Release 同时提供 `SHA256SUMS.txt`。
 
 ### 首次打开被阻止
 
-如果提示“无法验证开发者”或“Apple 无法检查其是否包含恶意软件”，确认应用来自本仓库的 [Releases](https://github.com/sunpm/codex-quota-dock/releases/latest) 后：
+如果提示“无法验证开发者”或“Apple 无法检查其是否包含恶意软件”，确认应用来自本仓库的 [Releases](https://github.com/sunpm/codex-quota/releases/latest) 后：
 
-1. 从“应用程序”尝试打开 `Codex Quota Dock`，关闭拦截提示。
+1. 从“应用程序”尝试打开 `Codex Quota`，关闭拦截提示。
 2. 打开“系统设置 → 隐私与安全性”，向下滚动，在该应用的拦截信息旁点击“仍要打开”。
 3. 按系统提示确认，再点击“打开”。此后可正常双击启动。
 
@@ -47,10 +49,10 @@
 
 - **查看额度**：在“额度”查看 Codex 剩余百分比与重置倒计时；开启监测时默认每 5 分钟查询，可点击设置中“刷新间隔”右侧的时长，直接编辑秒数（最低 30 秒）。回车或点击输入框外保存并重新计时，重启后保留。启动、唤醒及重新开启监测时立即查询，也可手动刷新；所有查询仍遵守服务端限流。倒计时在本地计算；失败保留上次读数和更新时间并标明过期。额度刷新设置不影响公开重置动态和本机日志各自的刷新周期。
 - **额度消耗趋势**：额度页按窗口展示已用百分比，可切换最近 24 小时或 7 天，悬停查看采样时间与读数。每次成功查询更新记录，每五分钟保留最新实测值和每段起点；首次采样显示一个点，随监测积累曲线。重置、读数下降、查询失败、关闭监测、睡眠或超过当前刷新间隔的 3 倍未采样时断开曲线（默认 15 分钟，30 秒间隔时为 90 秒），不补造空白时段或启动前的历史。
-- **菜单栏**：以应用的单色缺口 Q 图标搭配 Codex 剩余额度，用一个开关控制是否显示；点击或右键打开菜单，选择“打开面板”或“退出 Codex Quota Dock”。隐藏菜单栏不影响后台监测。
+- **菜单栏**：以应用的单色缺口 Q 图标搭配 Codex 剩余额度，用一个开关控制是否显示；点击或右键打开菜单，选择“打开面板”或“退出 Codex Quota”。隐藏菜单栏不影响后台监测。
 - **恢复提醒**：首次启动允许通知后，可在“设置 → 通知”发送测试通知或开启持久通知引导。macOS 26 及更新版本在系统通知设置中开启桌面提醒并选择“持续”，旧版选择“提醒”。
 - **重置动态**：额度页下方独立显示最近三条 Tibo 重置或发卡动态，数据来自 [AIHOT](https://aihot.news/codex-reset)，每 10 分钟查询。可在“设置 → 通知”开启独立的“Codex 重置动态通知”（默认关闭），点击通知打开原帖。
-- **后台运行**：关闭窗口后继续监测；有菜单栏额度入口时隐藏 Dock 图标，从菜单栏选择“打开面板”可恢复同一窗口和 Dock 图标。未显示菜单栏额度时，关闭窗口仍保留 Dock 入口。`⌘Q` 或菜单栏的“退出 Codex Quota Dock”会彻底退出并停止监测。需要开机启动时，在设置中开启“登录 Mac 时启动”。
+- **后台运行**：关闭窗口后继续监测；有菜单栏额度入口时隐藏 Dock 图标，从菜单栏选择“打开面板”可恢复同一窗口和 Dock 图标。未显示菜单栏额度时，关闭窗口仍保留 Dock 入口。`⌘Q` 或菜单栏的“退出 Codex Quota”会彻底退出并停止监测。需要开机启动时，在设置中开启“登录 Mac 时启动”。
 - **检查更新**：默认在启动时自动查询 GitHub 最新正式版，后台运行期间约每 24 小时检查一次；发现新版本时，侧栏设置入口显示更新标记。“设置 → 软件更新”提供手动检查，下方设置分组中的“自动检查更新”开关控制自动检查（重启后保留选择）；仅发现新版本时显示更新说明和对应 Mac 的 Apple Silicon / Intel DMG 下载入口（Rosetta 下也优先下载 Apple Silicon 版）。当前版本的更新说明随发行包保存，每个版本首次打开时弹出一次，离线或关闭自动检查时也可查看；已是最新版时不在设置里重复展示。下载由默认浏览器处理，安装仍需手动完成；没有对应附件时提供发布页入口。检查不使用账号凭据，手动查询也计入自动检查间隔，失败保留上次版本信息；遇到 GitHub 限流等待允许重试的时间，睡眠暂停自动检查、唤醒恢复。
 
 | 快捷键 | 操作 |
@@ -99,7 +101,7 @@
 
 ## 数据与凭据
 
-已采集的本地用量保存在 `~/Library/Application Support/CodexQuotaDock/usage-history.json`。只保存用量、计费与项目归属所需元数据，不保存消息正文或凭据；源日志被清理后，已经采集的记录仍可查看，采集前已删除的内容无法恢复。读取失败保留原文件，保存失败保留内存结果并提示。
+已采集的本地用量保存在 `~/Library/Application Support/CodexQuotaDock/usage-history.json`，更名后沿用原目录。只保存用量、计费与项目归属所需元数据，不保存消息正文或凭据；源日志被清理后，已经采集的记录仍可查看，采集前已删除的内容无法恢复。读取失败保留原文件，保存失败保留内存结果并提示。
 
 额度趋势独立保存在本应用 UserDefaults 的 `quotaHistory.v1` 中，保留最近使用账号的 7 天观测与账号 SHA-256 摘要，不保存凭据。重启后首次成功查询核对账号再显示；切换账号会重新积累，避免混合不同账号的额度。清除本地 Token 用量历史不影响额度趋势。
 
@@ -129,10 +131,10 @@ Codex 接口或日志格式升级后可能需要适配；没有有效额度时�
 需要 Xcode 26 或更新版本（或包含 macOS 26 SDK 的 Command Line Tools）；构建工具要求不改变应用最低 macOS 13 的运行要求。项目采用 Swift Package、SwiftUI / AppKit，无第三方 Swift 包；Zstandard 解码源码静态编译，无需额外安装 `zstd`。
 
 ```sh
-git clone https://github.com/sunpm/codex-quota-dock.git
-cd codex-quota-dock
+git clone https://github.com/sunpm/codex-quota.git
+cd codex-quota
 bash scripts/build.sh
-open "dist/Codex Quota Dock.app"
+open "dist/Codex Quota.app"
 ```
 
 应用产物位于 `dist/`。现有离线检查入口：
@@ -153,7 +155,7 @@ bash scripts/package-dmg.sh arm64
 bash scripts/package-dmg.sh x86_64
 ```
 
-脚本复用标准构建，使用系统 `hdiutil` 生成并校验镜像，产物位于 `dist/`。安装包固定命名为 `CodexQuotaDock-macOS-AppleSilicon.dmg` 和 `CodexQuotaDock-macOS-Intel.dmg`，不含版本号。构建固定使用 native 引擎，避开 Swift Build 将 SDK 版本误写为最低系统版本、使系统沿用旧外观的问题。可通过 `APP_VERSION` 指定版本；本地默认使用源码版本与当前架构。`RELEASE_NOTES_FILE` 可指定要嵌入安装包的 UTF-8 Markdown 更新说明；未提供时，本地构建不弹出首次更新说明。
+脚本复用标准构建，使用系统 `hdiutil` 生成并校验镜像，产物位于 `dist/`。安装包固定命名为 `CodexQuota-macOS-AppleSilicon.dmg` 和 `CodexQuota-macOS-Intel.dmg`，不含版本号。构建固定使用 native 引擎，避开 Swift Build 将 SDK 版本误写为最低系统版本、使系统沿用旧外观的问题。可通过 `APP_VERSION` 指定版本；本地默认使用源码版本与当前架构。`RELEASE_NOTES_FILE` 可指定要嵌入安装包的 UTF-8 Markdown 更新说明；未提供时，本地构建不弹出首次更新说明。
 
 推送 `vX.Y.Z` 标签会触发 [Release 工作流](.github/workflows/release.yml)，在 `macos-15-intel` / Xcode 26.3 上运行检查、分别构建 Apple Silicon / Intel DMG，并发布校验值。`-beta.1`、`-rc.1` 等后缀标记为预发布，不设为 Latest。标签完整版本写入产物的 `ReleaseVersion`，让更新检查区分同版本号的预发布与正式版；标签版本与运行编号只写入构建产物，不回写源码元数据。
 
@@ -162,8 +164,8 @@ bash scripts/package-dmg.sh x86_64
 构建后的应用提供两个可选诊断入口：
 
 ```sh
-"dist/Codex Quota Dock.app/Contents/MacOS/CodexQuotaDock" --probe
-"dist/Codex Quota Dock.app/Contents/MacOS/CodexQuotaDock" --render-menu-previews work/menu-previews
+"dist/Codex Quota.app/Contents/MacOS/CodexQuota" --probe
+"dist/Codex Quota.app/Contents/MacOS/CodexQuota" --render-menu-previews work/menu-previews
 ```
 
 `--probe` 会使用真实 Codex 登录态查询，仅输出登录复用状态及剩余百分比；`--render-menu-previews` 使用示例数据生成菜单栏图片，不启动监测。

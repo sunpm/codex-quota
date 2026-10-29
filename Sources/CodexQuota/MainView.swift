@@ -81,7 +81,7 @@ struct MainView: View {
     }
 
     private var appName: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota Dock"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Codex Quota"
     }
 
     private var persistentNotificationGuide: String {
