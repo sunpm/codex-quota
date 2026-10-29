@@ -24,6 +24,7 @@ private final class StubClient: QuotaClient {
 @main
 struct AppChecks {
     @MainActor static func main() async throws {
+        NSApplication.shared.setActivationPolicy(.accessory)
         var checks = 0
         func expect(_ value: @autoclosure () -> Bool, _ message: String) {
             checks += 1
@@ -90,10 +91,9 @@ struct AppChecks {
         expect(pendingClient.stops > 0, "退出未停止客户端")
 
         // 菜单提供面板入口和退出；关闭或重复打开面板不创建新的监测任务。
-        NSApplication.shared.setActivationPolicy(.accessory)
         let panelClient = StubClient()
         let panelModel = MonitorModel(defaults: defaults, client: panelClient)
-        let panel = ControlPanelController(model: panelModel)
+        let panel = ControlPanelController(model: panelModel, activatesApplication: false)
         let menuBar = MenuBarController(model: panelModel) { panel.showPanel() }
         let window = panel.window!
         expect(menuBar.menu.items.count == 3 && menuBar.menu.items[0].action != nil

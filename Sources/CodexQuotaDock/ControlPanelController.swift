@@ -6,9 +6,11 @@ import SwiftUI
 final class ControlPanelController: NSWindowController, NSWindowDelegate {
     private let navigation = PanelNavigation()
     private let model: MonitorModel
+    private let activatesApplication: Bool
 
-    init(model: MonitorModel) {
+    init(model: MonitorModel, activatesApplication: Bool = true) {
         self.model = model
+        self.activatesApplication = activatesApplication
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1140, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -35,6 +37,10 @@ final class ControlPanelController: NSWindowController, NSWindowDelegate {
     }
 
     func showPanel() {
+        guard activatesApplication else {
+            window?.orderFront(nil)
+            return
+        }
         NSApp.setActivationPolicy(.regular)
         window?.deminiaturize(nil)
         showWindow(nil)
