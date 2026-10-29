@@ -187,6 +187,7 @@ struct UsageView: View {
     @State private var range: UsageRange = .month
     @State private var customStart = Calendar.current.date(byAdding: .day, value: -29, to: Date())!
     @State private var customEnd = Date()
+    @State private var showsCustomDates = false
     @State private var grouping = "模型"
     @State private var metric = "Tokens"
     @State private var selectedSession: UsageGroup?
@@ -200,22 +201,27 @@ struct UsageView: View {
         records.reduce(into: UsageTokens()) { $0.add($1.tokens) }
     }
     private func groups(_ records: [UsageRecord], by kind: String) -> [UsageGroup] {
+        let scan = model.scan
         var result: [String: UsageGroup] = [:]
         for record in records {
             let key: String
-            let name: String
-            let detail: String
             switch kind {
             case "项目":
-                key = model.scan.projectPath(for: record.project); name = projectName(key); detail = key
+                key = scan.projectPath(for: record.project)
             case "对话":
                 key = record.session
-                name = projectName(model.scan.projectPath(for: record.project))
-                detail = model.scan.projectPath(for: record.project)
             default:
-                key = record.model; name = record.model; detail = ""
+                key = record.model
             }
-            var group = result[key] ?? UsageGroup(id: key, name: name, detail: detail)
+            var group: UsageGroup
+            if let existing = result[key] {
+                group = existing
+            } else if kind == "项目" || kind == "对话" {
+                let path = kind == "项目" ? key : scan.projectPath(for: record.project)
+                group = UsageGroup(id: key, name: projectName(path), detail: path)
+            } else {
+                group = UsageGroup(id: key, name: record.model, detail: "")
+            }
             if kind == "对话" { group.latestUsage = max(group.latestUsage ?? record.date, record.date) }
             group.tokens.add(record.tokens)
             group.cost.add(model.cost(record))
@@ -229,28 +235,42 @@ struct UsageView: View {
     }
 
     var body: some View {
+        if page == .overview {
+            ScrollView { content }
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         // 汇总、图表和比较共用同一截止时刻与筛选，避免临界时刻口径不同。
         let intervals = range.intervals(now: Date(), customStart: customStart, customEnd: customEnd)
         let records = records(in: intervals.current)
         let tokens = total(records)
         let costs = model.costTotal(records)
-        VStack(alignment: .leading, spacing: 18) {
+        let customRangeLabel = customStart.formatted(date: .numeric, time: .omitted)
+            + " – " + customEnd.formatted(date: .numeric, time: .omitted)
+        return VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 16) {
-                    Picker("时间范围", selection: $range) {
-                        ForEach(UsageRange.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }.pickerStyle(.segmented).labelsHidden().frame(maxWidth: 420)
+                    PanelSegmentedPicker(title: "时间范围", options: UsageRange.allCases,
+                                         selection: Binding(get: { range }, set: {
+                                             range = $0
+                                             showsCustomDates = $0 == .custom
+                                         }), optionTitle: \.rawValue).frame(maxWidth: 420)
+                        .popover(isPresented: $showsCustomDates, attachmentAnchor: .point(.bottomTrailing), arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                DatePicker("开始", selection: $customStart, in: ...customEnd, displayedComponents: .date)
+                                DatePicker("结束", selection: $customEnd, in: customStart..., displayedComponents: .date)
+                                HStack {
+                                    Spacer()
+                                    Button("完成") { showsCustomDates = false }.keyboardShortcut(.defaultAction)
+                                }
+                            }.font(.system(size: 13)).padding(16).frame(width: 280)
+                        }
                     Spacer(minLength: 0)
-                    Picker("统计指标", selection: $metric) {
-                        Text("Tokens").tag("Tokens")
-                        Text("费用").tag("费用")
-                    }.pickerStyle(.segmented).labelsHidden().frame(width: 150)
-                }
-                if range == .custom {
-                    HStack {
-                        DatePicker("开始", selection: $customStart, in: ...customEnd, displayedComponents: .date)
-                        DatePicker("结束", selection: $customEnd, in: customStart..., displayedComponents: .date)
-                    }
+                    PanelSegmentedPicker(title: "统计指标", options: ["Tokens", "费用"],
+                                         selection: $metric, optionTitle: \.self).frame(width: 150)
                 }
                 HStack {
                     Text("本机日志 · 可能含多个账号")
@@ -260,8 +280,11 @@ struct UsageView: View {
                         Text("扫描于 \(updated.formatted(date: .omitted, time: .shortened))").monospacedDigit()
                     }
                 }.font(PanelTypography.detail).foregroundStyle(.secondary)
-                Text("USD · API 等价估算，非订阅账单")
-                    .font(PanelTypography.detail).foregroundStyle(.secondary)
+                HStack {
+                    Text("USD · API 等价估算，非订阅账单")
+                    Spacer(minLength: 8)
+                    if range == .custom { Text(customRangeLabel).monospacedDigit() }
+                }.font(PanelTypography.detail).foregroundStyle(.secondary)
                 if costs.unpricedCount > 0 {
                     Label("\(costs.unpricedCount) 条未定价，金额仅含已定价部分。", systemImage: "exclamationmark.triangle")
                         .help("可在设置的模型定价中补充单价或速度档位。")
@@ -286,16 +309,17 @@ struct UsageView: View {
                 if records.isEmpty {
                     empty("所选范围内没有用量", detail: "使用 Codex 后刷新；这里只统计本机日志中记录的用量。")
                 } else {
+                    let topSessions = Array(groups(records, by: "对话").prefix(5))
                     chart(records, interval: intervals.current)
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .top, spacing: 18) {
                             composition(tokens).frame(minWidth: 290, maxWidth: .infinity)
-                            ranking(Array(groups(records, by: "对话").prefix(5)), title: "高消耗对话")
+                            ranking(topSessions, title: "高消耗对话")
                                 .frame(minWidth: 290, maxWidth: .infinity)
                         }
                         VStack(spacing: 18) {
                             composition(tokens).frame(maxWidth: .infinity)
-                            ranking(Array(groups(records, by: "对话").prefix(5)), title: "高消耗对话")
+                            ranking(topSessions, title: "高消耗对话")
                                 .frame(maxWidth: .infinity)
                         }
                     }
@@ -303,16 +327,15 @@ struct UsageView: View {
                         HStack {
                             Text("用量构成").font(.headline)
                             Spacer()
-                            Picker("分组", selection: $grouping) {
-                                ForEach(["模型", "项目"], id: \.self) { Text($0).tag($0) }
-                            }.pickerStyle(.segmented).labelsHidden().frame(width: 210)
+                            PanelSegmentedPicker(title: "分组", options: ["模型", "项目"],
+                                                 selection: $grouping, optionTitle: \.self).frame(width: 210)
                         }.padding(.horizontal, 18)
-                        groupTable(groups(records, by: grouping), total: tokens.total, cost: model.costTotal(records))
+                        groupTable(groups(records, by: grouping), total: tokens.total, cost: costs)
                     }.padding(.vertical, 18).panelCard()
                 }
             } else {
                 summary(records, tokens: tokens, previous: intervals.previous)
-                groupTable(groups(records, by: page.rawValue), total: tokens.total, cost: model.costTotal(records),
+                groupTable(groups(records, by: page.rawValue), total: tokens.total, cost: costs,
                            opensSession: page == .sessions)
                     .padding(.vertical, 8).panelCard()
             }
@@ -322,11 +345,10 @@ struct UsageView: View {
             }
         }
         .padding(24)
+        .frame(maxHeight: page == .overview ? nil : .infinity, alignment: .top)
         .sheet(item: $selectedSession) { session in
             UsageSessionDetailView(model: model, title: session.name,
-                range: range == .custom
-                    ? customStart.formatted(date: .numeric, time: .omitted) + " – " + customEnd.formatted(date: .numeric, time: .omitted)
-                    : range.rawValue,
+                range: range == .custom ? customRangeLabel : range.rawValue,
                 records: records.filter { $0.session == session.id })
         }
     }
@@ -489,7 +511,8 @@ struct UsageView: View {
             }.width(min: 80, ideal: 85, max: 110)
         }
         .monospacedDigit().tableStyle(.inset(alternatesRowBackgrounds: true))
-        .frame(maxWidth: .infinity).frame(height: min(420, CGFloat(groups.count) * 54 + 32))
+        .frame(maxWidth: .infinity)
+        .frame(height: page == .overview ? min(420, CGFloat(groups.count) * 54 + 32) : nil)
     }
     private func share(_ group: UsageGroup, tokens: Int, cost: UsageCost) -> String {
         if metric == "费用" {
@@ -506,7 +529,10 @@ struct UsageView: View {
             Text(detail).foregroundStyle(.secondary)
         }.frame(maxWidth: .infinity, minHeight: 280)
     }
-    private func projectName(_ path: String) -> String { path.isEmpty ? "未归属项目" : URL(fileURLWithPath: path).lastPathComponent }
+    private func projectName(_ path: String) -> String {
+        // 已知是项目目录，避免 URL 为推断目录类型而在界面线程执行 lstat。
+        path.isEmpty ? "未归属项目" : URL(fileURLWithPath: path, isDirectory: true).lastPathComponent
+    }
 }
 
 func formattedTokens(_ value: Int) -> String {

@@ -119,7 +119,7 @@
     {
       "name": "普通操作按钮",
       "kind": "button",
-      "description": "PanelButtonStyle()：macOS 26 使用 glass，旧系统使用 bordered。此处用浏览器原生按钮示意状态，不模拟 Liquid Glass。",
+      "description": "PanelButtonStyle()：所有支持的 macOS 版本统一使用 bordered。此处用浏览器原生按钮示意状态。",
       "html": "<button class=\"ds-button\" type=\"button\">刷新</button>",
       "css": ".ds-button{appearance:auto;font:13px system-ui}.ds-button:hover{cursor:default}.ds-button:focus-visible{outline:auto}.ds-button:disabled{color:GrayText}"
     },
@@ -141,9 +141,9 @@
       "name": "侧栏选中项",
       "kind": "nav",
       "refersTo": "sidebar-item",
-      "description": "MainView.navigationButton：选中底为强调色的 12%，文字加粗。此处省略 SF Symbols，只示意选中、字级和行密度。",
+      "description": "MainView.navigationButton：选中底使用系统强调色实色，文字为白色并加粗。此处省略 SF Symbols，只示意选中、字级和行密度。",
       "html": "<nav aria-label=\"页面示意\"><button class=\"ds-nav-selected\" type=\"button\" aria-current=\"page\">额度</button></nav>",
-      "css": ".ds-nav-selected{font:600 13px system-ui;min-height:34px;padding:0 10px;border:0;border-radius:6px;color:CanvasText;background:color-mix(in srgb,Highlight 12%,transparent)}.ds-nav-selected:hover{cursor:default}.ds-nav-selected:focus-visible{outline:auto}"
+      "css": ".ds-nav-selected{font:600 13px system-ui;min-height:34px;padding:0 10px;border:0;border-radius:6px;color:white;background:Highlight}.ds-nav-selected:hover{cursor:default}.ds-nav-selected:focus-visible{outline:auto}"
     },
     {
       "name": "设置卡片",

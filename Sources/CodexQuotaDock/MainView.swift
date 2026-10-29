@@ -12,6 +12,7 @@ struct MainView: View {
     @StateObject private var usage = UsageModel()
     @ObservedObject private var updates: AppUpdateModel
     @State private var confirmsHistoryClear = false
+    @Namespace private var navigationSelection
 
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
@@ -36,7 +37,7 @@ struct MainView: View {
                 } else if navigation.page == .quota {
                     quotaContent
                 } else {
-                    ScrollView { UsageView(model: usage, page: navigation.page) }
+                    UsageView(model: usage, page: navigation.page)
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
@@ -90,8 +91,11 @@ struct MainView: View {
             ForEach(PanelPage.allCases.filter { $0 != .settings }) { page in
                 navigationButton(page)
             }
+            navigationButton(.settings).padding(.top, 12)
             Spacer()
-            navigationButton(.settings)
+        }
+        .background {
+            PanelSelectionIndicator(selection: navigation.page, namespace: navigationSelection)
         }
         .buttonStyle(.plain).font(.system(size: 13)).padding(12).frame(width: 188)
     }
@@ -100,18 +104,20 @@ struct MainView: View {
         Button { navigation.page = page } label: {
             HStack(spacing: 8) {
                 Image(systemName: page.symbol).frame(width: 22, height: 22)
-                Text(page.rawValue).fontWeight(navigation.page == page ? .semibold : .regular)
+                Text(page.rawValue)
                 Spacer(minLength: 0)
                 if page == .settings, let release = updates.release, release.isNewer {
-                    Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.accentColor)
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundStyle(Color.accentColor)
                         .accessibilityLabel(release.status).help(release.status)
                 }
             }
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
                 .foregroundStyle(.primary)
-                .background(navigation.page == page ? Color.accentColor.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                .modifier(PanelSelectionLabel(selection: navigation.page, namespace: navigationSelection))
                 .contentShape(Rectangle())
-        }.help(page.rawValue)
+        }.matchedGeometryEffect(id: page, in: navigationSelection)
+            .help(page.rawValue)
             .accessibilityAddTraits(navigation.page == page ? .isSelected : [])
     }
 
