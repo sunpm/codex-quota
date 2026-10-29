@@ -33,7 +33,7 @@ struct PanelSelectionIndicator<Value: Hashable>: View {
         RoundedRectangle(cornerRadius: 6)
             .fill(Color.accentColor)
             .matchedGeometryEffect(id: selection, in: namespace, isSource: false)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: selection)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: selection)
             .allowsHitTesting(false)
     }
 }

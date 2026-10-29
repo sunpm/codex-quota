@@ -13,8 +13,9 @@ struct ServiceSnapshot {
 
 @MainActor
 final class MonitorModel: ObservableObject {
-    static let refreshInterval: TimeInterval = 30
+    @Published private(set) var refreshInterval: Int
     @Published private(set) var snapshot = ServiceSnapshot()
+    @Published private(set) var quotaHistory = QuotaHistory()
     @Published var notificationStatus = "正在检查通知权限…"
     @Published var notificationError: String?
     @Published var notificationsEnabled = false
@@ -32,12 +33,15 @@ final class MonitorModel: ObservableObject {
     private let client: QuotaClient
     private var tracker: ServiceRecoveryTracker
     private var timer: Timer?
+    private var announcementTimer: Timer?
     private var schedule = RefreshSchedule()
     private var stopped = false
     private var wakeObserver: NSObjectProtocol?
     private var sleepObserver: NSObjectProtocol?
     private var activity: NSObjectProtocol?
     private let stateKey = "recoveryState.v2"
+    private let quotaHistoryKey = "quotaHistory.v1"
+    private var continuousQuotaObservation = false
     private let notificationGuideKey = "notifications.persistentGuideShown"
 
     var monitoringEnabled: Bool { preferences.isEnabled(.codex) }
@@ -47,6 +51,11 @@ final class MonitorModel: ObservableObject {
 
     init(defaults: UserDefaults = .standard, client: QuotaClient? = nil) {
         self.defaults = defaults
+        refreshInterval = max(30, defaults.object(forKey: "quota.refreshIntervalSeconds") as? Int ?? 300)
+        if let data = defaults.data(forKey: quotaHistoryKey),
+           let saved = try? JSONDecoder().decode(QuotaHistory.self, from: data) {
+            quotaHistory = saved
+        }
         preferences = ServicePreferences(defaults: defaults)
         showsMenuBar = defaults.object(forKey: "menuBar.codex.visible") as? Bool
             ?? ((defaults.object(forKey: "menuBar.visible") as? Bool ?? true) && preferences.isShownInMenuBar(.codex))
@@ -70,6 +79,7 @@ final class MonitorModel: ObservableObject {
         resetAnnouncements.setEnabled(enabled)
         // 停止监测时没有连续观测；再次开启先建立基线。
         tracker.clear(.codex)
+        continuousQuotaObservation = false
         persistRecovery()
         if enabled { Task { await refresh(force: true) } }
         else { client.stop() }
@@ -79,6 +89,14 @@ final class MonitorModel: ObservableObject {
         objectWillChange.send()
         preferences.setNotificationsEnabled(enabled, for: .codex)
         if enabled { Task { await requestNotificationsIfNeeded() } }
+    }
+
+    func setRefreshInterval(_ seconds: Int) {
+        let seconds = max(30, seconds)
+        guard seconds != refreshInterval else { return }
+        refreshInterval = seconds
+        defaults.set(seconds, forKey: "quota.refreshIntervalSeconds")
+        if timer != nil { startPolling() }
     }
 
     func setResetNotificationsEnabled(_ enabled: Bool) {
@@ -100,12 +118,15 @@ final class MonitorModel: ObservableObject {
         if readsLocalUsage { updates.startAutomaticChecks() }
         resetAnnouncements.setPaused(false)
         // 保持后台定时刷新，仍允许系统正常睡眠。
-        activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "每 30 秒读取 Codex 额度")
+        activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "定时读取 Codex 额度")
         startPolling()
         sleepObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
                 self?.timer?.invalidate()
                 self?.timer = nil
+                self?.announcementTimer?.invalidate()
+                self?.announcementTimer = nil
+                self?.continuousQuotaObservation = false
                 self?.resetAnnouncements.setPaused(true)
                 self?.updates.stopAutomaticChecks()
             }
@@ -125,20 +146,35 @@ final class MonitorModel: ObservableObject {
     private func startPolling() {
         guard !stopped else { return }
         timer?.invalidate()
-        let timer = Timer(timeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.refresh() }
+        let nextRefresh = schedule.failures > 0
+            ? max(Date(), schedule.nextAttempt)
+            : Date().addingTimeInterval(TimeInterval(refreshInterval))
+        let timer = Timer(fire: nextRefresh, interval: TimeInterval(refreshInterval), repeats: true) { [weak self] _ in
+            Task { @MainActor in await self?.refreshQuota(force: false) }
         }
         timer.tolerance = 0.3
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        // 公开动态沿用自己的请求间隔，不受额度刷新设置影响。
+        if announcementTimer == nil {
+            let announcementTimer = Timer(timeInterval: 30, repeats: true) { [weak self] _ in
+                Task { @MainActor in await self?.refreshResetAnnouncements() }
+            }
+            announcementTimer.tolerance = 0.3
+            RunLoop.main.add(announcementTimer, forMode: .common)
+            self.announcementTimer = announcementTimer
+        }
     }
 
     func stop() {
         stopped = true
+        continuousQuotaObservation = false
         resetAnnouncements.stop()
         updates.stopAutomaticChecks()
         timer?.invalidate()
         timer = nil
+        announcementTimer?.invalidate()
+        announcementTimer = nil
         if let wakeObserver { NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver) }
         if let sleepObserver { NSWorkspace.shared.notificationCenter.removeObserver(sleepObserver) }
         if let activity { ProcessInfo.processInfo.endActivity(activity) }
@@ -173,17 +209,27 @@ final class MonitorModel: ObservableObject {
         do {
             let sample = try await client.sample()
             guard !stopped, monitoringEnabled else { return }
-            snapshot = ServiceSnapshot(windows: sample.windows, lastSuccess: Date(), refreshing: true)
+            let now = Date()
+            quotaHistory.observe(account: sample.fingerprint, windows: sample.windows, at: now,
+                                 continuous: continuousQuotaObservation, maximumGap: TimeInterval(refreshInterval) * 3)
+            continuousQuotaObservation = true
+            if let data = try? JSONEncoder().encode(quotaHistory) {
+                defaults.set(data, forKey: quotaHistoryKey)
+            }
+            snapshot = ServiceSnapshot(windows: sample.windows, lastSuccess: now, refreshing: true)
             schedule.succeeded()
+            timer?.fireDate = now.addingTimeInterval(TimeInterval(refreshInterval))
             let recovered = tracker.observe(service: .codex, account: sample.fingerprint, windows: sample.windows,
                                             notify: recoveryNotificationsEnabled)
             persistRecovery()
             if !recovered.isEmpty { await notifyRecovery(recovered) }
         } catch {
             guard !stopped, monitoringEnabled else { return }
+            continuousQuotaObservation = false
             client.stop()
             let retryAfter = (error as? QuotaHTTPError)?.retryAfter
             let delay = schedule.failed(retryAfter: retryAfter)
+            timer?.fireDate = schedule.nextAttempt
             snapshot.errorMessage = "\(error.localizedDescription) \(Int(min(delay, Double(Int.max / 2)))) 秒后重试。"
         }
     }

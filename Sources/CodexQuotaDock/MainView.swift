@@ -12,12 +12,16 @@ struct MainView: View {
     @StateObject private var usage = UsageModel()
     @ObservedObject private var updates: AppUpdateModel
     @State private var confirmsHistoryClear = false
+    @State private var refreshIntervalInput: String
+    @State private var showsRefreshIntervalEditor = false
+    @FocusState private var refreshIntervalFocused: Bool
     @Namespace private var navigationSelection
 
     init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
         self.model = model
         _resetAnnouncements = ObservedObject(wrappedValue: model.resetAnnouncements)
         _updates = ObservedObject(wrappedValue: model.updates)
+        _refreshIntervalInput = State(initialValue: String(model.refreshInterval))
         _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
     }
 
@@ -43,6 +47,10 @@ struct MainView: View {
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if showsRefreshIntervalEditor { commitRefreshInterval() }
+        }
         .buttonStyle(PanelButtonStyle())
         .sheet(isPresented: $updates.showsInstalledReleaseNotes) {
             InstalledReleaseNotesView(version: updates.currentVersion, markdown: updates.installedReleaseNotes)
@@ -147,6 +155,7 @@ struct MainView: View {
                     QuotaBlock(windows: snapshot.windows, error: snapshot.errorMessage,
                                lastSuccess: snapshot.lastSuccess, refreshing: snapshot.refreshing)
                         .panelCard()
+                    QuotaTrendView(history: model.quotaHistory, windows: snapshot.windows)
                     ResetAnnouncementView(model: resetAnnouncements).panelCard()
                 } else {
                     VStack(spacing: 12) {
@@ -166,6 +175,39 @@ struct MainView: View {
                     Text("监测额度")
                     Spacer()
                     Toggle("监测额度", isOn: Binding(get: { model.monitoringEnabled }, set: { model.setMonitoringEnabled($0) })).labelsHidden()
+                }
+                Divider()
+                HStack {
+                    Text("刷新间隔")
+                    Spacer()
+                    if showsRefreshIntervalEditor {
+                        HStack(spacing: 8) {
+                            TextField("至少 30", text: $refreshIntervalInput)
+                                .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                                .monospacedDigit().frame(width: 64)
+                                .accessibilityLabel("刷新间隔（秒）")
+                                .focused($refreshIntervalFocused)
+                                .onSubmit(commitRefreshInterval)
+                                .onChange(of: refreshIntervalFocused) { focused in
+                                    if !focused { commitRefreshInterval() }
+                                }
+                                .help("最少 30 秒")
+                            Text("秒").foregroundStyle(.secondary)
+                        }
+                            .onAppear {
+                                // 等输入框挂载并结束按钮点击，再转移键盘焦点。
+                                DispatchQueue.main.async { refreshIntervalFocused = true }
+                            }
+                            .onDisappear(perform: commitRefreshInterval)
+                    } else {
+                        Button {
+                            refreshIntervalInput = String(model.refreshInterval)
+                            showsRefreshIntervalEditor = true
+                        } label: {
+                            Text(refreshIntervalLabel(model.refreshInterval)).monospacedDigit()
+                        }.accessibilityLabel("编辑刷新间隔")
+                            .accessibilityValue(refreshIntervalLabel(model.refreshInterval))
+                    }
                 }
                 Divider()
                 HStack {
@@ -218,6 +260,19 @@ struct MainView: View {
             }.font(PanelTypography.detail).foregroundStyle(.secondary)
         }
         .font(.system(size: 13))
+    }
+
+    private func refreshIntervalLabel(_ seconds: Int) -> String {
+        if seconds.isMultiple(of: 3600) { return "\(seconds / 3600) 小时" }
+        return seconds.isMultiple(of: 60) ? "\(seconds / 60) 分钟" : "\(seconds) 秒"
+    }
+
+    private func commitRefreshInterval() {
+        let seconds = Int(refreshIntervalInput.trimmingCharacters(in: .whitespacesAndNewlines))
+        model.setRefreshInterval(seconds ?? model.refreshInterval)
+        refreshIntervalInput = String(model.refreshInterval)
+        refreshIntervalFocused = false
+        showsRefreshIntervalEditor = false
     }
 
     private var usageHistorySettings: some View {
