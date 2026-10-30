@@ -13,6 +13,11 @@ struct MainView: View {
     @ObservedObject private var updates: AppUpdateModel
     @State private var confirmsHistoryClear = false
     @State private var showsPricingSettings = false
+    @AppStorage("usage.sidebarToday.v1") private var sidebarToday = UsageTodayMetric.tokens.rawValue
+    @AppStorage("usage.columns.speed") private var showsUsageSpeed = true
+    @AppStorage("usage.columns.firstToken") private var showsUsageFirstToken = true
+    @AppStorage("usage.columns.cacheWrite") private var showsUsageCacheWrite = false
+    @AppStorage("usage.columns.billingTier") private var showsUsageBillingTier = false
     @State private var refreshIntervalInput: String
     @State private var showsRefreshIntervalEditor = false
     @FocusState private var refreshIntervalFocused: Bool
@@ -44,7 +49,7 @@ struct MainView: View {
                 header
                 Divider()
                 if navigation.page == .settings {
-                    ScrollView { settings.frame(maxWidth: 760).padding(24).frame(maxWidth: .infinity) }
+                    ScrollView { settings.frame(maxWidth: .infinity).padding(24) }
                 } else if navigation.page == .quota {
                     quotaContent
                 } else {
@@ -115,7 +120,8 @@ struct MainView: View {
             navigation.page = page
             if page == .quota { Task { await model.refresh(force: true) } }
         } label: {
-            HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+              HStack(spacing: 8) {
                 Image(systemName: page.symbol)
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 14)).fontWeight(.regular)
@@ -128,7 +134,12 @@ struct MainView: View {
                                          ? Color.white : Color.accentColor)
                         .accessibilityLabel(release.status).help(release.status)
                 }
+              }
+              if page == .overview, sidebarToday != 0 {
+                  sidebarTodaySummary.padding(.leading, 30)
+              }
             }
+                .padding(.vertical, 7)
                 .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
                 .modifier(PanelSelectionLabel(value: page, selection: navigation.page, namespace: navigationSelection))
                 .contentShape(Rectangle())
@@ -136,9 +147,43 @@ struct MainView: View {
             .accessibilityAddTraits(navigation.page == page ? .isSelected : [])
     }
 
+    private var sidebarTodaySummary: some View {
+        let today = Calendar.current.startOfDay(for: Date())
+        let records = usage.scan.records.filter { $0.date >= today && $0.date <= Date() }
+        let tokens = records.reduce(into: UsageTokens()) { $0.add($1.tokens) }
+        let cost = usage.costTotal(records)
+        let items = UsageTodayMetric.allCases.filter { sidebarToday & $0.rawValue != 0 }.prefix(2)
+        return HStack(alignment: .top, spacing: 4) {
+            Text("今日")
+            Spacer(minLength: 0)
+            VStack(alignment: .trailing, spacing: 3) {
+                ForEach(Array(items), id: \.self) { item in
+                    if usage.updatedAt == nil {
+                        Text("—").help(item.title)
+                    } else {
+                        switch item {
+                        case .tokens:
+                            Text("\(formattedTokens(tokens.total)) Tokens").help("今日 \(tokens.total.formatted()) Tokens")
+                        case .cost:
+                            Text(cost.unpricedCount > 0 && cost.pricedCount > 0
+                                 ? "已定价 \(formattedCost(cost))"
+                                 : records.isEmpty ? "$0.00" : formattedCost(cost))
+                                .help("API 等价估算，非订阅账单。\(cost.unpricedCount) 条未定价。")
+                        case .records:
+                            Text("\(formattedTokens(records.count)) 条").help("今日 \(records.count.formatted()) 条用量记录，不代表全部网络请求数")
+                        case .hitRate:
+                            Text("\(tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—") 命中")
+                                .help("缓存命中量 ÷ 全部输入")
+                        }
+                    }
+                }
+            }
+        }.font(PanelTypography.detail).monospacedDigit().lineLimit(1)
+    }
+
     private var header: some View {
         HStack(spacing: 12) {
-            Text(navigation.page == .overview ? "用量统计" : navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
+            Text(navigation.page.rawValue).font(.system(size: 18, weight: .semibold))
             Spacer()
             if navigation.page != .settings && navigation.page != .quota {
                 if usage.refreshing { ProgressView().controlSize(.small) }
@@ -166,7 +211,7 @@ struct MainView: View {
                         Button("开启监测") { model.setMonitoringEnabled(true) }
                     }.frame(maxWidth: .infinity, minHeight: 240)
                 }
-            }.frame(maxWidth: 760).padding(24).frame(maxWidth: .infinity)
+            }.frame(maxWidth: .infinity).padding(24)
         }
     }
 
@@ -290,6 +335,7 @@ struct MainView: View {
                         .help("控制侧栏和选项切换时的滑动与文字过渡效果。")
                 }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
+            usageDisplaySettings
             HStack {
                 Text("模型定价").font(.headline)
                 Spacer()
@@ -302,6 +348,43 @@ struct MainView: View {
             AppUpdateView(model: updates)
         }
         .font(.system(size: 13))
+    }
+
+    private var usageDisplaySettings: some View {
+        let selected = UsageTodayMetric.allCases.filter { sidebarToday & $0.rawValue != 0 }
+        return VStack(alignment: .leading, spacing: 14) {
+            Text("用量显示").font(.headline)
+            HStack {
+                Text("侧栏今日用量")
+                Spacer()
+                Menu {
+                    ForEach(UsageTodayMetric.allCases, id: \.self) { item in
+                        Toggle(item.title, isOn: Binding(
+                            get: { sidebarToday & item.rawValue != 0 },
+                            set: { enabled in
+                                if enabled { sidebarToday |= item.rawValue }
+                                else { sidebarToday &= ~item.rawValue }
+                            }))
+                            .disabled(!selected.contains(item) && selected.count >= 2)
+                    }
+                    Divider()
+                    Button("不显示") { sidebarToday = 0 }
+                } label: {
+                    Text(selected.isEmpty ? "不显示" : selected.map(\.title).joined(separator: " + "))
+                }.help("最多显示两项，按本地自然日统计。")
+            }
+            Divider()
+            HStack {
+                Text("明细可选列")
+                Spacer()
+                Menu("选择列") {
+                    Toggle("速度", isOn: $showsUsageSpeed)
+                    Toggle("首字", isOn: $showsUsageFirstToken)
+                    Toggle("缓存写入", isOn: $showsUsageCacheWrite)
+                    Toggle("计费档位", isOn: $showsUsageBillingTier)
+                }
+            }
+        }.padding(16).panelCard()
     }
 
     private func refreshIntervalLabel(_ seconds: Int) -> String {
