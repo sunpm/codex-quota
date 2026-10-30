@@ -11,6 +11,8 @@
 
 清单指向该版本的固定标签 DMG 地址。Rosetta 下优先选择 Apple Silicon 清单。最低系统版本继续为 macOS 13，正式版本用递增的 `CFBundleVersion` 比较，显示版本使用 `CFBundleShortVersionString`。CI 用 `GITHUB_RUN_NUMBER` 作为构建号，不要重置后复用较小构建号。
 
+更新说明使用与应用包内 `ReleaseNotes.md` 相同的内容，通过官方 `generate_appcast --embed-release-notes` 嵌入清单的 Markdown `description` 并随清单签名。应用发现新版后直接在软件更新卡片中展示，长内容可滚动查看；不另行请求 GitHub API 或下载说明。旧清单缺少说明时保留发布页入口，没有新版时隐藏说明区域；新版首次启动的说明弹窗继续保留。
+
 预发布标签仍生成各自的签名包及清单，但发布为 prerelease，不改变 `latest`；默认自动检查不会安装预发布版本。最初未含 Sparkle 的旧版本仍需手动安装一次含更新器的版本。
 
 ## 一次性签名配置
@@ -44,7 +46,7 @@ SPARKLE_PUBLIC_ED_KEY="$(.build/artifacts/sparkle/Sparkle/bin/generate_keys --ac
 
 1. 运行已有检查，按 GitHub 原生 Release Notes 生成说明。
 2. 构建两个架构，写入同一公钥、递增构建号和对应更新源。
-3. `scripts/generate-appcasts.py` 调用锁定版本的官方 `generate_appcast`，分别从最终 DMG 生成签名清单。官方工具仅在包内公钥与发布私钥匹配时生成更新包签名；脚本检查该签名、版本、文件大小与下载地址，再使用官方 `sign_update --verify` 验证 DMG 和清单。
+3. `scripts/generate-appcasts.py --release-notes "$RELEASE_NOTES_FILE"` 调用锁定版本的官方 `generate_appcast`，分别从最终 DMG 生成包含更新说明的签名清单；说明文件须为当前版本的非空 UTF-8 Markdown。官方工具仅在包内公钥与发布私钥匹配时生成更新包签名；脚本检查该签名、版本、文件大小、下载地址及嵌入说明，再使用官方 `sign_update --verify` 验证 DMG 和清单。
 4. 私钥只通过标准输入传递给签名工具，不写入命令参数或子进程环境。
 5. 将两个 DMG、两个 appcast 和 `SHA256SUMS.txt` 全部上传到 draft Release，上传成功后才公开发布。签名后的 DMG 与 XML 不得再修改。
 

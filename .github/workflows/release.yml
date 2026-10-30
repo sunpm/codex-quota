@@ -79,7 +79,8 @@ jobs:
           SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
         run: |
           python3 scripts/generate-appcasts.py --tag "$RELEASE_TAG" \
-            --repository "$GH_REPO" --build-number "$APP_BUILD_NUMBER"
+            --repository "$GH_REPO" --build-number "$APP_BUILD_NUMBER" \
+            --release-notes "$RELEASE_NOTES_FILE"
 
       - name: Prepare release assets
         run: |

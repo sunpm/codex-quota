@@ -54,13 +54,10 @@ struct MainView: View {
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
-        .contentShape(Rectangle())
-        .gesture(TapGesture().onEnded { commitRefreshInterval() },
-                 including: showsRefreshIntervalEditor ? .all : .subviews)
         .buttonStyle(PanelButtonStyle())
         .environment(\.panelAnimationsEnabled, model.animationsEnabled && !reduceMotion)
         .onChange(of: model.monitoringEnabled) { enabled in
-            if !enabled { commitRefreshInterval() }
+            if !enabled { showsRefreshIntervalEditor = false }
         }
         .sheet(isPresented: $updates.showsInstalledReleaseNotes) {
             InstalledReleaseNotesView(version: updates.currentVersion, markdown: updates.installedReleaseNotes)
@@ -174,7 +171,10 @@ struct MainView: View {
     }
 
     private var settings: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let presetIntervals = [30, 60, 120, 300, 600, 1800]
+        let refreshIntervals = presetIntervals.contains(model.refreshInterval)
+            ? presetIntervals : presetIntervals + [model.refreshInterval]
+        return VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("额度监测").font(.headline)
@@ -185,35 +185,49 @@ struct MainView: View {
                     HStack {
                         Text("刷新间隔")
                         Spacer()
-                        if showsRefreshIntervalEditor {
-                            HStack(spacing: 8) {
-                                TextField("至少 30", text: $refreshIntervalInput)
-                                    .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
-                                    .monospacedDigit().frame(width: 64)
-                                    .accessibilityLabel("刷新间隔（秒）")
-                                    .focused($refreshIntervalFocused)
-                                    .onSubmit(commitRefreshInterval)
-                                    .onChange(of: refreshIntervalFocused) { focused in
-                                        if !focused { commitRefreshInterval() }
-                                    }
-                                    .help("最少 30 秒")
-                                Text("秒").foregroundStyle(.secondary)
+                        Menu {
+                            ForEach(refreshIntervals, id: \.self) { seconds in
+                                Toggle(refreshIntervalLabel(seconds), isOn: Binding(
+                                    get: { seconds == model.refreshInterval },
+                                    set: { _ in model.setRefreshInterval(seconds) }
+                                )).toggleStyle(.automatic)
                             }
-                                .onAppear {
-                                    // 等输入框挂载并结束按钮点击，再转移键盘焦点。
-                                    DispatchQueue.main.async { refreshIntervalFocused = true }
-                                }
-                                .onDisappear(perform: commitRefreshInterval)
-                        } else {
-                            Button {
+                            Divider()
+                            Button("自定义…") {
                                 refreshIntervalInput = String(model.refreshInterval)
                                 showsRefreshIntervalEditor = true
-                            } label: {
-                                Text(refreshIntervalLabel(model.refreshInterval)).monospacedDigit()
-                            }.accessibilityLabel("编辑刷新间隔")
-                                .accessibilityValue(refreshIntervalLabel(model.refreshInterval))
-                        }
-                    }
+                            }
+                        } label: {
+                            Text(refreshIntervalLabel(model.refreshInterval)).monospacedDigit().lineLimit(1)
+                        }.fixedSize()
+                            .accessibilityLabel("刷新间隔")
+                            .accessibilityValue(refreshIntervalLabel(model.refreshInterval))
+                            .popover(isPresented: $showsRefreshIntervalEditor, attachmentAnchor: .point(.bottomTrailing), arrowEdge: .bottom) {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack(spacing: 8) {
+                                        Text("刷新间隔（秒）")
+                                        TextField("至少 30", text: $refreshIntervalInput)
+                                            .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                                            .monospacedDigit().frame(width: 80)
+                                            .accessibilityLabel("刷新间隔（秒）")
+                                            .focused($refreshIntervalFocused)
+                                            .onSubmit(commitRefreshInterval)
+                                            .help("最少 30 秒")
+                                    }
+                                    HStack {
+                                        Spacer()
+                                        Button("取消") { showsRefreshIntervalEditor = false }
+                                            .keyboardShortcut(.cancelAction)
+                                        Button("保存", action: commitRefreshInterval)
+                                            .buttonStyle(PanelButtonStyle(prominent: true))
+                                            .keyboardShortcut(.defaultAction)
+                                    }
+                                }.font(.system(size: 13)).padding(16)
+                                    .onAppear {
+                                        DispatchQueue.main.async { refreshIntervalFocused = true }
+                                    }
+                            }
+                    }.frame(height: 24)
                     HStack {
                         Text("额度恢复时通知")
                         Spacer()

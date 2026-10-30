@@ -18,6 +18,7 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         let build: String
         let pageURL: URL
         let isNewer: Bool
+        let notes: String?
         var status: String { "发现新版本 \(version)" }
     }
 
@@ -214,8 +215,11 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         retryTermination = nil
         installWasConfirmed = false
         informationOnly = appcastItem.isInformationOnlyUpdate
+        let notes = appcastItem.itemDescriptionFormat == "markdown"
+            ? appcastItem.itemDescription?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         release = Release(version: appcastItem.displayVersionString, build: appcastItem.versionString,
-                          pageURL: appcastItem.infoURL ?? Self.releasesURL, isNewer: true)
+                          pageURL: appcastItem.infoURL ?? Self.releasesURL, isNewer: true,
+                          notes: notes?.isEmpty == false ? notes : nil)
         downloadedBytes = 0
         expectedBytes = appcastItem.contentLength
         extractionProgress = 0
@@ -239,7 +243,7 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         }
     }
 
-    // 更新内容沿用随安装包分发、每个版本首次启动展示的流程。
+    // 更新说明直接随签名清单返回；结束发现会话后无需继续下载。
     func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {}
     func showUpdateReleaseNotesFailedToDownloadWithError(_ error: Error) {}
 
