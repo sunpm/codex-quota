@@ -1,8 +1,10 @@
+import AppKit
 import SwiftUI
 import QuotaCore
 
 struct PricingSettingsView: View {
     @ObservedObject var model: UsageModel
+    @Environment(\.dismiss) private var dismiss
     @State private var search = ""
     @State private var editing: ModelPricing?
 
@@ -22,9 +24,9 @@ struct PricingSettingsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("模型定价").font(.headline)
+                Text("模型定价").font(.title2.weight(.semibold))
                 Spacer()
                 if model.updatingPrices { ProgressView().controlSize(.small) }
                 Button("更新价格") { Task { await model.updatePrices() } }.disabled(model.updatingPrices)
@@ -56,11 +58,20 @@ struct PricingSettingsView: View {
                         Divider()
                     }
                 }
-            }.frame(height: 240)
+            }.frame(maxHeight: .infinity)
             Text("更新公开价格会重算历史估算，保留自定义价格。金额不含订阅费及工具调用附加费。")
                 .font(PanelTypography.detail).foregroundStyle(.secondary)
             if let error = model.pricingError { Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10)) }
+            HStack {
+                Spacer()
+                Button("完成") { dismiss() }.keyboardShortcut(.cancelAction)
+                    .buttonStyle(PanelButtonStyle(prominent: true))
+            }
         }
+        .font(.system(size: 13))
+        .padding(24).frame(width: 680, height: 560)
+        .buttonStyle(PanelButtonStyle())
+        .background(PricingInitialFocus().frame(width: 0, height: 0))
         .sheet(item: $editing) { price in
             PriceEditor(price: price, isCustom: model.isCustom(price), save: model.savePrice, reset: model.resetPrice)
         }
@@ -71,6 +82,20 @@ struct PricingSettingsView: View {
         let input = price.rates.input.map { NSDecimalNumber(decimal: $0).stringValue } ?? "—"
         let output = price.rates.output.map { NSDecimalNumber(decimal: $0).stringValue } ?? "—"
         return "\(source) · 输入 \(input) / 输出 \(output)"
+    }
+}
+
+private struct PricingInitialFocus: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { InitialFocusView() }
+    func updateNSView(_ view: NSView, context: Context) {}
+
+    private final class InitialFocusView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            // 等 sheet 完成初始焦点分配，只清除此面板的自动焦点。
+            DispatchQueue.main.async { window.makeFirstResponder(nil) }
+        }
     }
 }
 

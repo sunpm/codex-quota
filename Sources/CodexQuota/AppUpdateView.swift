@@ -53,6 +53,12 @@ struct AppUpdateView: View {
                 Link("在 GitHub 查看发布页", destination: model.release?.pageURL ?? AppUpdateModel.releasesURL)
                     .buttonStyle(.link).fixedSize()
             }.font(PanelTypography.detail).frame(height: 20)
+            Divider()
+            HStack {
+                Text("自动检查更新")
+                Spacer()
+                Toggle("自动检查更新", isOn: Binding(get: { model.automaticallyChecks }, set: { model.setAutomaticallyChecks($0) })).labelsHidden()
+            }.toggleStyle(.switch).controlSize(.small)
         }.padding(16).panelCard()
             .alert("安装 \(model.release?.version ?? "更新")？", isPresented: $confirmsInstallation) {
                 Button("取消", role: .cancel) {}

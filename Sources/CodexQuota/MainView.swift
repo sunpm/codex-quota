@@ -12,6 +12,7 @@ struct MainView: View {
     @StateObject private var usage = UsageModel()
     @ObservedObject private var updates: AppUpdateModel
     @State private var confirmsHistoryClear = false
+    @State private var showsPricingSettings = false
     @State private var refreshIntervalInput: String
     @State private var showsRefreshIntervalEditor = false
     @FocusState private var refreshIntervalFocused: Bool
@@ -81,12 +82,6 @@ struct MainView: View {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { event in
-            guard model.readsLocalUsage, (event.object as? NSWindow)?.identifier?.rawValue == "control-panel" else { return }
-            Task {
-                await usage.refresh()
-            }
-        }
     }
 
     private var appName: String {
@@ -124,7 +119,10 @@ struct MainView: View {
             if page == .quota { Task { await model.refresh(force: true) } }
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: page.symbol).frame(width: 22, height: 22)
+                Image(systemName: page.symbol)
+                    .symbolRenderingMode(.monochrome)
+                    .font(.system(size: 14)).fontWeight(.regular)
+                    .frame(width: 22, height: 22)
                 Text(page.rawValue)
                 Spacer(minLength: 0)
                 if page == .settings, let release = updates.release, release.isNewer {
@@ -177,7 +175,6 @@ struct MainView: View {
 
     private var settings: some View {
         VStack(alignment: .leading, spacing: 16) {
-            AppUpdateView(model: updates)
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text("额度监测").font(.headline)
@@ -245,6 +242,7 @@ struct MainView: View {
                 Text("系统通知").font(.headline)
                 Text(model.notificationStatus).font(PanelTypography.detail).foregroundStyle(.secondary)
                 HStack {
+                    Spacer()
                     if !model.persistentNotificationsEnabled {
                         Button("开启持久通知…") { model.showPersistentNotificationGuide() }
                     }
@@ -272,20 +270,22 @@ struct MainView: View {
                 if let error = model.launchError { Text(error).font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10)) }
                 Divider()
                 HStack {
-                    Text("自动检查更新")
-                    Spacer()
-                    Toggle("自动检查更新", isOn: Binding(get: { updates.automaticallyChecks }, set: { updates.setAutomaticallyChecks($0) })).labelsHidden()
-                }
-                Divider()
-                HStack {
                     Text("动画特性")
                     Spacer()
                     Toggle("动画特性", isOn: Binding(get: { model.animationsEnabled }, set: { model.setAnimationsEnabled($0) })).labelsHidden()
                         .help("控制侧栏和选项切换时的滑动与文字过渡效果。")
                 }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
+            HStack {
+                Text("模型定价").font(.headline)
+                Spacer()
+                Button("管理定价…") { showsPricingSettings = true }
+            }.padding(16).panelCard()
+                .sheet(isPresented: $showsPricingSettings) {
+                    PricingSettingsView(model: usage)
+                }
             usageHistorySettings
-            PricingSettingsView(model: usage).padding(16).panelCard()
+            AppUpdateView(model: updates)
         }
         .font(.system(size: 13))
     }
@@ -310,8 +310,8 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("用量历史").font(.headline)
             HStack {
-                Button("重新扫描日志") { Task { await usage.refresh(rescan: true) } }
                 Spacer()
+                Button("重新扫描日志") { Task { await usage.refresh(rescan: true) } }
                 Button("清除已保存历史…", role: .destructive) { confirmsHistoryClear = true }
             }.disabled(usage.refreshing || !model.readsLocalUsage)
             if let error = usage.historyActionError ?? usage.scan.historyError {
