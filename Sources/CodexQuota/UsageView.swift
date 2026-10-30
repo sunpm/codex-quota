@@ -123,10 +123,10 @@ enum PanelPage: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var symbol: String {
         switch self {
-        case .overview: return "chart.bar.xaxis"
-        case .sessions: return "bubble.left.and.bubble.right"
+        case .overview: return "chart.xyaxis.line"
+        case .sessions: return "bubble.left"
         case .projects: return "folder"
-        case .quota: return "gauge.medium"
+        case .quota: return "chart.pie"
         case .settings: return "gearshape"
         }
     }
