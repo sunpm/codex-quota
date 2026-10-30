@@ -119,7 +119,7 @@ final class UsageModel: ObservableObject {
 }
 
 enum PanelPage: String, CaseIterable, Identifiable {
-    case overview = "概览", sessions = "对话", projects = "项目", quota = "额度", settings = "设置"
+    case overview = "用量统计", sessions = "对话", projects = "项目", quota = "额度", settings = "设置"
     var id: String { rawValue }
     var symbol: String {
         switch self {
@@ -128,6 +128,19 @@ enum PanelPage: String, CaseIterable, Identifiable {
         case .projects: return "folder"
         case .quota: return "chart.pie"
         case .settings: return "gearshape"
+        }
+    }
+}
+
+enum UsageTodayMetric: Int, CaseIterable {
+    case tokens = 1, cost = 2, records = 4, hitRate = 8
+
+    var title: String {
+        switch self {
+        case .tokens: return "Token"
+        case .cost: return "估算费用"
+        case .records: return "用量记录数"
+        case .hitRate: return "缓存命中率"
         }
     }
 }
@@ -177,7 +190,7 @@ private struct UsageGroup: Identifiable {
 
     var subtitle: String {
         guard let latestUsage else { return detail }
-        return "\(latestUsage.formatted(.dateTime.month(.twoDigits).day(.twoDigits).hour().minute())) · \(id.suffix(8))"
+        return "\(formattedUsageTime(latestUsage)) · \(id.suffix(8))"
     }
 }
 
@@ -288,23 +301,14 @@ struct UsageView: View {
                                          selection: $metric, optionTitle: \.self).frame(width: 150)
                 }
                 HStack {
-                    Text("本机日志 · 可能含多个账号")
+                    Text("本机日志")
                         .help("包含本机现存日志与已保存历史，不代表当前账号或其他设备的全部用量。")
+                    if range == .custom { Text(customRangeLabel).monospacedDigit() }
                     Spacer(minLength: 8)
                     if let updated = model.updatedAt {
                         Text("扫描于 \(updated.formatted(date: .omitted, time: .shortened))").monospacedDigit()
                     }
                 }.font(PanelTypography.detail).foregroundStyle(.secondary)
-                HStack {
-                    Text("API 等价估算，非订阅账单")
-                    Spacer(minLength: 8)
-                    if range == .custom { Text(customRangeLabel).monospacedDigit() }
-                }.font(PanelTypography.detail).foregroundStyle(.secondary)
-                if costs.unpricedCount > 0 {
-                    Label("\(costs.unpricedCount) 条未定价，金额仅含已定价部分。", systemImage: "exclamationmark.triangle")
-                        .help("可在设置的模型定价中补充单价或速度档位。")
-                        .font(PanelTypography.detail).foregroundStyle(quotaColor(remaining: 10))
-                }
                 ForEach(model.scan.warnings, id: \.self) { warning in
                     Label(warning, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(quotaColor(remaining: 10)).font(PanelTypography.detail)
@@ -371,11 +375,14 @@ struct UsageView: View {
                 metricCard("总 Tokens", value: formattedTokens(tokens.total),
                     change: previousTokens.map { change(current: Decimal(tokens.total), previous: Decimal($0), money: false) },
                     previous: previousTokens.map { "\($0.formatted()) Tokens" })
-                metricCard("API 等价费用", value: records.isEmpty ? "$0.00" : formattedCost(cost),
-                    change: previousCost.map {
-                        cost.unpricedCount > 0 || $0.unpricedCount > 0 ? "含未定价，暂不比较"
+                metricCard(cost.unpricedCount > 0 ? "已定价费用" : "API 等价费用",
+                    value: records.isEmpty ? "$0.00" : formattedCost(cost),
+                    change: previousCost.flatMap {
+                        cost.unpricedCount > 0 || $0.unpricedCount > 0 ? nil
                             : change(current: cost.amount, previous: $0.amount, money: true)
                     }, previous: previousCost.map { $0.pricedCount == 0 && $0.unpricedCount == 0 ? "$0.00" : formattedCost($0) })
+                    .help("API 等价估算，非订阅账单。" + (cost.unpricedCount > 0
+                        ? "\n\(cost.unpricedCount) 条未定价，可在设置的模型定价中补充单价或计费档位。" : ""))
             }
             HStack(spacing: 16) {
                 Text("\(Set(records.map { $0.session }).count.formatted()) 个对话")
@@ -433,7 +440,8 @@ struct UsageView: View {
     }
     private func composition(_ tokens: UsageTokens) -> some View {
         let parts: [(String, Int, Color)] = [("输入", tokens.input, .blue), ("输出", tokens.output, .purple),
-            ("缓存读取", tokens.cached, .teal), ("缓存写入", tokens.cacheWrite, .orange)]
+            ("缓存命中", tokens.cached, .teal), ("缓存写入", tokens.cacheWrite, .orange)]
+            .filter { $0.0 != "缓存写入" || $0.1 > 0 }
         return VStack(alignment: .leading, spacing: 16) {
             Text("Token 拆分").font(.headline)
             GeometryReader { geometry in
@@ -448,7 +456,7 @@ struct UsageView: View {
                     Circle().fill(part.2).frame(width: 7, height: 7)
                     Text(part.0)
                     Spacer()
-                    Text(formattedTokens(part.1)).monospacedDigit()
+                    Text(formattedTokens(part.1)).monospacedDigit().help(part.1.formatted())
                     Text((Double(part.1) / Double(max(1, tokens.total))).formatted(.percent.precision(.fractionLength(1))))
                         .foregroundStyle(.secondary).monospacedDigit().frame(width: 52, alignment: .trailing)
                 }.font(.callout)
@@ -479,47 +487,85 @@ struct UsageView: View {
         }.padding(18).panelCard()
     }
     private func groupTable(_ groups: [UsageGroup], total: Int, cost: UsageCost, opensSession: Bool = false) -> some View {
-        Table(groups) {
-            // 长路径不能决定初始列宽；列宽总和需适配最小主窗口。
-            TableColumn("名称") { group in
-                let name = HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(group.name).fontWeight(.medium).lineLimit(1)
-                        if !group.subtitle.isEmpty { Text(group.subtitle).font(PanelTypography.detail).foregroundStyle(.secondary).lineLimit(1) }
-                    }
+        GeometryReader { geometry in
+            // 在 Table 外切换列结构，兼容尚不支持条件列的 macOS 13。
+            Group {
+                if page != .overview && geometry.size.width >= 1000 {
                     if opensSession {
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right").font(PanelTypography.detail).foregroundStyle(.secondary)
+                        Table(groups) {
+                            nameColumn(opensSession: true, expanded: true)
+                            TableColumn("最近用量") { group in
+                                Text(group.latestUsage.map { formattedUsageTime($0) } ?? "—")
+                                    .foregroundStyle(.secondary).lineLimit(1)
+                            }.width(130)
+                            TableColumn("短 ID") { group in
+                                Text(group.id.suffix(8)).foregroundStyle(.secondary).help(group.id)
+                            }.width(80)
+                            metricColumns(total: total, cost: cost)
+                        }
+                    } else {
+                        Table(groups) {
+                            nameColumn(opensSession: false, expanded: true)
+                            TableColumn("目录") { group in
+                                Text(group.detail.isEmpty ? "—" : group.detail)
+                                    .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                                    .help(group.detail)
+                            }.width(min: 220, ideal: 300)
+                            metricColumns(total: total, cost: cost)
+                        }
                     }
-                }.padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                    .help(opensSession ? "\(group.name)\n所选范围内最近用量：\(group.subtitle)\n\(group.id)\n\(group.detail)"
-                          : group.detail.isEmpty ? group.name : "\(group.name)\n\(group.detail)")
-                if opensSession {
-                    Button { selectedSession = group } label: { name }.buttonStyle(.plain)
-                        .accessibilityLabel("查看对话 \(group.name)，\(group.subtitle)")
                 } else {
-                    name
+                    Table(groups) {
+                        nameColumn(opensSession: opensSession, expanded: false)
+                        metricColumns(total: total, cost: cost)
+                    }
                 }
-            }.width(min: 130, ideal: 170, max: 260)
-            TableColumn("Tokens") { group in
-                Text(formattedTokens(group.tokens.total)).frame(maxWidth: .infinity, alignment: .trailing)
-                    .help(group.tokens.total.formatted())
-            }.width(min: 70, ideal: 80, max: 140)
-            TableColumn("API 等价费用") { group in
-                Text(formattedCost(group.cost)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    .multilineTextAlignment(.trailing).frame(maxWidth: .infinity, alignment: .trailing)
-            }.width(min: 100, ideal: 105, max: 180)
-            TableColumn(metric == "费用" ? "费用占比" : "Token 占比") { group in
-                Text(share(group, tokens: total, cost: cost)).frame(maxWidth: .infinity, alignment: .trailing)
-            }.width(min: 60, ideal: 65, max: 100)
-            TableColumn("缓存命中率") { group in
-                Text(group.tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—")
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-            }.width(min: 80, ideal: 85, max: 110)
+            }.monospacedDigit().tableStyle(.inset(alternatesRowBackgrounds: true))
         }
-        .monospacedDigit().tableStyle(.inset(alternatesRowBackgrounds: true))
         .frame(maxWidth: .infinity)
         .frame(height: page == .overview ? min(420, CGFloat(groups.count) * 54 + 32) : nil)
+    }
+    private func nameColumn(opensSession: Bool, expanded: Bool) -> some TableColumnContent<UsageGroup, Never> {
+        TableColumn("名称") { (group: UsageGroup) in
+            let name = HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(group.name).fontWeight(.medium).lineLimit(1)
+                    if !expanded && !group.subtitle.isEmpty {
+                        Text(group.subtitle).font(PanelTypography.detail).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                if opensSession {
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(PanelTypography.detail).foregroundStyle(.secondary)
+                }
+            }.padding(.vertical, expanded ? 4 : 6).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                .help(opensSession ? "\(group.name)\n所选范围内最近用量：\(group.subtitle)\n\(group.id)\n\(group.detail)"
+                      : group.detail.isEmpty ? group.name : "\(group.name)\n\(group.detail)")
+            if opensSession {
+                Button { selectedSession = group } label: { name }.buttonStyle(.plain)
+                    .accessibilityLabel("查看对话 \(group.name)，\(group.subtitle)")
+            } else {
+                name
+            }
+        }.width(min: 130, ideal: 170, max: page == .overview || (expanded && !opensSession) ? 260 : nil)
+    }
+    @TableColumnBuilder<UsageGroup, Never>
+    private func metricColumns(total: Int, cost: UsageCost) -> some TableColumnContent<UsageGroup, Never> {
+        TableColumn("Tokens") { group in
+            Text(formattedTokens(group.tokens.total)).frame(maxWidth: .infinity, alignment: .trailing)
+                .help(group.tokens.total.formatted())
+        }.width(min: 70, ideal: 80, max: 140)
+        TableColumn(cost.unpricedCount > 0 ? "已定价费用" : "API 等价费用") { group in
+            Text(formattedCost(group.cost)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.trailing).frame(maxWidth: .infinity, alignment: .trailing)
+        }.width(min: 100, ideal: 105, max: 180)
+        TableColumn(metric == "费用" ? "费用占比" : "Token 占比") { group in
+            Text(share(group, tokens: total, cost: cost)).frame(maxWidth: .infinity, alignment: .trailing)
+        }.width(min: 60, ideal: 65, max: 100)
+        TableColumn("缓存命中率") { group in
+            Text(group.tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—")
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }.width(min: 80, ideal: 85, max: 110)
     }
     private func share(_ group: UsageGroup, tokens: Int, cost: UsageCost) -> String {
         if metric == "费用" {
@@ -543,9 +589,18 @@ struct UsageView: View {
 }
 
 func formattedTokens(_ value: Int) -> String {
-    if value >= 100_000_000 { return (Double(value) / 100_000_000).formatted(.number.precision(.fractionLength(0...2))) + " 亿" }
-    if value >= 10_000 { return (Double(value) / 10_000).formatted(.number.precision(.fractionLength(0...2))) + " 万" }
-    return value.formatted()
+    guard value >= 10_000 else { return value.formatted() }
+    // 三位有效数字进位时同时升级单位，避免出现 1,000K。
+    let (divisor, suffix): (Double, String) = value >= 999_500_000 ? (1_000_000_000, "B")
+        : value >= 999_500 ? (1_000_000, "M") : (1_000, "K")
+    return (Double(value) / divisor).formatted(.number.precision(.significantDigits(1...3)).grouping(.never)) + suffix
+}
+
+func formattedUsageTime(_ date: Date, now: Date = .now) -> String {
+    let format: Date.FormatString = Calendar.current.isDate(date, inSameDayAs: now)
+        ? "\(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits):\(second: .twoDigits)"
+        : "\(month: .twoDigits)-\(day: .twoDigits) \(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits)"
+    return date.formatted(Date.VerbatimFormatStyle(format: format, timeZone: .current, calendar: .current))
 }
 
 extension View {
@@ -557,7 +612,6 @@ extension View {
 
 func formattedCost(_ cost: UsageCost) -> String {
     guard cost.pricedCount > 0 else { return cost.unpricedCount > 0 ? "未定价" : "—" }
-    let amount = cost.amount > 0 && cost.amount < Decimal(string: "0.01")!
+    return cost.amount > 0 && cost.amount < Decimal(string: "0.01")!
         ? "< $0.01" : cost.amount.formatted(.currency(code: "USD").presentation(.narrow).precision(.fractionLength(2)))
-    return cost.unpricedCount > 0 ? amount + "（部分）" : amount
 }

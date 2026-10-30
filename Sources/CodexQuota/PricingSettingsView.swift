@@ -132,7 +132,7 @@ private struct PriceEditor: View {
                 Form {
                     TextField("模型 ID", text: $name).disabled(!price.model.isEmpty)
                     Section("单价 · USD / 百万 Tokens") { rateFields($rates) }
-                    Section("速度档位") {
+                    Section("计费档位") {
                         TextField("Fast 倍率", text: $fast)
                         TextField("Ultrafast 倍率", text: $ultrafast)
                     }
@@ -143,7 +143,7 @@ private struct PriceEditor: View {
                     }
                 }.textFieldStyle(.roundedBorder)
             }
-            Text("留空表示未定价，0 表示免费。倍率作用于各类 Token；缺少速度或缓存保留期的日志按标准档、短保留期估算。")
+            Text("留空表示未定价，0 表示免费。倍率作用于各类 Token；缺少计费档位或缓存保留期的日志按标准档、短保留期估算。")
                 .font(PanelTypography.detail).foregroundStyle(.secondary)
             if let error { Text(error).foregroundStyle(.red).font(PanelTypography.detail) }
             HStack {
@@ -160,7 +160,7 @@ private struct PriceEditor: View {
     }
 
     private func rateFields(_ values: Binding<[String]>) -> some View {
-        let labels = ["输入", "输出", "缓存读取", "缓存写入 · 30 分钟",
+        let labels = ["输入", "输出", "缓存命中", "缓存写入 · 30 分钟",
                       "缓存写入 · 12 小时"]
         return ForEach(labels.indices, id: \.self) { index in TextField(labels[index], text: values[index]) }
     }
@@ -190,6 +190,6 @@ private struct PriceEditor: View {
                 fastMultiplier: try parse(fast), ultrafastMultiplier: try parse(ultrafast))
             guard draft.isValid else { throw PricingError.invalidCatalog }
             save(draft); dismiss()
-        } catch { self.error = "请输入有效的模型 ID 和非负单价；上下文阈值、速度倍率必须大于 0。" }
+        } catch { self.error = "请输入有效的模型 ID 和非负单价；上下文阈值、档位倍率必须大于 0。" }
     }
 }

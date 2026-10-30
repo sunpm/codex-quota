@@ -38,7 +38,7 @@ private struct QuotaWindowTrend: View {
     let points: [QuotaHistory.Point]
     let interval: DateInterval
     let daily: Bool
-    @State private var hovered: QuotaHistory.Point?
+    @State private var hover: (date: Date, point: QuotaHistory.Point?)?
 
     var body: some View {
         let tint = quotaColor(remaining: window.remaining)
@@ -46,77 +46,76 @@ private struct QuotaWindowTrend: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(window.displayLabel).font(.callout)
                 Spacer()
-                if let point = hovered ?? points.last {
-                    if hovered != nil {
-                        Text(point.date, format: .dateTime.month().day().hour().minute())
-                            .foregroundStyle(.secondary)
-                    }
+                if let hover {
+                    Text(hover.point?.date ?? hover.date, format: .dateTime.month().day().hour().minute())
+                        .foregroundStyle(.secondary)
+                }
+                if let point = hover == nil ? points.last : hover?.point {
                     Text("已用 \(point.usedPercent.formatted(.number.precision(.fractionLength(0...1))))%")
+                } else if hover != nil {
+                    Text("无采样").foregroundStyle(.secondary)
                 }
             }.font(PanelTypography.detail).monospacedDigit()
-            Chart {
-                ForEach(points) { point in
-                    LineMark(x: .value("时间", point.date), y: .value("已用百分比", point.usedPercent),
-                             series: .value("连续观测", point.segment))
-                        .lineStyle(StrokeStyle(lineWidth: 2))
-                        .foregroundStyle(tint)
-                    PointMark(x: .value("时间", point.date), y: .value("已用百分比", point.usedPercent))
-                        .symbolSize(8)
-                        .foregroundStyle(tint)
-                        .accessibilityLabel(point.date.formatted(date: .abbreviated, time: .shortened))
-                        .accessibilityValue("已用 \(point.usedPercent.formatted())%")
-                }
-                if let hovered {
-                    RuleMark(x: .value("时间", hovered.date))
-                        .foregroundStyle(.secondary)
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
-                        .accessibilityHidden(true)
-                }
-            }
-            .chartXScale(domain: interval.start...interval.end)
-            .chartYScale(domain: 0...100)
-            .chartXAxis {
-                AxisMarks(preset: .aligned, values: .automatic(desiredCount: 5)) { _ in
-                    AxisGridLine()
-                    AxisTick()
-                    if daily { AxisValueLabel(format: .dateTime.month().day()) }
-                    else { AxisValueLabel(format: .dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)) }
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading, values: [0, 50, 100]) { value in
-                    AxisGridLine()
-                    AxisValueLabel {
-                        if let percent = value.as(Int.self) { Text("\(percent)%").monospacedDigit() }
+            GeometryReader { chartGeometry in
+                Chart {
+                    ForEach(points) { point in
+                        LineMark(x: .value("时间", point.date), y: .value("已用百分比", point.usedPercent),
+                                 series: .value("连续观测", point.segment))
+                            .lineStyle(StrokeStyle(lineWidth: 2))
+                            .foregroundStyle(tint)
+                        PointMark(x: .value("时间", point.date), y: .value("已用百分比", point.usedPercent))
+                            .symbolSize(8)
+                            .foregroundStyle(tint)
+                            .accessibilityLabel(point.date.formatted(date: .abbreviated, time: .shortened))
+                            .accessibilityValue("已用 \(point.usedPercent.formatted())%")
+                    }
+                    if let hover {
+                        RuleMark(x: .value("时间", hover.point?.date ?? hover.date))
+                            .foregroundStyle(.secondary)
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [3]))
+                            .accessibilityHidden(true)
                     }
                 }
-            }
-            .chartOverlay { proxy in
-                GeometryReader { geometry in
-                    Rectangle().fill(.clear).contentShape(Rectangle())
-                        .onContinuousHover { phase in
-                            switch phase {
-                            case .active(let location):
-                                let plot = geometry[proxy.plotAreaFrame]
-                                guard plot.contains(location),
-                                      let date: Date = proxy.value(atX: location.x - plot.minX) else {
-                                    hovered = nil
-                                    return
-                                }
-                                let closest = points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
-                                // 只吸附附近的实测点，空白时间不能显示成有读数。
-                                hovered = closest.flatMap { point in
-                                    guard let x = proxy.position(forX: point.date),
-                                          abs(x - (location.x - plot.minX)) <= 12 else { return nil }
-                                    return point
-                                }
-                            case .ended: hovered = nil
-                            }
-                        }
+                .chartXScale(domain: interval.start...interval.end)
+                .chartYScale(domain: 0...100)
+                .chartXAxis {
+                    chartTimeAxis(interval: interval, hourly: !daily, width: chartGeometry.size.width)
                 }
-            }
-            .frame(height: 120)
+                .chartYAxis {
+                    AxisMarks(position: .leading, values: [0, 50, 100]) { value in
+                        AxisGridLine()
+                        AxisValueLabel {
+                            if let percent = value.as(Int.self) { Text("\(percent)%").monospacedDigit() }
+                        }
+                    }
+                }
+                .chartOverlay { proxy in
+                    GeometryReader { geometry in
+                        Rectangle().fill(.clear).contentShape(Rectangle())
+                            .onContinuousHover { phase in
+                                switch phase {
+                                case .active(let location):
+                                    let plot = geometry[proxy.plotAreaFrame]
+                                    guard plot.contains(location),
+                                          let date: Date = proxy.value(atX: location.x - plot.minX) else {
+                                        hover = nil
+                                        return
+                                    }
+                                    let closest = points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+                                    // 只吸附附近的实测点，空白时间不能显示成有读数。
+                                    let point: QuotaHistory.Point? = closest.flatMap { point in
+                                        guard let x = proxy.position(forX: point.date),
+                                              abs(x - (location.x - plot.minX)) <= 12 else { return nil }
+                                        return point
+                                    }
+                                    hover = (date, point)
+                                case .ended: hover = nil
+                                }
+                            }
+                    }
+                }
+            }.frame(height: 120)
         }
-        .onChange(of: interval) { _ in hovered = nil }
+        .onChange(of: interval) { _ in hover = nil }
     }
 }

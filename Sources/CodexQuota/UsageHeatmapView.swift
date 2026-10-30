@@ -111,7 +111,7 @@ struct UsageHeatmapView: View {
                             VStack(alignment: .leading, spacing: 5) {
                                 Text(day.id, format: .dateTime.year().month().day()).fontWeight(.semibold)
                                 Text("\(day.tokens.formatted()) Tokens")
-                                Text("估算费用：\(formattedCost(day.cost))")
+                                Text("\(day.cost.unpricedCount > 0 ? "已定价费用" : "估算费用")：\(formattedCost(day.cost))")
                             }
                             .font(PanelTypography.detail).monospacedDigit()
                             .frame(width: 240, alignment: .leading).padding(12)
@@ -149,7 +149,7 @@ struct UsageHeatmapView: View {
             let amount = value(day)
             let level = amount > 0 && maximum > 0 ? min(4, max(1, Int(ceil(amount / maximum * 4)))) : 0
             let unpriced = metric == "费用" && day.cost.unpricedCount > 0
-            let label = "\(day.id.formatted(date: .complete, time: .omitted))\n\(day.tokens.formatted()) Tokens\n估算费用：\(formattedCost(day.cost))"
+            let label = "\(day.id.formatted(date: .complete, time: .omitted))\n\(day.tokens.formatted()) Tokens\n\(day.cost.unpricedCount > 0 ? "已定价费用" : "估算费用")：\(formattedCost(day.cost))"
             return RoundedRectangle(cornerRadius: 2)
                 .fill(color(level: level))
                 .overlay {

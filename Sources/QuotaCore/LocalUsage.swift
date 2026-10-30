@@ -10,6 +10,11 @@ public struct UsageTokens: Codable, Equatable, Sendable {
     public var cacheWrite: Int = 0
     /// 长保留期缓存写入是 cacheWrite 的子集，不再次加到总量。
     public var cacheWriteLong: Int = 0
+    /// nil 为旧历史，false 为日志未提供；两者都不能把零显示为已确认的零。
+    public var cacheWriteReported: Bool?
+    public var reportedCacheWrite: Int? {
+        cacheWriteReported == true || cacheWrite > 0 ? cacheWrite : nil
+    }
     public var total: Int { input + output + cached + cacheWrite }
     public var cacheHitRate: Double? {
         let incoming = input + cached + cacheWrite
@@ -34,10 +39,19 @@ public struct UsageRecord: Codable, Equatable, Identifiable, Sendable {
     public let project: String
     public let model: String
     public let date: Date
-    public let tokens: UsageTokens
+    public internal(set) var tokens: UsageTokens
     public let serviceTier: String
     /// 保留旧版历史的序列化字段，Codex 采集不使用地区附加费。
     public let isUSOnly: Bool
+    public internal(set) var serviceTierReported: Bool?
+    /// 从日志事件边界估算的秒数，不是网络请求的实测计时。
+    public internal(set) var estimatedDuration: TimeInterval?
+    public internal(set) var estimatedFirstToken: TimeInterval?
+
+    public var estimatedOutputTokensPerSecond: Double? {
+        guard tokens.output >= 200, let estimatedDuration, estimatedDuration >= 1 else { return nil }
+        return Double(tokens.output) / estimatedDuration
+    }
 
     /// 明细分组与计费共用日志档位映射；未知档位不得按 Standard 计费。
     public var speedTier: UsageSpeedTier? {
@@ -133,7 +147,20 @@ public actor LocalUsageReader {
         func merge(_ record: UsageRecord) {
             if let old = records[record.id] {
                 // fork 重放不得把历史挪到更晚的时间。
-                guard record.date < old.date else { return }
+                guard record.date <= old.date else { return }
+                if record.date == old.date {
+                    guard old.tokens.input == record.tokens.input, old.tokens.output == record.tokens.output,
+                          old.tokens.cached == record.tokens.cached, old.tokens.cacheWrite == record.tokens.cacheWrite,
+                          old.tokens.cacheWriteLong == record.tokens.cacheWriteLong else { return }
+                    // 原日志重扫时补全计时和字段来源；不让 fork 或压缩副本抹掉已知值。
+                    var enriched = old
+                    enriched.estimatedDuration = old.estimatedDuration ?? record.estimatedDuration
+                    enriched.estimatedFirstToken = old.estimatedFirstToken ?? record.estimatedFirstToken
+                    enriched.serviceTierReported = old.serviceTierReported ?? record.serviceTierReported
+                    enriched.tokens.cacheWriteReported = old.tokens.cacheWriteReported ?? record.tokens.cacheWriteReported
+                    records[record.id] = enriched
+                    return
+                }
             }
             records[record.id] = record
         }
@@ -224,6 +251,8 @@ public actor LocalUsageReader {
         var model = "未知模型"
         var sawMeta = false
         var serviceTier = "standard"
+        var serviceTierReported = false
+        var timer = CodexRequestTimer()
         var previousSignature: String?
         var lineNumber = 0
 
@@ -233,6 +262,7 @@ public actor LocalUsageReader {
             guard let row = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else { invalid += 1; return }
             let type = row["type"] as? String
             let payload = row["payload"] as? [String: Any] ?? [:]
+            let date = (row["timestamp"] as? String).flatMap { fractional.date(from: $0) ?? whole.date(from: $0) }
             if type == "session_meta" {
                 emitter = payload["id"] as? String ?? payload["session_id"] as? String ?? emitter
                 if !sawMeta {
@@ -251,14 +281,48 @@ public actor LocalUsageReader {
             }
             if type == "turn_context" {
                 model = payload["model"] as? String ?? model
-                if let tier = payload["service_tier"] as? String { serviceTier = tier }
+                if let tier = payload["service_tier"] as? String {
+                    serviceTier = tier
+                    serviceTierReported = true
+                }
+                if let date { timer.boundary = max(timer.boundary ?? date, date) }
                 return
             }
             if type == "event_msg", payload["type"] as? String == "thread_settings_applied" {
                 let settings = payload["thread_settings"] as? [String: Any] ?? payload
                 model = settings["model"] as? String ?? model
                 serviceTier = settings["service_tier"] as? String ?? "unknown"
+                serviceTierReported = settings["service_tier"] is String
                 return
+            }
+            if let date {
+                if type == "response_item", let item = payload["type"] as? String {
+                    if item == "message", payload["role"] as? String != "assistant" {
+                        timer.boundary = max(timer.boundary ?? date, date)
+                    } else if item.hasSuffix("_output") {
+                        timer.boundary = max(timer.boundary ?? date, date)
+                        if timer.lastOutput != nil { timer.toolOutputAfterModel = date }
+                    } else if item == "message" || item == "reasoning" || item.hasSuffix("_call") {
+                        timer.observeOutput(at: date, isToolCall: item.hasSuffix("_call"))
+                    }
+                } else if type == "token_usage_record", let usage = payload["usage"] as? [String: Any],
+                          let tokens = tokenCounts(usage) {
+                    timer.usageRecord = (date, tokens)
+                } else if type == "event_msg" {
+                    switch payload["type"] as? String {
+                    case "task_started", "turn_aborted": timer.reset(at: date)
+                    case "item_completed":
+                        if let item = payload["item"] as? [String: Any],
+                           ["Reasoning", "AgentMessage"].contains(item["type"] as? String ?? ""),
+                           let stamp = payload["started_at_ms"] as? NSNumber,
+                           CFGetTypeID(stamp) != CFBooleanGetTypeID(), stamp.doubleValue.isFinite,
+                           stamp.doubleValue > 0, stamp.doubleValue <= date.timeIntervalSince1970 * 1000 {
+                            let started = Date(timeIntervalSince1970: stamp.doubleValue / 1000)
+                            timer.firstOutput = min(timer.firstOutput ?? started, started)
+                        }
+                    default: break
+                    }
+                }
             }
             guard type == "event_msg", payload["type"] as? String == "token_count",
                   let info = payload["info"] as? [String: Any],
@@ -269,15 +333,15 @@ public actor LocalUsageReader {
             if let signature, signature == previousSignature { return }
             previousSignature = signature
             guard let tokens = tokenCounts(usage) else { invalid += 1; return }
+            let timing = timer.finish(at: date, tokens: tokens)
             guard tokens.total > 0 else { return }
-            append(row, tokens: tokens, id: "codex:\(emitter):\(signature ?? "\(session):\(lineNumber)")")
-        }
-        func append(_ row: [String: Any], tokens: UsageTokens, id: String) {
-            guard let stamp = row["timestamp"] as? String,
-                  let date = fractional.date(from: stamp) ?? whole.date(from: stamp) else { invalid += 1; return }
-            records.append(UsageRecord(id: id, service: .codex, session: session, project: project,
+            guard let date else { invalid += 1; return }
+            records.append(UsageRecord(id: "codex:\(emitter):\(signature ?? "\(session):\(lineNumber)")",
+                                       service: .codex, session: session, project: project,
                                        model: model, date: date, tokens: tokens,
-                                       serviceTier: serviceTier.lowercased(), isUSOnly: false))
+                                       serviceTier: serviceTier.lowercased(), isUSOnly: false,
+                                       serviceTierReported: serviceTierReported,
+                                       estimatedDuration: timing?.duration, estimatedFirstToken: timing?.firstToken))
         }
 
         // ponytail: 变更文件从头解析；若单个日志增长到影响刷新，再改为 byte-offset 增量读取。
@@ -315,10 +379,65 @@ public actor LocalUsageReader {
         var tokens = UsageTokens()
         tokens.output = output
         tokens.cached = count("cached_input_tokens") ?? count("cache_read_input_tokens") ?? 0
-        tokens.cacheWrite = count("cache_write_input_tokens") ?? count("cache_write_tokens") ?? 0
+        let cacheWrite = count("cache_write_input_tokens") ?? count("cache_write_tokens")
+        tokens.cacheWrite = cacheWrite ?? 0
+        tokens.cacheWriteReported = cacheWrite != nil
         guard tokens.cached + tokens.cacheWrite <= input else { return nil }
         tokens.input = input - tokens.cached - tokens.cacheWrite
         // Codex 聚合计数未提供缓存保留期，按短保留期作 API 参考估算。
         return tokens
+    }
+}
+
+// Timing boundaries adapted from farion1231/cc-switch (MIT), session_usage_codex.rs.
+// Copyright (c) 2025 Jason Young. See Resources/ThirdPartyNotices/cc-switch-LICENSE.txt.
+private struct CodexRequestTimer {
+    var boundary: Date?
+    var lastTokenCount: Date?
+    var start: Date?
+    var lastOutput: Date?
+    var toolOutputAfterModel: Date?
+    var usageRecord: (date: Date, tokens: UsageTokens)?
+    var firstOutput: Date?
+    var startsWithToolCall = false
+
+    mutating func observeOutput(at date: Date, isToolCall: Bool) {
+        // 旧布局会在 token_count 之后同批补写上一条响应，不把它当成新请求。
+        if start == nil, let lastTokenCount, date.timeIntervalSince(lastTokenCount) <= 0.1 { return }
+        if lastOutput == nil {
+            start = boundary
+            startsWithToolCall = isToolCall
+        }
+        lastOutput = date
+        toolOutputAfterModel = nil
+    }
+
+    mutating func reset(at date: Date?) {
+        self = CodexRequestTimer(boundary: [boundary, date].compactMap { $0 }.max(), lastTokenCount: lastTokenCount)
+    }
+
+    mutating func finish(at date: Date?, tokens: UsageTokens) -> (duration: TimeInterval, firstToken: TimeInterval?)? {
+        defer {
+            reset(at: date)
+            lastTokenCount = date
+        }
+        guard let start = start ?? boundary else { return nil }
+        let end: Date?
+        if let usageRecord,
+           usageRecord.tokens.input + usageRecord.tokens.cacheWrite == tokens.input + tokens.cacheWrite,
+           usageRecord.tokens.cached == tokens.cached, usageRecord.tokens.output == tokens.output {
+            end = usageRecord.date
+        } else if let toolOutputAfterModel, date.map({ $0.timeIntervalSince(toolOutputAfterModel) <= 0.1 }) ?? true {
+            // 旧版等工具执行完才写 token_count，用最后一个模型输出项排除工具耗时。
+            end = lastOutput
+        } else {
+            end = date
+        }
+        guard let end else { return nil }
+        let duration = end.timeIntervalSince(start)
+        // 日志缺少可靠边界时不猜测；与上游相同，超过一小时不作请求耗时。
+        guard duration > 0, duration <= 3600 else { return nil }
+        let firstToken = startsWithToolCall ? nil : firstOutput.map { $0.timeIntervalSince(start) }
+        return (duration, firstToken.flatMap { $0 > 0 && $0 <= duration ? $0 : nil })
     }
 }
