@@ -279,6 +279,7 @@ struct UsageView: View {
                                 HStack {
                                     Spacer()
                                     Button("完成") { showsCustomDates = false }.keyboardShortcut(.defaultAction)
+                                        .buttonStyle(PanelButtonStyle(prominent: true))
                                 }
                             }.font(.system(size: 13)).padding(16).frame(width: 280)
                         }

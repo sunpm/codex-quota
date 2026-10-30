@@ -17,6 +17,7 @@ struct AccountResponse: Decodable {
 struct QuotaSample {
     let fingerprint: String
     let windows: [QuotaWindow]
+    var resetCredits: RateLimitResetCredits? = nil
 }
 
 @MainActor
@@ -57,12 +58,14 @@ final class CodexClient: QuotaClient {
         let data = try await request("account/rateLimits/read")
         let response = try JSONDecoder().decode(LimitsResponse.self, from: data)
         let windows = response.windows()
-        guard !windows.isEmpty else { throw MonitorError.message("当前账号没有返回可用的百分比额度。") }
+        guard !windows.isEmpty || response.rateLimitResetCredits != nil else {
+            throw MonitorError.message("当前账号没有返回可用的额度数据。")
+        }
         guard let identity = response.accountId ?? user.email, !identity.isEmpty else {
             throw MonitorError.message("无法识别当前账号，暂时不能安全比较额度变化。")
         }
         let fingerprint = SHA256.hash(data: Data(identity.utf8)).map { String(format: "%02x", $0) }.joined()
-        return QuotaSample(fingerprint: fingerprint, windows: windows)
+        return QuotaSample(fingerprint: fingerprint, windows: windows, resetCredits: response.rateLimitResetCredits)
     }
 
     private func connect() async throws {

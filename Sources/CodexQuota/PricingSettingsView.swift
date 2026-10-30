@@ -28,7 +28,7 @@ struct PricingSettingsView: View {
                 Spacer()
                 if model.updatingPrices { ProgressView().controlSize(.small) }
                 Button("更新价格") { Task { await model.updatePrices() } }.disabled(model.updatingPrices)
-                Button("添加") { editing = ModelPricing(service: .codex, model: "") }
+                Button("添加…") { editing = ModelPricing(service: .codex, model: "") }
             }
             HStack {
                 Link("models.dev", destination: URL(string: "https://models.dev")!)
@@ -51,7 +51,7 @@ struct PricingSettingsView: View {
                                 Text(priceLabel(price)).font(PanelTypography.detail).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("编辑") { editing = price }
+                            Button("编辑…") { editing = price }
                         }.padding(.vertical, 8)
                         Divider()
                     }

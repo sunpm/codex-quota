@@ -6,6 +6,7 @@ import QuotaCore
 
 struct ServiceSnapshot {
     var windows: [QuotaWindow] = []
+    var resetCredits: RateLimitResetCredits?
     var lastSuccess: Date?
     var errorMessage: String?
     var refreshing = false
@@ -25,6 +26,7 @@ final class MonitorModel: ObservableObject {
     @Published var launchError: String?
     @Published private(set) var showsMenuBar: Bool
     @Published private(set) var animationsEnabled: Bool
+    @Published private(set) var resetCreditRemindersEnabled: Bool
 
     let readsLocalUsage: Bool
     let resetAnnouncements: ResetAnnouncementMonitor
@@ -44,6 +46,9 @@ final class MonitorModel: ObservableObject {
     private let quotaHistoryKey = "quotaHistory.v1"
     private var continuousQuotaObservation = false
     private let notificationGuideKey = "notifications.persistentGuideShown"
+    private let resetCreditRemindersKey = "resetCredits.expirationReminders"
+    private let resetCreditReminderStateKey = "resetCredits.reminded.v1"
+    private var remindedResetCredits: [String: Date]
 
     var monitoringEnabled: Bool { preferences.isEnabled(.codex) }
     var recoveryNotificationsEnabled: Bool { preferences.notificationsEnabled(.codex) }
@@ -51,6 +56,9 @@ final class MonitorModel: ObservableObject {
 
     init(defaults: UserDefaults = .standard, client: QuotaClient? = nil) {
         self.defaults = defaults
+        resetCreditRemindersEnabled = defaults.bool(forKey: resetCreditRemindersKey)
+        remindedResetCredits = defaults.data(forKey: resetCreditReminderStateKey)
+            .flatMap { try? JSONDecoder().decode([String: Date].self, from: $0) } ?? [:]
         refreshInterval = max(30, defaults.object(forKey: "quota.refreshIntervalSeconds") as? Int ?? 300)
         animationsEnabled = defaults.object(forKey: "appearance.animationsEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: quotaHistoryKey),
@@ -102,6 +110,12 @@ final class MonitorModel: ObservableObject {
 
     func setResetNotificationsEnabled(_ enabled: Bool) {
         resetAnnouncements.setNotificationsEnabled(enabled)
+        if enabled { Task { await requestNotificationsIfNeeded() } }
+    }
+
+    func setResetCreditRemindersEnabled(_ enabled: Bool) {
+        resetCreditRemindersEnabled = enabled
+        defaults.set(enabled, forKey: resetCreditRemindersKey)
         if enabled { Task { await requestNotificationsIfNeeded() } }
     }
 
@@ -222,12 +236,14 @@ final class MonitorModel: ObservableObject {
             if let data = try? JSONEncoder().encode(quotaHistory) {
                 defaults.set(data, forKey: quotaHistoryKey)
             }
-            snapshot = ServiceSnapshot(windows: sample.windows, lastSuccess: now, refreshing: true)
+            snapshot = ServiceSnapshot(windows: sample.windows, resetCredits: sample.resetCredits,
+                                       lastSuccess: now, refreshing: true)
             schedule.succeeded()
             timer?.fireDate = now.addingTimeInterval(TimeInterval(refreshInterval))
             let recovered = tracker.observe(service: .codex, account: sample.fingerprint, windows: sample.windows,
                                             notify: recoveryNotificationsEnabled)
             persistRecovery()
+            await notifyExpiringResetCredits(sample, at: now)
             if !recovered.isEmpty { await notifyRecovery(recovered) }
         } catch {
             guard !stopped, monitoringEnabled else { return }
@@ -271,7 +287,7 @@ final class MonitorModel: ObservableObject {
             notificationStatus = "通知未获允许，请在系统设置中开启"
         case .notDetermined:
             notificationsEnabled = false
-            notificationStatus = "开启通知后，恢复到 100% 时提醒"
+            notificationStatus = "尚未允许系统通知"
         @unknown default:
             notificationsEnabled = false
             notificationStatus = "无法确认通知权限"
@@ -311,10 +327,34 @@ final class MonitorModel: ObservableObject {
         await sendNotification(title: "Codex 额度已恢复至 100%", body: descriptions.joined(separator: "、") + "已恢复，可以继续使用。")
     }
 
+    private func notifyExpiringResetCredits(_ sample: QuotaSample, at now: Date) async {
+        remindedResetCredits = remindedResetCredits.filter { $0.value > now }
+        var expiring: [Date] = []
+        for credit in sample.resetCredits?.availableCredits ?? [] {
+            guard let expiration = credit.expirationDate, expiration > now,
+                  expiration.timeIntervalSince(now) <= 24 * 60 * 60 else { continue }
+            let key = accountFingerprint("\(sample.fingerprint):\(credit.id)")
+            guard remindedResetCredits[key] == nil else { continue }
+            // 关闭提醒期间也消费事件，避免再次开启后补发。
+            remindedResetCredits[key] = expiration
+            expiring.append(expiration)
+        }
+        if let data = try? JSONEncoder().encode(remindedResetCredits) {
+            defaults.set(data, forKey: resetCreditReminderStateKey)
+        }
+        guard resetCreditRemindersEnabled, let earliest = expiring.min() else { return }
+        await updateNotificationStatus()
+        guard !stopped, monitoringEnabled, notificationsEnabled, resetCreditRemindersEnabled else { return }
+        let date = earliest.formatted(.dateTime.month().day().hour().minute())
+        let body = expiring.count == 1 ? "1 张重置卡将于 \(date) 到期。"
+            : "\(expiring.count) 张重置卡将在 24 小时内到期，最早于 \(date) 到期。"
+        await sendNotification(title: "Codex 重置卡即将到期", body: body)
+    }
+
     func sendTestNotification() async {
         await requestNotificationsIfNeeded()
         guard notificationsEnabled else { return }
-        await sendNotification(title: "额度通知测试", body: "通知已就绪。Codex 实际额度恢复至 100% 时，会在这里提醒。")
+        await sendNotification(title: "Codex 通知测试", body: "通知已就绪，将按设置发送额度恢复、重置卡到期或重置动态提醒。")
     }
 
     private func sendNotification(title: String, body: String, identifier: String = UUID().uuidString, resetPostID: String? = nil) async {

@@ -18,6 +18,7 @@ struct UsageSessionDetailView: View {
                 Text(title).font(.title2.weight(.semibold))
                 Spacer()
                 Button("完成") { dismiss() }.keyboardShortcut(.cancelAction)
+                    .buttonStyle(PanelButtonStyle(prominent: true))
             }
             HStack {
                 Text("\(range) · \(records.count.formatted()) 条用量记录").foregroundStyle(.secondary)
