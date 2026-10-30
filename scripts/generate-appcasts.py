@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--tag", required=True)
 parser.add_argument("--repository", required=True)
 parser.add_argument("--build-number", required=True)
+parser.add_argument("--release-notes", type=Path, required=True)
 parser.add_argument("--dist", type=Path, default=Path("dist"))
 args = parser.parse_args()
 if not re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?", args.tag):
@@ -24,6 +25,11 @@ if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", args.repository):
     parser.error("仓库名称必须是 owner/repository")
 if not args.build_number.isdecimal() or int(args.build_number) <= 0:
     parser.error("构建号必须是递增的正整数")
+if not args.release_notes.is_file():
+    parser.error("缺少当前版本的 Markdown 更新说明")
+release_notes = args.release_notes.read_text(encoding="utf-8").strip()
+if not release_notes:
+    parser.error("当前版本的更新说明不能为空")
 
 public_key = os.environ.get("SPARKLE_PUBLIC_ED_KEY", "").strip()
 private_key = os.environ.pop("SPARKLE_PRIVATE_ED_KEY", "").strip()
@@ -63,10 +69,12 @@ for platform in ("AppleSilicon", "Intel"):
     # 每个目录只包含一个架构，避免同一构建号被合并或选中错误的安装包。
     with tempfile.TemporaryDirectory(prefix=f"appcast-{platform}-", dir=root / ".build") as staging:
         shutil.copy2(archive, Path(staging) / archive.name)
+        shutil.copy2(args.release_notes, Path(staging) / (archive.stem + ".md"))
         generated_feed = Path(staging) / feed.name
         command = [
             str(tool_directory / "generate_appcast"), "--ed-key-file", "-",
             "--disable-signing-warning", "--maximum-deltas", "0",
+            "--embed-release-notes",
             "--download-url-prefix", download_prefix,
             "--link", release_url, "-o", str(generated_feed),
         ]
@@ -79,6 +87,11 @@ for platform in ("AppleSilicon", "Intel"):
     if len(items) != 1:
         parser.error(f"{feed.name} 应仅包含当前版本")
     item = items[0]
+    description = item.find("description")
+    if (description is None
+            or description.get(f"{{{namespace['sparkle']}}}format") != "markdown"
+            or (description.text or "").strip() != release_notes):
+        parser.error(f"{feed.name} 未包含当前版本的 Markdown 更新说明")
     enclosure = item.find("enclosure")
     signature = None if enclosure is None else enclosure.get(f"{{{namespace['sparkle']}}}edSignature")
     # generate_appcast 只有在安装包公钥与提供的私钥匹配时才为 enclosure 签名。

@@ -53,6 +53,18 @@ struct AppUpdateView: View {
                 Link("在 GitHub 查看发布页", destination: model.release?.pageURL ?? AppUpdateModel.releasesURL)
                     .buttonStyle(.link).fixedSize()
             }.font(PanelTypography.detail).frame(height: 20)
+            if let release = model.release {
+                if let notes = release.notes {
+                    ViewThatFits(in: .vertical) {
+                        ReleaseNotesView(markdown: notes).fixedSize(horizontal: false, vertical: true)
+                        ScrollView {
+                            ReleaseNotesView(markdown: notes).padding(.trailing, 12)
+                        }
+                    }.frame(maxHeight: 220).accessibilityLabel("更新说明")
+                } else {
+                    Text("暂无更新说明").font(PanelTypography.detail).foregroundStyle(.secondary)
+                }
+            }
             Divider()
             HStack {
                 Text("自动检查更新")
