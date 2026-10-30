@@ -17,26 +17,20 @@ struct AppUpdateView: View {
                 }
                 Spacer()
                 if model.checking { ProgressView().controlSize(.small).accessibilityLabel("正在检查更新") }
-                Button(model.checking ? "正在检查…" : showsCheckCompletion ? "检查完成" : "检查更新") {
-                    model.check()
+                if model.canInstall {
+                    Button("下载并安装…") { confirmsInstallation = true }
+                } else if model.canCancel, !model.checking {
+                    Button("取消", action: model.cancelDownloadOrCheck)
+                } else if model.canRetryInstallation {
+                    Button("重试安装", action: model.retryInstallation)
                 }
-                    .disabled(!model.canCheckForUpdates || showsCheckCompletion)
-            }
-            if let error = model.error {
-                Label(error, systemImage: "exclamationmark.triangle").fixedSize(horizontal: false, vertical: true)
-            }
-            if let status = model.status {
-                HStack {
-                    Text(status).fontWeight(.medium)
-                    Spacer()
-                    if model.canInstall {
-                        Button("下载并安装…") { confirmsInstallation = true }
-                            .buttonStyle(PanelButtonStyle(prominent: true))
-                    } else if model.canCancel {
-                        Button("取消", action: model.cancelDownloadOrCheck)
-                    } else if model.canRetryInstallation {
-                        Button("重试安装", action: model.retryInstallation)
+                if model.checking, model.canCancel {
+                    Button("取消检查", action: model.cancelDownloadOrCheck)
+                } else {
+                    Button(model.checking ? "正在检查…" : showsCheckCompletion ? "检查完成" : "检查更新") {
+                        model.check()
                     }
+                        .disabled(!model.canCheckForUpdates || showsCheckCompletion)
                 }
             }
             if model.phase == .downloading {
@@ -47,18 +41,23 @@ struct AppUpdateView: View {
                 ProgressView(value: model.extractionProgress).accessibilityLabel("更新准备进度")
             } else if model.phase == .installing {
                 ProgressView().controlSize(.small).accessibilityLabel("正在安装并重启")
-            } else if model.checking, model.canCancel {
-                HStack {
-                    Spacer()
-                    Button("取消", action: model.cancelDownloadOrCheck)
-                }
             }
-            Link("在 GitHub 查看发布页", destination: model.release?.pageURL ?? AppUpdateModel.releasesURL)
-                .buttonStyle(.link).font(PanelTypography.detail)
+            HStack(alignment: .firstTextBaseline) {
+                if let error = model.error {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .lineLimit(1).help(error)
+                } else if let status = model.status {
+                    Text(status).fontWeight(.medium).lineLimit(1).help(status)
+                }
+                Spacer(minLength: 12)
+                Link("在 GitHub 查看发布页", destination: model.release?.pageURL ?? AppUpdateModel.releasesURL)
+                    .buttonStyle(.link).fixedSize()
+            }.font(PanelTypography.detail).frame(height: 20)
         }.padding(16).panelCard()
             .alert("安装 \(model.release?.version ?? "更新")？", isPresented: $confirmsInstallation) {
                 Button("取消", role: .cancel) {}
                 Button("安装并重启", action: model.installConfirmedUpdate)
+                    .keyboardShortcut(.defaultAction)
             } message: {
                 Text("下载完成后将退出并重新打开 Codex Quota。")
             }
@@ -85,7 +84,7 @@ struct InstalledReleaseNotesView: View {
             }
             HStack {
                 Spacer()
-                Button("知道了") { dismiss() }
+                Button("完成") { dismiss() }
                     .buttonStyle(PanelButtonStyle(prominent: true))
                     .keyboardShortcut(.defaultAction)
             }

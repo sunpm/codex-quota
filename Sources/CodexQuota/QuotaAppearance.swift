@@ -14,21 +14,11 @@ struct PanelButtonStyle: PrimitiveButtonStyle {
 
     @ViewBuilder
     func makeBody(configuration: Configuration) -> some View {
-        #if compiler(>=6.2)
-        if #available(macOS 26, *), prominent {
-            Button(configuration).buttonStyle(.glassProminent)
-        } else if prominent {
-            Button(configuration).buttonStyle(.borderedProminent)
-        } else {
-            Button(configuration).buttonStyle(.bordered)
-        }
-        #else
         if prominent {
-            Button(configuration).buttonStyle(.borderedProminent)
+            Button(configuration).buttonStyle(.borderedProminent).tint(.accentColor)
         } else {
             Button(configuration).buttonStyle(.bordered)
         }
-        #endif
     }
 }
 

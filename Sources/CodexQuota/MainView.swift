@@ -66,7 +66,7 @@ struct MainView: View {
                 .onAppear { updates.markInstalledReleaseNotesShown() }
         }
         .alert("开启持久通知", isPresented: $model.showsPersistentNotificationGuide) {
-            Button("前往设置") { model.openNotificationSettings() }
+            Button("前往设置…") { model.openNotificationSettings() }
             Button("暂不设置", role: .cancel) {}
         } message: {
             Text(persistentNotificationGuide)
@@ -161,7 +161,7 @@ struct MainView: View {
         return ScrollView {
             VStack(spacing: 16) {
                 if model.monitoringEnabled {
-                    QuotaBlock(windows: snapshot.windows, error: snapshot.errorMessage)
+                    QuotaBlock(windows: snapshot.windows, resetCredits: snapshot.resetCredits, error: snapshot.errorMessage)
                         .panelCard()
                     QuotaTrendView(history: model.quotaHistory, windows: snapshot.windows)
                     ResetAnnouncementView(model: resetAnnouncements).panelCard()
@@ -223,6 +223,13 @@ struct MainView: View {
                         Toggle("额度恢复时通知", isOn: Binding(get: { model.recoveryNotificationsEnabled }, set: { model.setRecoveryNotificationsEnabled($0) })).labelsHidden()
                     }
                     HStack {
+                        Text("重置卡到期前 24 小时提醒")
+                        Spacer()
+                        Toggle("重置卡到期前 24 小时提醒", isOn: Binding(get: { model.resetCreditRemindersEnabled },
+                            set: { model.setResetCreditRemindersEnabled($0) })).labelsHidden()
+                            .help("提前 24 小时提醒，每张卡仅提醒一次；需保持应用运行和额度监测开启。")
+                    }
+                    HStack {
                         Text("Codex 重置动态通知")
                         Spacer()
                         Toggle("Codex 重置动态通知", isOn: Binding(get: { resetAnnouncements.notificationsEnabled },
@@ -230,9 +237,25 @@ struct MainView: View {
                             .help("提醒 Tibo 的重置预告、确认与发卡消息，个人额度恢复通知仍由实际读数触发。")
                     }
                 }.padding(.leading, 12)
-                    .foregroundStyle(model.monitoringEnabled ? .primary : .secondary)
                     .disabled(!model.monitoringEnabled)
+                    .saturation(model.monitoringEnabled ? 1 : 0)
+                    .opacity(model.monitoringEnabled ? 1 : 0.45)
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
+            VStack(alignment: .leading, spacing: 8) {
+                Text("系统通知").font(.headline)
+                Text(model.notificationStatus).font(PanelTypography.detail).foregroundStyle(.secondary)
+                HStack {
+                    if !model.persistentNotificationsEnabled {
+                        Button("开启持久通知…") { model.showPersistentNotificationGuide() }
+                    }
+                    Button("测试通知") { Task { await model.sendTestNotification() } }
+                        .disabled(!model.monitoringEnabled || !model.notificationsEnabled
+                                  || !(model.recoveryNotificationsEnabled || model.resetCreditRemindersEnabled
+                                       || resetAnnouncements.notificationsEnabled))
+                    Button("系统设置…") { model.openNotificationSettings() }
+                }
+                if let error = model.notificationError { Text(error).font(PanelTypography.detail).foregroundStyle(.primary) }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(16).panelCard()
             VStack(alignment: .leading, spacing: 14) {
                 Text("通用").font(.headline)
                 HStack {
@@ -261,20 +284,6 @@ struct MainView: View {
                         .help("控制侧栏和选项切换时的滑动与文字过渡效果。")
                 }
             }.toggleStyle(.switch).controlSize(.small).padding(16).panelCard()
-            VStack(alignment: .leading, spacing: 8) {
-                Text("系统通知").font(.headline)
-                Text(model.notificationStatus).font(PanelTypography.detail).foregroundStyle(.secondary)
-                HStack {
-                    if !model.persistentNotificationsEnabled {
-                        Button("开启持久通知") { model.showPersistentNotificationGuide() }
-                    }
-                    Button("测试通知") { Task { await model.sendTestNotification() } }
-                        .disabled(!model.monitoringEnabled || !model.notificationsEnabled
-                                  || !(model.recoveryNotificationsEnabled || resetAnnouncements.notificationsEnabled))
-                    Button("系统设置") { model.openNotificationSettings() }
-                }
-                if let error = model.notificationError { Text(error).font(PanelTypography.detail).foregroundStyle(.primary) }
-            }.padding(16).panelCard()
             usageHistorySettings
             PricingSettingsView(model: usage).padding(16).panelCard()
         }
@@ -321,6 +330,7 @@ struct MainView: View {
 
 private struct QuotaBlock: View {
     let windows: [QuotaWindow]
+    let resetCredits: RateLimitResetCredits?
     let error: String?
 
     var body: some View {
@@ -366,9 +376,13 @@ private struct QuotaBlock: View {
                     }.font(PanelTypography.detail).foregroundStyle(.secondary)
                 }
             }
+            if let resetCredits {
+                Divider()
+                ResetCreditsView(credits: resetCredits)
+            }
             if let error {
                 Label {
-                    Text(windows.isEmpty ? error : "数据已过期 · \(error)").foregroundStyle(.primary)
+                    Text(windows.isEmpty && resetCredits == nil ? error : "数据已过期 · \(error)").foregroundStyle(.primary)
                 } icon: {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(quotaColor(remaining: 10))
                 }.font(.callout).fixedSize(horizontal: false, vertical: true)

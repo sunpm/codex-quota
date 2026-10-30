@@ -4,6 +4,7 @@ public struct LimitsResponse: Decodable {
     public let accountId: String?
     public let rateLimits: LimitBucket?
     public let rateLimitsByLimitId: [String: LimitBucket]?
+    public let rateLimitResetCredits: RateLimitResetCredits?
 
     public func windows() -> [QuotaWindow] {
         let buckets: [String: LimitBucket]
@@ -26,6 +27,26 @@ public struct LimitsResponse: Decodable {
             }
         }
     }
+}
+
+public struct RateLimitResetCredits: Decodable {
+    public let availableCount: UInt
+    public let credits: [RateLimitResetCredit]?
+
+    public var availableCredits: [RateLimitResetCredit] {
+        guard availableCount > 0 else { return [] }
+        return (credits ?? []).filter { $0.status == "available" && $0.resetType == "codexRateLimits" }
+            .sorted { ($0.expiresAt ?? .greatestFiniteMagnitude) < ($1.expiresAt ?? .greatestFiniteMagnitude) }
+    }
+}
+
+public struct RateLimitResetCredit: Decodable, Identifiable {
+    public let id: String
+    public let resetType: String
+    public let status: String
+    public let expiresAt: TimeInterval?
+
+    public var expirationDate: Date? { expiresAt.map { Date(timeIntervalSince1970: $0) } }
 }
 
 public struct LimitBucket: Decodable {
