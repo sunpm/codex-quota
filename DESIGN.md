@@ -154,11 +154,11 @@ Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isT
 
 ## Layout
 
-使用固定侧栏与可伸缩内容区。主窗口初始内容尺寸为 1140 × 760pt，最低内容尺寸为 860 × 560pt；数值来自 [ControlPanelController.swift](Sources/CodexQuota/ControlPanelController.swift)，是实现约束，并非最小尺寸验收记录。
+使用原生 `HSplitView` 分隔侧栏与内容区，拖动分隔线调整侧栏宽度；内容区至少保留 640pt。主窗口初始内容尺寸为 1140 × 760pt，最低内容尺寸为 860 × 560pt；数值来自 [ControlPanelController.swift](Sources/CodexQuota/ControlPanelController.swift)，是实现约束，并非最小尺寸验收记录。
 
 | 空间角色 | 现有规则 |
 | --- | --- |
-| 侧栏 | 宽 188pt，内部 padding 12pt；macOS 26 玻璃外再留 8pt |
+| 侧栏 | 宽度范围 160–320pt，向原生分栏提供 188pt 理想宽度，实际分配受内容区最小宽度约束；内部 padding 12pt，macOS 26 玻璃外再留 8pt |
 | 页面栏 | 高 56pt，左右 padding 使用 `page`，标题与刷新操作分列 |
 | 内容外边距 | `page` |
 | 额度与设置 | 内容随窗口伸展，与用量页共用 24pt 页边距 |

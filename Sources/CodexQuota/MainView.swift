@@ -33,17 +33,15 @@ struct MainView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        HSplitView {
             #if compiler(>=6.2)
             if #available(macOS 26, *) {
                 sidebar.glassEffect(in: RoundedRectangle(cornerRadius: 16)).padding(8)
             } else {
                 sidebar.background(Color(nsColor: .windowBackgroundColor))
-                Divider()
             }
             #else
             sidebar.background(Color(nsColor: .windowBackgroundColor))
-            Divider()
             #endif
             VStack(spacing: 0) {
                 header
@@ -55,7 +53,7 @@ struct MainView: View {
                 } else {
                     UsageView(model: usage, page: navigation.page)
                 }
-            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            }.frame(minWidth: 640, maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
@@ -114,7 +112,8 @@ struct MainView: View {
         .background {
             PanelSelectionIndicator(selection: navigation.page, namespace: navigationSelection)
         }
-        .buttonStyle(.plain).font(.system(size: 13)).padding(12).frame(width: 188)
+        .buttonStyle(.plain).font(.system(size: 13)).padding(12)
+        .frame(minWidth: 160, idealWidth: 188, maxWidth: 320)
     }
 
     private func navigationButton(_ page: PanelPage) -> some View {
