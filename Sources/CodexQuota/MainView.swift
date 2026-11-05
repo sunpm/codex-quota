@@ -107,6 +107,9 @@ struct MainView: View {
             }
             navigationButton(.settings).padding(.top, 12)
             Spacer()
+            if sidebarToday != 0 {
+                sidebarTodaySummary.padding(.horizontal, 10)
+            }
         }
         .background {
             PanelSelectionIndicator(selection: navigation.page, namespace: navigationSelection)
@@ -120,13 +123,12 @@ struct MainView: View {
             navigation.page = page
             if page == .quota { Task { await model.refresh(force: true) } }
         } label: {
-            VStack(alignment: .leading, spacing: 4) {
-              HStack(spacing: 8) {
+            HStack(spacing: 8) {
                 Image(systemName: page.symbol)
                     .symbolRenderingMode(.monochrome)
                     .font(.system(size: 14)).fontWeight(.regular)
                     .frame(width: 22, height: 22)
-                Text(page.rawValue)
+                Text(page.rawValue).fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 0)
                 if page == .settings, let release = updates.release, release.isNewer {
                     Image(systemName: "arrow.down.circle.fill")
@@ -134,13 +136,8 @@ struct MainView: View {
                                          ? Color.white : Color.accentColor)
                         .accessibilityLabel(release.status).help(release.status)
                 }
-              }
-              if page == .overview, sidebarToday != 0 {
-                  sidebarTodaySummary.padding(.leading, 30)
-              }
             }
-                .padding(.vertical, 7)
-                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading).padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading).padding(.horizontal, 10)
                 .modifier(PanelSelectionLabel(value: page, selection: navigation.page, namespace: navigationSelection))
                 .contentShape(Rectangle())
         }.help(page.rawValue)
@@ -152,33 +149,38 @@ struct MainView: View {
         let records = usage.scan.records.filter { $0.date >= today && $0.date <= Date() }
         let tokens = records.reduce(into: UsageTokens()) { $0.add($1.tokens) }
         let cost = usage.costTotal(records)
-        let items = UsageTodayMetric.allCases.filter { sidebarToday & $0.rawValue != 0 }.prefix(2)
-        return HStack(alignment: .top, spacing: 4) {
-            Text("今日")
-            Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: 3) {
-                ForEach(Array(items), id: \.self) { item in
-                    if usage.updatedAt == nil {
-                        Text("—").help(item.title)
-                    } else {
-                        switch item {
-                        case .tokens:
-                            Text("\(formattedTokens(tokens.total)) Tokens").help("今日 \(tokens.total.formatted()) Tokens")
-                        case .cost:
-                            Text(cost.unpricedCount > 0 && cost.pricedCount > 0
-                                 ? "已定价 \(formattedCost(cost))"
-                                 : records.isEmpty ? "$0.00" : formattedCost(cost))
-                                .help("API 等价估算，非订阅账单。\(cost.unpricedCount) 条未定价。")
-                        case .records:
-                            Text("\(formattedTokens(records.count)) 条").help("今日 \(records.count.formatted()) 条用量记录，不代表全部网络请求数")
-                        case .hitRate:
-                            Text("\(tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—") 命中")
-                                .help("缓存命中量 ÷ 全部输入")
-                        }
-                    }
-                }
+        let items = UsageTodayMetric.allCases.filter { sidebarToday & $0.rawValue != 0 }
+        let values = items.map { item -> (metric: UsageTodayMetric, value: String, detail: String) in
+            guard usage.updatedAt != nil else { return (item, "—", "今日\(item.title)：尚未读取") }
+            switch item {
+            case .tokens:
+                return (item, formattedTokens(tokens.total), "今日 \(tokens.total.formatted()) Tokens")
+            case .cost:
+                let value = records.isEmpty ? "$0.00" : formattedCost(cost)
+                return (item, value, "今日\(item.title)：\(value)。API 等价估算，非订阅账单。\(cost.unpricedCount) 条未定价。")
+            case .records:
+                return (item, "\(formattedTokens(records.count)) 条", "今日 \(records.count.formatted()) 条用量记录，不代表全部网络请求数")
+            case .hitRate:
+                let value = tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—"
+                return (item, value, "今日缓存命中率：\(value)。缓存命中量 ÷ 全部输入")
             }
-        }.font(PanelTypography.detail).monospacedDigit().lineLimit(1)
+        }
+        return VStack(alignment: .leading, spacing: 8) {
+            Divider().padding(.bottom, 4)
+            Text("今日").fontWeight(.medium).foregroundStyle(.secondary)
+            ForEach(values, id: \.metric) { item in
+                HStack(spacing: 8) {
+                    Text(item.metric == .cost && cost.unpricedCount > 0 && cost.pricedCount > 0
+                         ? "已定价费用" : item.metric.title)
+                        .foregroundStyle(.secondary).fixedSize()
+                    Spacer(minLength: 0)
+                    Text(item.value).fontWeight(.medium).monospacedDigit().lineLimit(1)
+                }
+                .help(item.detail)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(item.detail)
+            }
+        }.font(PanelTypography.detail).padding(.top, 12)
     }
 
     private var header: some View {
@@ -365,13 +367,12 @@ struct MainView: View {
                                 if enabled { sidebarToday |= item.rawValue }
                                 else { sidebarToday &= ~item.rawValue }
                             }))
-                            .disabled(!selected.contains(item) && selected.count >= 2)
                     }
                     Divider()
                     Button("不显示") { sidebarToday = 0 }
                 } label: {
-                    Text(selected.isEmpty ? "不显示" : selected.map(\.title).joined(separator: " + "))
-                }.help("最多显示两项，按本地自然日统计。")
+                    Text(selected.isEmpty ? "不显示" : "已选 \(selected.count) 项")
+                }.help("按本地自然日统计。")
             }
             Divider()
             HStack {

@@ -29,6 +29,8 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 主窗口、侧栏菜单及设置分组的视觉层级参考 [cc-switch v4 主界面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/main-zh.png)、[用量页面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/usage-zh.png) 与 `src/index.css` 的中性色分层（参考日期：2026-10-28）。使用本项目的 SwiftUI / AppKit 控件实现，未复制其前端组件或加入依赖；沿用下文的 cc-switch MIT 许可声明。
 
+侧栏今日指标的紧凑数值与完整悬停、辅助标签参考 cc-switch `f283a55f6fbcadb7f1c954c76a34f307ea3856c8` 的 `src/components/shell/Sidebar.tsx`（2026-11-05）。本项目使用原生 SwiftUI 将指标独立放在侧栏底部，支持四项多选并逐行显示，保留已有统计实现与真实零值、未读取、缺价状态；未复制 React 组件或引入依赖，沿用随包分发的 cc-switch MIT 声明。
+
 用量热力图参考上述用量页面的 53 周日历布局，以及 [PR #2297](https://github.com/farion1231/cc-switch/pull/2297) 中按日更新范围、同日累加的修复思路。使用原生 SwiftUI 实现，复用本项目本地日志与费用计算，沿用随包分发的 cc-switch MIT 许可声明。
 
 小时趋势的粒度切换参考 cc-switch `32db0e5` 的 `docs/user-manual/zh/4-proxy/4.4-usage.md`；同期比较参考 cc-bar `530ef49` 的 `Main/StatsView.swift` 与 `Main/StatsOverviewModel.swift`（参考日期：2026-10-28）。本项目保留自己的自然日范围，统一按记录时间筛选，进行中的范围采用相同截止时刻，费用缺价时不计算涨跌；使用原生 Charts 和现有计费结果，沿用两项目随包分发的 MIT 声明，未复制聚合器或增加依赖。
