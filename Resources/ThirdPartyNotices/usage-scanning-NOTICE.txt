@@ -1,0 +1,13 @@
+Codex Quota incremental usage-log scanning
+
+Design references (reviewed 2026-11-05):
+- nanvon/cc-bar: Core/Usage/JSONLLineReader.swift and CodexJSONLScanner.swift
+  https://github.com/nanvon/cc-bar
+  Copyright (c) 2026 nanvon. MIT License: cc-bar-LICENSE.txt.
+- steipete/CodexBar: Sources/CodexBarCore/Vendored/CostUsage/CostUsageJsonl.swift
+  https://github.com/steipete/CodexBar
+  Copyright (c) 2026 Peter Steinberger. MIT License: CodexBar-LICENSE.txt.
+
+Codex Quota implements complete-line checkpoints and parser-context resumption
+using its existing Foundation parser. It retains its own usage deduplication and
+request timing rules without adding upstream storage or file-watching dependencies.

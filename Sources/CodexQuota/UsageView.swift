@@ -1,6 +1,12 @@
 import SwiftUI
 import QuotaCore
 
+struct UsageDayTotal {
+    var tokens = UsageTokens()
+    var cost = UsageCost()
+    var recordCount = 0
+}
+
 @MainActor
 final class UsageModel: ObservableObject {
     @Published private(set) var scan = UsageScan()
@@ -11,11 +17,16 @@ final class UsageModel: ObservableObject {
     @Published private(set) var updatingPrices = false
     @Published private(set) var pricingError: String?
     @Published private(set) var historyActionError: String?
+    @Published private(set) var dailyTotals: [Date: UsageDayTotal] = [:]
     private let reader = LocalUsageReader()
     private let defaults: UserDefaults
     private var catalog: [String: ModelPricing]
     private var overrides: [String: ModelPricing]
     private var costs: [String: Decimal] = [:]
+    private var summaryCalendar: Calendar?
+    private var summaryDate: Date?
+    private var summaryCutoff = Date.distantPast
+    private var nextSummaryRecord: Date?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -48,23 +59,56 @@ final class UsageModel: ObservableObject {
     }
     private func persistOverrides() {
         guard let data = try? JSONEncoder().encode(overrides) else { return }
+        // 即使有效单价相同，自定义标记仍需更新。
+        objectWillChange.send()
         defaults.set(data, forKey: "usage.pricing.overrides.v1")
-        prices = catalog.merging(overrides) { _, custom in custom }.filter { $0.value.service == .codex }
+        updatePricing()
+    }
+    private func updatePricing() {
+        let updated = catalog.merging(overrides) { _, custom in custom }.filter { $0.value.service == .codex }
+        guard prices != updated else { return }
+        prices = updated
         reprice()
     }
     private func reprice() {
         var resolved: [String: ModelPricing] = [:]
+        var lookedUp: Set<String> = []
         for record in scan.records {
             let key = ModelPricing.key(record.service, record.model)
-            if resolved[key] == nil, let price = UsagePricing.lookup(service: record.service, model: record.model, prices: prices) {
-                resolved[key] = price
+            if lookedUp.insert(key).inserted {
+                resolved[key] = UsagePricing.lookup(service: record.service, model: record.model, prices: prices)
             }
         }
         costs = [:]
         for record in scan.records {
             costs[record.id] = resolved[ModelPricing.key(record.service, record.model)]?.cost(record)
         }
-        objectWillChange.send()
+        updateDailyTotals(force: true)
+    }
+
+    private func updateDailyTotals(force: Bool = false) {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        guard force || calendar != summaryCalendar || today != summaryDate || now < summaryCutoff
+            || nextSummaryRecord.map({ $0 <= now }) == true else { return }
+        var totals: [Date: UsageDayTotal] = [:]
+        nextSummaryRecord = nil
+        // 扫描结果已按时间排序；未来记录在时间到达后的扫描才纳入统计。
+        for record in scan.records {
+            guard record.date <= now else {
+                nextSummaryRecord = record.date
+                break
+            }
+            let day = calendar.startOfDay(for: record.date)
+            totals[day, default: UsageDayTotal()].tokens.add(record.tokens)
+            totals[day, default: UsageDayTotal()].cost.add(cost(record))
+            totals[day, default: UsageDayTotal()].recordCount += 1
+        }
+        summaryCalendar = calendar
+        summaryDate = today
+        summaryCutoff = now
+        dailyTotals = totals
     }
 
     func updatePrices() async {
@@ -84,8 +128,7 @@ final class UsageModel: ObservableObject {
             priceDate = Date().formatted(.iso8601.year().month().day().dateSeparator(.dash))
             defaults.set(encoded, forKey: "usage.pricing.catalog.v1")
             defaults.set(priceDate, forKey: "usage.pricing.date")
-            prices = catalog.merging(overrides) { _, custom in custom }.filter { $0.value.service == .codex }
-            reprice()
+            updatePricing()
             pricingError = nil
         } catch { pricingError = "更新失败，已保留原有价格：\(error.localizedDescription)" }
     }
@@ -112,8 +155,10 @@ final class UsageModel: ObservableObject {
     }
 
     private func apply(_ result: UsageScan) {
+        let recordsChanged = scan.records != result.records
         scan = result
-        reprice()
+        if recordsChanged { reprice() }
+        else { updateDailyTotals() }
         updatedAt = Date()
     }
 }

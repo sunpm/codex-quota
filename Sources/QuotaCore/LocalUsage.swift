@@ -81,9 +81,28 @@ public actor LocalUsageReader {
     private struct CachedFile {
         let size: Int
         let modified: Date
+        let identifier: AnyHashable?
         let records: [UsageRecord]
         let invalidLines: Int
         let codexContinuation: (segment: String, thread: String)?
+        let offset: UInt64
+        let completeRecordCount: Int
+        let completeInvalidLines: Int
+        let context: ParseContext
+    }
+    /// 续读位置对应最后一个完整换行；只保存解析所需元数据，不缓存消息正文。
+    private struct ParseContext {
+        var session: String
+        var codexContinuation: (segment: String, thread: String)?
+        var emitter: String
+        var project: String
+        var model: String
+        var sawMeta: Bool
+        var serviceTier: String
+        var serviceTierReported: Bool
+        var timer: CodexRequestTimer
+        var previousSignature: String?
+        var lineNumber: Int
     }
     private var cache: [URL: CachedFile] = [:]
     private let historyStore: UsageHistoryStore
@@ -125,10 +144,10 @@ public actor LocalUsageReader {
         let roots = [codex.appendingPathComponent("sessions"), codex.appendingPathComponent("archived_sessions")]
         var files: [URL] = []
         var failures = 0
-        let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey]
+        let keys: Set<URLResourceKey> = [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey, .fileResourceIdentifierKey]
         for root in roots {
             guard manager.fileExists(atPath: root.path) else { continue }
-            guard let enumerator = manager.enumerator(at: root, includingPropertiesForKeys: keys,
+            guard let enumerator = manager.enumerator(at: root, includingPropertiesForKeys: Array(keys),
                 options: [.skipsHiddenFiles], errorHandler: { _, _ in failures += 1; return true }) else {
                 failures += 1; continue
             }
@@ -170,15 +189,22 @@ public actor LocalUsageReader {
         for file in files {
             alive.insert(file)
             do {
-                let values = try file.resourceValues(forKeys: Set(keys))
+                let values = try file.resourceValues(forKeys: keys)
                 guard values.isRegularFile == true else { continue }
                 let size = values.fileSize ?? 0
                 let modified = values.contentModificationDate ?? .distantPast
+                let identifier = values.fileResourceIdentifier as? AnyHashable
+                let saved = cache[file]
                 let parsed: CachedFile
-                if let saved = cache[file], saved.size == size, saved.modified == modified {
+                if let saved, saved.identifier == identifier, saved.size == size, saved.modified == modified {
                     parsed = saved
                 } else {
-                    parsed = try parse(file, size: size, modified: modified)
+                    // 普通日志只在同一文件继续增长时续读；截断、替换、同尺寸修改与压缩归档从头解析。
+                    let appended = file.pathExtension == "jsonl" && identifier != nil
+                        && saved?.identifier == identifier && size > (saved?.size ?? Int.max)
+                        && modified >= (saved?.modified ?? .distantFuture)
+                    parsed = try parse(file, size: size, modified: modified, identifier: identifier,
+                                       continuing: appended ? saved : nil)
                     cache[file] = parsed
                 }
                 invalid += parsed.invalidLines
@@ -230,31 +256,34 @@ public actor LocalUsageReader {
         return result
     }
 
-    private func parse(_ file: URL, size: Int, modified: Date) throws -> CachedFile {
+    private func parse(_ file: URL, size: Int, modified: Date, identifier: AnyHashable?,
+                       continuing previous: CachedFile?) throws -> CachedFile {
         let handle = try FileHandle(forReadingFrom: file)
         defer { try? handle.close() }
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let whole = ISO8601DateFormatter()
-        var records: [UsageRecord] = []
-        var invalid = 0
+        var records = previous?.records ?? []
+        if let previous { records.removeLast(records.count - previous.completeRecordCount) }
+        var invalid = previous?.completeInvalidLines ?? 0
         let isCompressed = file.pathExtension == "zst"
         // 压缩副本使用同一个会话 ID，尤其是缺少累计签名时的行号去重键。
         let jsonlFile = isCompressed ? file.deletingPathExtension() : file
         let filename = jsonlFile.deletingPathExtension().lastPathComponent
         let filenameID = String(filename.suffix(36))
         let filenameUUID = UUID(uuidString: filenameID)
-        var session = filenameUUID == nil ? filename : filenameID
-        var codexContinuation: (segment: String, thread: String)?
-        var emitter = session
-        var project = ""
-        var model = "未知模型"
-        var sawMeta = false
-        var serviceTier = "standard"
-        var serviceTierReported = false
-        var timer = CodexRequestTimer()
-        var previousSignature: String?
-        var lineNumber = 0
+        let context = previous?.context
+        var session = context?.session ?? (filenameUUID == nil ? filename : filenameID)
+        var codexContinuation = context?.codexContinuation
+        var emitter = context?.emitter ?? session
+        var project = context?.project ?? ""
+        var model = context?.model ?? "未知模型"
+        var sawMeta = context?.sawMeta ?? false
+        var serviceTier = context?.serviceTier ?? "standard"
+        var serviceTierReported = context?.serviceTierReported ?? false
+        var timer = context?.timer ?? CodexRequestTimer()
+        var previousSignature = context?.previousSignature
+        var lineNumber = context?.lineNumber ?? 0
 
         func consume(_ line: Data) {
             lineNumber += 1
@@ -344,28 +373,46 @@ public actor LocalUsageReader {
                                        estimatedDuration: timing?.duration, estimatedFirstToken: timing?.firstToken))
         }
 
-        // ponytail: 变更文件从头解析；若单个日志增长到影响刷新，再改为 byte-offset 增量读取。
+        // 完整行偏移与上下文续读参考 cc-bar JSONLLineReader / CodexJSONLScanner（MIT）。
+        var offset = previous?.offset ?? 0
         var pending = Data()
         func consumeChunk(_ chunk: Data) {
+            let appendedStart = pending.endIndex
             pending.append(chunk)
+            guard let lastNewline = pending[appendedStart...].lastIndex(of: 10) else { return }
             var start = pending.startIndex
-            while let end = pending[start...].firstIndex(of: 10) {
+            while start <= lastNewline, let end = pending[start...lastNewline].firstIndex(of: 10) {
                 consume(pending.subdata(in: start..<end))
                 start = end + 1
             }
-            if start > pending.startIndex { pending = Data(pending[start...]) }
+            offset += UInt64(start - pending.startIndex)
+            pending = Data(pending[start...])
         }
         if isCompressed {
             try ZstdStreamReader.forEachChunk(in: handle, consume: consumeChunk)
         } else {
-            while let chunk = try handle.read(upToCount: 256 * 1024), !chunk.isEmpty {
+            try handle.seek(toOffset: offset)
+            var bytesRead = Int(offset)
+            // 以本轮枚举的大小为界；扫描期间继续追加的内容留给下一轮。
+            while bytesRead < size, let chunk = try handle.read(upToCount: min(256 * 1024, size - bytesRead)), !chunk.isEmpty {
+                bytesRead += chunk.count
                 autoreleasepool { consumeChunk(chunk) }
             }
         }
+        let checkpoint = ParseContext(session: session, codexContinuation: codexContinuation, emitter: emitter,
+                                      project: project, model: model, sawMeta: sawMeta, serviceTier: serviceTier,
+                                      serviceTierReported: serviceTierReported, timer: timer,
+                                      previousSignature: previousSignature, lineNumber: lineNumber)
+        let completeRecordCount = records.count
+        let completeInvalidLines = invalid
         // 普通日志正在写入的末行留到下次刷新；压缩归档的无效末行仍应提示。
+        // 无换行但完整的 JSON 仍参与本轮展示，续读时从该行起点重放，不重复累计或丢失上下文。
         if !pending.isEmpty, isCompressed || (try? JSONSerialization.jsonObject(with: pending)) != nil { consume(pending) }
-        return CachedFile(size: size, modified: modified, records: records, invalidLines: invalid,
-            codexContinuation: codexContinuation)
+        return CachedFile(size: size, modified: modified, identifier: identifier, records: records,
+                          invalidLines: invalid,
+                          codexContinuation: codexContinuation, offset: offset,
+                          completeRecordCount: completeRecordCount, completeInvalidLines: completeInvalidLines,
+                          context: checkpoint)
     }
 
     private func tokenCounts(_ values: [String: Any]) -> UsageTokens? {
