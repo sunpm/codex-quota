@@ -145,9 +145,9 @@ struct MainView: View {
 
     private var sidebarTodaySummary: some View {
         let today = Calendar.current.startOfDay(for: Date())
-        let records = usage.scan.records.filter { $0.date >= today && $0.date <= Date() }
-        let tokens = records.reduce(into: UsageTokens()) { $0.add($1.tokens) }
-        let cost = usage.costTotal(records)
+        let total = usage.dailyTotals[today] ?? UsageDayTotal()
+        let tokens = total.tokens
+        let cost = total.cost
         let items = UsageTodayMetric.allCases.filter { sidebarToday & $0.rawValue != 0 }
         let values = items.map { item -> (metric: UsageTodayMetric, value: String, detail: String) in
             guard usage.updatedAt != nil else { return (item, "—", "今日\(item.title)：尚未读取") }
@@ -155,10 +155,10 @@ struct MainView: View {
             case .tokens:
                 return (item, formattedTokens(tokens.total), "今日 \(tokens.total.formatted()) Tokens")
             case .cost:
-                let value = records.isEmpty ? "$0.00" : formattedCost(cost)
+                let value = total.recordCount == 0 ? "$0.00" : formattedCost(cost)
                 return (item, value, "今日\(item.title)：\(value)。API 等价估算，非订阅账单。\(cost.unpricedCount) 条未定价。")
             case .records:
-                return (item, "\(formattedTokens(records.count)) 条", "今日 \(records.count.formatted()) 条用量记录，不代表全部网络请求数")
+                return (item, "\(formattedTokens(total.recordCount)) 条", "今日 \(total.recordCount.formatted()) 条用量记录，不代表全部网络请求数")
             case .hitRate:
                 let value = tokens.cacheHitRate.map { $0.formatted(.percent.precision(.fractionLength(1))) } ?? "—"
                 return (item, value, "今日缓存命中率：\(value)。缓存命中量 ÷ 全部输入")

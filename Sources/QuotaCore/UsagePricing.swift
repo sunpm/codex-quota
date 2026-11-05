@@ -3,7 +3,7 @@
 import Foundation
 import CoreFoundation
 
-public struct TokenRates: Codable, Sendable {
+public struct TokenRates: Codable, Equatable, Sendable {
     public var input: Decimal?
     public var output: Decimal?
     public var cached: Decimal?
@@ -34,7 +34,7 @@ public struct TokenRates: Codable, Sendable {
     }
 }
 
-public struct ModelPricing: Codable, Identifiable, Sendable {
+public struct ModelPricing: Codable, Equatable, Identifiable, Sendable {
     public var service: QuotaService
     public var model: String
     public var rates: TokenRates

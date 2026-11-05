@@ -19,7 +19,11 @@ struct UsageHeatmapView: View {
         // 周一至周日排列，包含本周及前 52 周；日期运算遵循本地时区和夏令时。
         let weekday = (calendar.component(.weekday, from: today) + 5) % 7
         let start = calendar.date(byAdding: .day, value: -364 - weekday, to: today)!
-        let days = dailyUsage(start: start, now: now, calendar: calendar)
+        let days = (0..<371).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset, to: start)!
+            let total = model.dailyTotals[date] ?? UsageDayTotal()
+            return Day(id: date, tokens: total.tokens.total, cost: total.cost)
+        }
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("用量热力图").font(.headline)
@@ -30,21 +34,6 @@ struct UsageHeatmapView: View {
             }
             CalendarGrid(days: days, metric: metric, today: today)
         }.padding(18).panelCard()
-    }
-
-    private func dailyUsage(start: Date, now: Date, calendar: Calendar) -> [Day] {
-        var totals: [Date: Day] = [:]
-        for record in model.scan.records where record.date >= start && record.date <= now {
-            let date = calendar.startOfDay(for: record.date)
-            var day = totals[date] ?? Day(id: date)
-            day.tokens += record.tokens.total
-            day.cost.add(model.cost(record))
-            totals[date] = day
-        }
-        return (0..<371).map { offset in
-            let date = calendar.date(byAdding: .day, value: offset, to: start)!
-            return totals[date] ?? Day(id: date)
-        }
     }
 
     // 将悬停状态留在日历内，移动鼠标时不重新聚合全部日志。
