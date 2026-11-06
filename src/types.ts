@@ -1,4 +1,4 @@
-export type Page = 'overview' | 'sessions' | 'projects' | 'quota' | 'settings'
+export type Page = 'overview' | 'details' | 'quota' | 'settings'
 export type Metric = 'tokens' | 'cost'
 export interface ChartTimeHover { timestamp: number; tolerance: number }
 export interface NotificationStatus {

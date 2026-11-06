@@ -6,6 +6,7 @@ import { dayKey, shiftDay } from './usage'
 export const usageRanges = [{ value: 'today', label: '今天' }, { value: 'yesterday', label: '昨天' }, { value: '7', label: '7 天' }, { value: '30', label: '30 天' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }] as const
 
 interface UsageFilters {
+  view: 'session' | 'project'
   period: typeof usageRanges[number]['value']
   metric: Metric
   model: string
@@ -25,6 +26,7 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
   const start = storedDate(saved.start, defaults.start)
   const end = storedDate(saved.end, defaults.end)
   return {
+    view: saved.view === 'project' ? 'project' : 'session',
     period: usageRanges.find(range => range.value === saved.period)?.value ?? defaults.period,
     metric: saved.metric === 'cost' ? 'cost' : 'tokens',
     model: typeof saved.model === 'string' && saved.model ? saved.model : defaults.model,
@@ -35,16 +37,15 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
 }
 
 export function useUsageFilters(page: () => Page) {
-  const defaults: UsageFilters = { period: '7', metric: 'tokens', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
+  const defaults: UsageFilters = { view: 'session', period: '7', metric: 'tokens', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
   const options = { writeDefaults: false, serializer: { read: (raw: string) => readFilters(raw, defaults), write: JSON.stringify } }
-  const sessions = useLocalStorage('usage.filters.sessions.v1', { ...defaults }, options)
-  const projects = useLocalStorage('usage.filters.projects.v1', { ...defaults }, options)
+  // Retain the original session preferences as the shared detail filters.
+  const details = useLocalStorage('usage.filters.sessions.v1', { ...defaults }, options)
   const overview = ref({ ...defaults })
   const current = computed({
-    get: () => page() === 'sessions' ? sessions.value : page() === 'projects' ? projects.value : overview.value,
+    get: () => page() === 'details' ? details.value : overview.value,
     set: (value: UsageFilters) => {
-      if (page() === 'sessions') sessions.value = value
-      else if (page() === 'projects') projects.value = value
+      if (page() === 'details') details.value = value
       else overview.value = value
     },
   })
