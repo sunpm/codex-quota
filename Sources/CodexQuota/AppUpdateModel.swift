@@ -17,7 +17,6 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         let version: String
         let build: String
         let pageURL: URL
-        let isNewer: Bool
         let notes: String?
         var status: String { "发现新版本 \(version)" }
     }
@@ -214,7 +213,7 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         let notes = appcastItem.itemDescriptionFormat == "markdown"
             ? appcastItem.itemDescription?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         release = Release(version: appcastItem.displayVersionString, build: appcastItem.versionString,
-                          pageURL: appcastItem.infoURL ?? Self.releasesURL, isNewer: true,
+                          pageURL: appcastItem.infoURL ?? Self.releasesURL,
                           notes: notes?.isEmpty == false ? notes : nil)
         downloadedBytes = 0
         expectedBytes = appcastItem.contentLength
