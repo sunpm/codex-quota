@@ -1,15 +1,16 @@
 #!/bin/bash
+# 历史 Swift / Sparkle 构建入口；不参与 Tauri 打包，参见 docs/archive/updating-sparkle.md。
 # Sparkle 的嵌套签名流程参考 nanvon/cc-bar (MIT), scripts/build.sh。
 # Copyright (c) 2026 nanvon. See Resources/ThirdPartyNotices/cc-bar-LICENSE.txt.
 set -euo pipefail
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_DIR"
 export CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.build/clang-module-cache"
 # Swift Build 目前会把最低系统版本写成链接 SDK 版本，导致系统沿用旧外观。
 # 使用 native 保留真实 SDK 版本：https://github.com/swiftlang/swift-build/issues/1887
 swift build --build-system native -c release --product CodexQuota --disable-sandbox "$@"
 BIN_DIR="$(swift build --build-system native -c release --show-bin-path "$@")"
-APP_DIR="$PROJECT_DIR/dist/Codex Quota.app"
+APP_DIR="$PROJECT_DIR/dist/legacy/Codex Quota.app"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
 cp "$BIN_DIR/CodexQuota" "$APP_DIR/Contents/MacOS/CodexQuota"
 cp Resources/Info.plist "$APP_DIR/Contents/Info.plist"
@@ -27,7 +28,7 @@ if len(key) != 32:
     sys.exit("SPARKLE_PUBLIC_ED_KEY 必须是 32 字节 Ed25519 公钥")'
     /usr/libexec/PlistBuddy -c "Add :SUPublicEDKey string $SPARKLE_PUBLIC_ED_KEY" "$APP_DIR/Contents/Info.plist"
 elif [[ -n "${RELEASE_TAG:-}" ]]; then
-    printf '发行构建必须设置 SPARKLE_PUBLIC_ED_KEY；参见 docs/updating.md\n' >&2
+    printf '旧版发行构建必须设置 SPARKLE_PUBLIC_ED_KEY；参见 docs/archive/updating-sparkle.md\n' >&2
     exit 1
 fi
 if [[ -n "${APP_VERSION:-}" ]]; then

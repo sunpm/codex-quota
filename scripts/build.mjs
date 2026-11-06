@@ -43,7 +43,7 @@ const notices = spawnSync(process.execPath, ['scripts/collect-licenses.mjs'], { 
 if (notices.status !== 0) process.exit(notices.status ?? 1)
 const result = spawnSync(process.execPath, [
   'node_modules/@tauri-apps/cli/tauri.js', 'build', '--target', target,
-  '--bundles', bundles.join(','), '--config', configPath,
+  '--bundles', bundles.join(','), '--config', configPath, '--', '--locked',
 ], { stdio: 'inherit' })
 if (result.status !== 0) process.exit(result.status ?? 1)
 

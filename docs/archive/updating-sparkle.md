@@ -1,4 +1,6 @@
-> 历史记录：本文件保留旧 Swift / Sparkle 版本的配置与实际验收。Tauri 跨平台版以 [updating.md](updating.md) 为准，不执行这里的旧版发版流程。
+> 已归档：本文件保留旧 Swift / Sparkle 版本的配置与实际验收。当前 macOS、Windows 打包与发布以 [updating.md](../updating.md) 为准，不执行这里的旧版发版流程。
+
+旧构建和 appcast 工具保存在 `scripts/legacy/`，默认产物目录为 `dist/legacy/`。`scripts/check-legacy.sh` 仍作为迁移基线检查保留。下文描述旧版流程，不提供当前版本的发版入口；历史 DMG 打包步骤以旧版本源码为准，当前 `scripts/package-dmg.sh` 只构建 Tauri 包。
 
 # 应用内更新与发布
 
@@ -35,20 +37,20 @@
 
 ```bash
 SPARKLE_PUBLIC_ED_KEY="$(.build/artifacts/sparkle/Sparkle/bin/generate_keys --account codex-quota -p)" \
-  bash scripts/build.sh
+  bash scripts/legacy/build.sh
 ```
 
-构建脚本会覆盖仓库的 `dist/Codex Quota.app`；如果正在运行的是该副本，应在独立的临时源码目录构建。
+归档构建脚本会覆盖仓库的 `dist/legacy/Codex Quota.app`；如果正在运行的是该副本，应在独立的临时源码目录构建。
 
 ## 构建与发行
 
-`bash scripts/build.sh` 仍是应用构建入口。它嵌入完整 Sparkle.framework 和安装助手，并按照嵌套关系从内到外 ad-hoc 签名；`bash scripts/package-dmg.sh arm64|x86_64` 继续生成两种 DMG。
+旧应用构建入口现归档为 `bash scripts/legacy/build.sh`。它嵌入完整 Sparkle.framework 和安装助手，并按照嵌套关系从内到外 ad-hoc 签名。复现旧版 DMG 应使用对应历史版本的打包脚本，不调用当前 Tauri 打包入口。
 
-现有 Release workflow 按顺序完成：
+当时的 Release workflow 按顺序完成：
 
 1. 运行已有检查，按 GitHub 原生 Release Notes 生成说明。
 2. 构建两个架构，写入同一公钥、递增构建号和对应更新源。
-3. `scripts/generate-appcasts.py --release-notes "$RELEASE_NOTES_FILE"` 调用锁定版本的官方 `generate_appcast`，分别从最终 DMG 生成包含更新说明的签名清单；说明文件须为当前版本的非空 UTF-8 Markdown。官方工具仅在包内公钥与发布私钥匹配时生成更新包签名；脚本检查该签名、版本、文件大小、下载地址及嵌入说明，再使用官方 `sign_update --verify` 验证 DMG 和清单。
+3. 当时的 appcast 脚本现归档为 `scripts/legacy/generate-appcasts.py`，调用锁定版本的官方 `generate_appcast`，分别从最终 DMG 生成包含更新说明的签名清单；说明文件须为当前版本的非空 UTF-8 Markdown。官方工具仅在包内公钥与发布私钥匹配时生成更新包签名；脚本检查该签名、版本、文件大小、下载地址及嵌入说明，再使用官方 `sign_update --verify` 验证 DMG 和清单。
 4. 私钥只通过标准输入传递给签名工具，不写入命令参数或子进程环境。
 5. 将两个 DMG、两个 appcast 和 `SHA256SUMS.txt` 全部上传到 draft Release，上传成功后才公开发布。签名后的 DMG 与 XML 不得再修改。
 

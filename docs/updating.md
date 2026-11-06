@@ -1,6 +1,55 @@
-# 应用内更新与发布
+# 打包、更新与发布
 
 跨平台版本使用 Tauri 2 updater，在 macOS 和 Windows 上检查、下载、验签、安装与重启。默认每天检查最新正式版；用户确认安装后才下载与安装，后台检查不自行安装。更新保留原有设置与用量历史。
+
+本文是当前打包入口、产物和发布流程的维护文档。Release 固定安装提示维护在 [release-notes.md](release-notes.md)，版本变更由 GitHub 原生 Release Notes 生成；脚本只负责组合，不另写一份说明。
+
+## 本地打包
+
+需要 Node.js 22.12+、`package.json` 指定的 pnpm、Rust stable（至少 1.90），以及 [Tauri 平台依赖](https://v2.tauri.app/start/prerequisites/)。macOS 安装 Xcode Command Line Tools；Windows 安装 Visual Studio C++ Build Tools 与 Windows SDK。
+
+在仓库根目录安装锁定依赖后，构建当前平台：
+
+```sh
+pnpm install --frozen-lockfile
+node scripts/build.mjs
+```
+
+`scripts/build.mjs` 是 macOS、Windows 的共同实现，可在 PowerShell 或终端执行。`bash scripts/build.sh` 是同一实现的兼容入口；`scripts/package-dmg.sh arm64|x86_64` 只负责转换 Mac 架构参数。
+
+| 构建目标 | 执行环境 | 命令 | 安装包（位于 `dist/`） |
+| --- | --- | --- | --- |
+| macOS Apple Silicon | macOS | `node scripts/build.mjs --target aarch64-apple-darwin` | `CodexQuota-macOS-AppleSilicon.dmg` |
+| macOS Intel | macOS | `node scripts/build.mjs --target x86_64-apple-darwin` | `CodexQuota-macOS-Intel.dmg` |
+| Windows x64 | Windows | `node scripts/build.mjs --target x86_64-pc-windows-msvc` | `CodexQuota-Windows-x64-setup.exe` |
+
+Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-darwin` 安装两个目标，再依次执行上表的 Mac 命令。Windows 使用原生 Windows 环境或下述 GitHub Actions runner，不在 Mac 上另建交叉编译流程。
+
+默认 Mac 生成 `.app` 和 DMG，Windows 生成 NSIS 安装器。只检查 Mac 应用包时可加 `--bundles app`。Mac 应用副本在 `dist/macOS-AppleSilicon/Codex Quota.app` 或 `dist/macOS-Intel/Codex Quota.app`；打包不替换 `/Applications` 中的安装。构建前退出正在使用的对应 `dist/` 副本。
+
+构建顺序为：生成依赖许可 → Tauri `beforeBuildCommand` 执行一次 `pnpm build` → Cargo 使用 `--locked` 编译 → Tauri 打包 → 核验并复制产物。前端和 Rust 编译失败都会终止打包，不需要先手动再构建一次前端。依赖许可由 `collect-licenses.mjs` 从已安装 pnpm 依赖和 Cargo metadata 生成，写入随包的 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`；不要手工修改。
+
+普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档；`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
+
+## CI 打包与发布
+
+现有 `Release` workflow 共用三平台矩阵：Apple Silicon Mac、Intel Mac、Windows x64，均调用 `node scripts/build.mjs --target <目标>`。前端检查与 Rust 编译由统一构建入口完成，Intel Mac 继续执行未修改的 Swift 迁移基线检查。
+
+| 入口 | 结果 |
+| --- | --- |
+| Actions → Release → Run workflow | 打包所选分支或标签，安装包保存在 `release-<target>` artifacts 中，保留 7 天；不生成更新签名，不创建或发布 Release |
+| 推送 `vX.Y.Z` 或预发布标签 | 使用更新签名密钥生成三平台安装包和更新包，全部成功后汇总并发布 |
+
+手动入口需要工作流文件已进入仓库默认分支，待构建代码也需先提交、推送到所选分支。已有运行记录的工作流也可通过 `gh workflow run release.yml --ref <分支>` 指定分支，详见 [GitHub 手动运行说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)。它使用源码中的版本号，适合验证 macOS / Windows 安装包；下载 workflow artifact 后解压即可取得对应安装器。
+
+标签发布依次执行：
+
+1. 安装锁定依赖，注入同一公钥与标签版本，运行统一构建入口。每个平台先上传为 workflow artifact。
+2. 全部构建成功后生成 GitHub 原生 Release Notes，按最近正式版本累计 PR。
+3. `prepare-release.mjs` 检查三套产物、版本与签名附件，生成 `latest.json` 和 `SHA256SUMS.txt`；读取 `docs/release-notes.md` 并附上本次变更，生成 `dist/release-notes.md`。应用内更新清单只包含本次变更，不重复安装提示。
+4. 安装包、签名、完整清单和校验值上传 draft Release，全部成功后才公开。预发布不替换 latest。
+
+提交、推送和版本标签仍需用户授权。修改或运行只打包工作流不代表已发布；编译和产物检查不能代替安装与真实升级验收。
 
 ## 从 Swift / Sparkle 版本迁移
 
@@ -8,7 +57,7 @@
 
 保留 Bundle ID `local.codexquotadock.app`、`CodexQuotaDock` 数据目录及旧偏好键。首次启动从 macOS 原偏好域导入设置、定价、额度趋势与通知基线，旧偏好域和原始 Codex 登录态不被改写。已采集用量继续使用原历史文件。
 
-历史 Release 中的 Sparkle 包和 appcast 保留；新 Release 不生成 Sparkle appcast。旧客户端因最新 Release 不含旧清单而无法自动更新时，应从发布页手动安装。后续 Tauri 版本通过 `latest.json` 更新。旧版签名配置与 2026-10-29 的实际验收记录单独保留在 [updating-sparkle.md](updating-sparkle.md)，不适用于新更新器。
+历史 Release 中的 Sparkle 包和 appcast 保留；新 Release 不生成 Sparkle appcast。旧客户端因最新 Release 不含旧清单而无法自动更新时，应从发布页手动安装。后续 Tauri 版本通过 `latest.json` 更新。旧版签名配置与 2026-10-29 的实际验收记录归档在 [Swift / Sparkle 历史流程](archive/updating-sparkle.md)，不适用于新更新器。旧打包工具仅保存在 `scripts/legacy/`，默认输出到 `dist/legacy/`，当前 CI 不调用。
 
 ## 更新清单与安装包
 
@@ -42,22 +91,18 @@ GitHub Actions 配置：
 
 更新签名与 Apple Developer ID 签名 / 公证、Windows Authenticode 签名不同。macOS 默认由 Tauri 对完整应用包执行 ad-hoc 签名，构建入口通过 `codesign --verify --deep --strict` 核验后才复制到 `dist/`。当前流水线未配置平台证书，不声称通过平台公证。不要复用或替换旧 Sparkle 密钥来绕过新配置。
 
-## 构建和发布流程
+## 验证
 
-本地统一入口为 `bash scripts/build.sh`，PowerShell 使用 `node scripts/build.mjs`。可指定 `--target aarch64-apple-darwin`、`--target x86_64-apple-darwin` 或 `--target x86_64-pc-windows-msvc`；Mac 目标在 macOS 构建，Windows 目标在 Windows 构建。所有安装包由锁文件固定版本的 Tauri CLI 打包，不另拼签名或导出流程。
+macOS 或 Windows Git Bash 使用 `bash scripts/test.sh`，它依次运行前端类型检查与构建、Rust 编译检查，macOS 另运行保留的 Swift 检查。Windows PowerShell 的同等编译检查为：
 
-推送版本标签后，Release workflow：
+```powershell
+pnpm build
+cargo check --locked --manifest-path src-tauri/Cargo.toml
+```
 
-1. 在三个平台目标上安装锁定依赖、检查前端与 Rust 编译；Intel Mac 额外执行保留的 Swift 检查。
-2. 注入同一公钥与标签版本，运行统一构建脚本，通过 Tauri CLI 生成安装包和签名。每个平台先上传为 workflow artifact。
-3. 全部构建成功后生成 GitHub 原生 Release Notes，按最近正式版本累计 PR；`prepare-release.mjs` 检查三套产物、版本与签名附件完整，生成 `latest.json` 和 `SHA256SUMS.txt`。
-4. 安装包、签名、完整清单和校验值上传 draft Release，全部成功后才公开。预发布不替换 latest。
+日常提交 / PR 的 `Check` workflow 编译三平台，不生成安装器；需要验证安装包时使用 `Release` workflow 的手动入口。归档的 Swift 检查只覆盖旧实现，不作为 Rust 自动化测试证据。
 
-打包前 `collect-licenses.mjs` 从已安装 pnpm 依赖及 Cargo metadata 生成 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`，随包保留上游许可。不要手工修改该生成文件。
-
-提交、推送和版本标签仍需要用户授权；修改工作流不代表已发布。流水线检查签名附件完整，真实下载验签与安装行为需要下述验收，不能把构建成功当作升级成功。
-
-## 验收边界
+### 升级验收边界
 
 首次接入新更新器需要在隔离的临时安装中，用版本递增且公钥相同的两个包完成一次真实升级，覆盖用户确认、下载、验签、安装、重启和设置 / 历史延续。macOS 与 Windows 分别验收，不替换用户正在使用的 `/Applications` 安装或 Windows 安装目录。
 

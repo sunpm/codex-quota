@@ -90,34 +90,17 @@ CODEX_QUOTA_PREVIEW=1 CODEX_QUOTA_DATA_DIR="$PWD/work/native-preview" pnpm tauri
 
 `CODEX_QUOTA_PREVIEW` 停止监测和日志扫描，`CODEX_QUOTA_DATA_DIR` 隔离设置与历史并跳过旧偏好导入，两者配合避免读取真实账号或历史。验收结束后退出应用并删除本次临时目录；正常启动不设置这两个变量。
 
-构建当前平台安装包：
-
-```sh
-bash scripts/build.sh
-# PowerShell 可直接运行同一入口
-node scripts/build.mjs
-```
-
-macOS 按架构打包：
-
-```sh
-bash scripts/package-dmg.sh arm64
-bash scripts/package-dmg.sh x86_64
-```
-
-产物在 `dist/`；Mac 应用副本位于 `dist/macOS-AppleSilicon/` 或 `dist/macOS-Intel/`。构建不替换 `/Applications` 中的安装。跨架构 Mac 构建前需用 `rustup target add` 安装对应目标；Windows 包在 Windows 上构建。
+macOS 与 Windows 共用 `node scripts/build.mjs`，安装包输出到 `dist/`。构建依赖、架构参数、产物名称和 CI 打包入口统一维护在 [打包、更新与发布](docs/updating.md#本地打包)。
 
 最小验证：
 
 ```sh
-pnpm build
-cargo check --locked --manifest-path src-tauri/Cargo.toml
 bash scripts/test.sh
 ```
 
-`pnpm build` 包含 TypeScript 检查与 Vite 构建。`scripts/test.sh` 在 macOS 另外执行保留的 Swift 核心与应用检查；这些检查验证旧实现，是迁移规则的基线，不能当成新 Rust 实现的自动化测试。未新增测试代码。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
+`scripts/test.sh` 已包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行。在 macOS 还会运行保留的 Swift 核心与应用检查；这些检查验证旧实现，是迁移规则的基线，不能当成新 Rust 实现的自动化测试。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](docs/updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
 
-生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`；`Sources/`、`Tests/` 和 `Package.swift` 暂留作旧版行为参考与检查，不参与 Tauri 应用构建。旧版构建入口为 `scripts/build-legacy.sh`，旧版检查入口为 `scripts/check-legacy.sh`。
+生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`；`Sources/`、`Tests/` 和 `Package.swift` 暂留作旧版行为参考与检查，不参与 Tauri 应用构建。旧打包工具归档到 `scripts/legacy/`，说明与验收记录见 [Swift / Sparkle 历史流程](docs/archive/updating-sparkle.md)。
 
 ### 图标再生成
 
@@ -133,4 +116,4 @@ cp work/tray-icons/32x32.png src-tauri/icons/tray.png
 
 生成后清理 `work/app-icon.iconset`、`work/app-icons` 和 `work/tray-icons`。托盘使用独立的单色图形，不从带背景的应用图标裁切。
 
-发布采用平台构建矩阵，汇总安装包、更新签名、`latest.json` 与 SHA256 后才公开 Release。预发布不替换 latest。更新密钥配置、旧版迁移和验收边界见 [docs/updating.md](docs/updating.md)。第三方来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+发布流程与签名配置统一见 [打包、更新与发布](docs/updating.md)。第三方来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

@@ -51,7 +51,7 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 额度趋势的悬停交互核对了 CodexBar 的悬停选错日期问题 [#3062](https://github.com/steipete/CodexBar/issues/3062)（2026-10-30）。使用本项目原生 Charts 与实测点吸附逻辑实现，空白时段明确显示“无采样”，未复制上游组件或增加依赖；沿用随包分发的 CodexBar MIT 声明。
 
-本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新服务；应用内更新使用下文的 Sparkle。
+本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新服务。当前应用内更新使用 Tauri updater；下文 Sparkle 声明仅对应归档的 Swift 实现。
 
 主窗口、侧栏菜单及设置分组的视觉层级参考 [cc-switch v4 主界面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/main-zh.png)、[用量页面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/usage-zh.png) 与 `src/index.css` 的中性色分层（参考日期：2026-10-28）。使用本项目的 SwiftUI / AppKit 控件实现，未复制其前端组件或加入依赖；沿用下文的 cc-switch MIT 许可声明。
 
@@ -81,11 +81,11 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
-软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。构建脚本的嵌套签名流程按该项目改编。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
+旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，现归档于 `scripts/legacy/build.sh`。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
 
-## Sparkle 应用内更新
+## Sparkle 应用内更新（旧版归档）
 
-通过 Swift Package Manager 固定接入 [sparkle-project/Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1)，提交 `ab7d71291238df6e0492143b120c9b696a35f603`。使用官方预编译 framework、安装助手及发布签名工具，不修改上游二进制代码。
+旧 Swift 实现通过 Swift Package Manager 固定接入 [sparkle-project/Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1)，提交 `ab7d71291238df6e0492143b120c9b696a35f603`。使用官方预编译 framework、安装助手及发布签名工具，不修改上游二进制代码；当前 Tauri 产物不链接这些框架。历史流程见 [归档说明](docs/archive/updating-sparkle.md)。
 
 Sparkle 主体采用 MIT License，并包含 BSD、zlib 等组件许可；完整上游 `LICENSE` 保存在 `Resources/ThirdPartyNotices/Sparkle-LICENSE.txt`，随应用分发。依赖版本与制品 checksum 由 `Package.swift`、`Package.resolved` 及上游 package manifest 固定。
 

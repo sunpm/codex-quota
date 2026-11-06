@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""使用锁定版本的 Sparkle 工具，为两个架构的最终 DMG 生成并验证更新清单。"""
+"""历史 Swift / Sparkle 流程：为旧版 DMG 生成更新清单，参见 docs/archive/updating-sparkle.md。"""
 
 import argparse
 import base64
@@ -17,7 +17,7 @@ parser.add_argument("--tag", required=True)
 parser.add_argument("--repository", required=True)
 parser.add_argument("--build-number", required=True)
 parser.add_argument("--release-notes", type=Path, required=True)
-parser.add_argument("--dist", type=Path, default=Path("dist"))
+parser.add_argument("--dist", type=Path, default=Path("dist/legacy"))
 args = parser.parse_args()
 if not re.fullmatch(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?", args.tag):
     parser.error("版本标签必须是 vX.Y.Z 或 vX.Y.Z-beta.1 / vX.Y.Z-rc.1")
@@ -43,7 +43,7 @@ for name, value, lengths in (
     if len(base64.b64decode(value)) not in lengths:
         parser.error(f"{name} 长度无效")
 
-root = Path(__file__).resolve().parent.parent
+root = Path(__file__).resolve().parents[2]
 tool_directory = root / ".build/artifacts/sparkle/Sparkle/bin"
 dist = args.dist.resolve()
 namespace = {"sparkle": "http://www.andymatuschak.org/xml-namespaces/sparkle"}

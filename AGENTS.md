@@ -25,6 +25,7 @@
 - `Sources/`、`Tests/` 和 `Package.swift`：保留的 Swift 实现与已有检查，供迁移规则对照；不参与 Tauri 生产构建。`Sources/CZstd/` 为旧版静态解码源码，勿手改生成文件。
 - `Resources/`：品牌资源和随包许可。`dependencies-LICENSES.txt` 由 `scripts/collect-licenses.mjs` 从锁定依赖生成，不能手工修改。
 - `scripts/test.sh`、`scripts/build.sh` / `scripts/build.mjs` 和 `scripts/package-dmg.sh`：验证、跨平台构建与 Mac 架构打包入口。前端产物在 `dist-web/`，用户安装包在 `dist/`，临时文件在 `work/`。
+- 打包、更新与发布说明统一维护在 `docs/updating.md`，Release 固定提示源为 `docs/release-notes.md`；旧打包工具与说明分别归档到 `scripts/legacy/`、`docs/archive/`，旧产物写入 `dist/legacy/`。
 
 ## 实现与界面
 
@@ -52,7 +53,7 @@
 - 带凭据的真实服务验证需有相应授权；优先用不含隐私的响应夹具验证解析、去重、账号切换和开关行为。
 - 人工验收覆盖菜单栏、展开面板、Codex 空态/错误态、设置持久化、系统通知及退出清理。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
-- `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64。`release.yml` 在推送 `vX.Y.Z` 或预发布标签后分别检查并构建三种目标，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release；预发布不替换 latest。更新说明按 GitHub 原生 Release Notes 从最近正式版累计。推送版本标签即触发发布，仍需用户对应授权。
+- `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64。`release.yml` 手动运行只生成三平台安装包 artifacts；推送 `vX.Y.Z` 或预发布标签后生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在发布流程中预先重复编译。预发布不替换 latest，更新说明按 GitHub 原生 Release Notes 从最近正式版累计。推送版本标签即触发发布，仍需用户对应授权。
 
 ## Git 提交规范
 
