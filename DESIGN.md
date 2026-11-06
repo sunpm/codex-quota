@@ -19,6 +19,10 @@ colors:
   quota-normal-light: "#63798c"
   quota-warning-light: "#ae661f"
   quota-exhausted-light: "#bd354b"
+  deadline-normal-light: "#287448"
+  deadline-warning-light: "#866a08"
+  deadline-urgent-light: "#b45214"
+  deadline-critical-light: "{colors.quota-exhausted-light}"
   warning-surface-light: "#fff7ec"
   warning-text-light: "#86531e"
   background-dark: "#18191c"
@@ -38,6 +42,10 @@ colors:
   quota-normal-dark: "#96adbf"
   quota-warning-dark: "#e5a05b"
   quota-exhausted-dark: "#e47786"
+  deadline-normal-dark: "#78c99a"
+  deadline-warning-dark: "#dfc55b"
+  deadline-urgent-dark: "#efa063"
+  deadline-critical-dark: "{colors.quota-exhausted-dark}"
   warning-surface-dark: "#2d2620"
   warning-text-dark: "#e5b983"
   chart-blue: "#3279bd"
@@ -134,6 +142,8 @@ components:
 界面跟随操作系统浅深色。深色主题以近黑的侧栏和主背景承托逐层提亮的卡片、浮层，降低大面积灰感并保留文字对比度。背景、内容表面、侧栏、边框、主文字和次要文字分别使用语义变量。蓝色用于选中导航、单选项与提交动作；额度的正常、预警、耗尽状态独立使用灰蓝、橙和红，并保留实际数字。颜色不能把未知数据伪装为正常。
 
 图表按需引入 ECharts 模块。热力图用低至高的青绿色量阶，未定价费用用虚线边界和提示说明；金额缺失不显示为零。系统字体和图表字体遵循系统外观，不加载远程字体。
+
+额度重置与重置卡到期倒计时使用独立的 `--deadline-*` 时间状态色：剩余时间超过 24 小时为绿，超过 6 小时至 24 小时为黄，超过 1 小时至 6 小时为橙，1 小时以内为红。仅倒计时文字着色，保留具体时长与中性色绝对日期；未知时间不着状态色。重置卡只在最早到期且尚未到期的卡片日期旁显示倒计时，到期后自动移至下一张，数量仍以接口快照为准。
 
 ## Typography
 

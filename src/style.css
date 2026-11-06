@@ -44,6 +44,10 @@
   --quota-normal: #63798c;
   --quota-warning: #ae661f;
   --quota-exhausted: #bd354b;
+  --deadline-normal: #287448;
+  --deadline-warning: #866a08;
+  --deadline-urgent: #b45214;
+  --deadline-critical: var(--quota-exhausted);
   --warning-surface: #fff7ec;
   --warning-text: #86531e;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
@@ -71,6 +75,10 @@
   --quota-normal: #96adbf;
   --quota-warning: #e5a05b;
   --quota-exhausted: #e47786;
+  --deadline-normal: #78c99a;
+  --deadline-warning: #dfc55b;
+  --deadline-urgent: #efa063;
+  --deadline-critical: var(--quota-exhausted);
   --warning-surface: #2d2620;
   --warning-text: #e5b983;
 }
@@ -225,10 +233,16 @@ th svg { display: inline; vertical-align: middle; }
 .quota-track { height: 6px; }
 .quota-track > div { height: 100%; background: var(--quota-color); border-radius: inherit; }
 .quota-time-row { display: flex; align-items: center; justify-content: space-between; padding-top: 8px; font-variant-numeric: tabular-nums; font-size: 12px; }
+.deadline-countdown { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deadline-countdown[data-tone=normal] { color: var(--deadline-normal); }
+.deadline-countdown[data-tone=warning] { color: var(--deadline-warning); }
+.deadline-countdown[data-tone=urgent] { color: var(--deadline-urgent); }
+.deadline-countdown[data-tone=critical] { color: var(--deadline-critical); }
 .quota-chart + .quota-chart { margin-top: 20px; }
 .quota-chart-heading { display: flex; justify-content: space-between; }
 .credits { margin-top: 22px; border-top: 1px solid var(--border); padding-top: 16px; }
 .credit-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px; }
+.credit-expiry { display: inline-flex; align-items: baseline; gap: 12px; font-variant-numeric: tabular-nums; }
 .credits p { font-size: 12px; margin-top: 8px; }
 .announcement + .announcement { border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; }
 .announcement .section-heading { margin-bottom: 6px; }
