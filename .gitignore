@@ -3,3 +3,11 @@ dist/
 .DS_Store
 .swiftpm/
 work/
+node_modules/
+dist-web/
+src-tauri/target/
+crates/quota-core/target/
+crates/quota-core/Cargo.lock
+src-tauri/gen/schemas/
+*.tsbuildinfo
+Resources/ThirdPartyNotices/dependencies-LICENSES.txt

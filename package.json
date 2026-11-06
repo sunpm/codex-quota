@@ -1,0 +1,34 @@
+{
+  "name": "codex-quota",
+  "version": "0.23.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.11.2",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.69.0",
+    "@tauri-apps/api": "^2",
+    "@vueuse/core": "^15.0.0",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.5.2",
+    "echarts": "^6",
+    "reka-ui": "^2",
+    "vue": "^3.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4",
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^22",
+    "@vitejs/plugin-vue": "^6",
+    "tailwindcss": "^4",
+    "typescript": "^5.9",
+    "vite": "^7",
+    "vue-tsc": "^3"
+  }
+}

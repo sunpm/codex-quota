@@ -1,5 +1,31 @@
 # 第三方来源
 
+## 跨平台应用与前端依赖
+
+当前生产入口使用 Tauri 2 + Vue 3 + Rust + TypeScript + Vite + Apache ECharts + shadcn-vue。依赖版本由 `pnpm-lock.yaml`、`src-tauri/Cargo.lock` 固定。构建脚本从已安装包生成 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`，包含包名、版本、许可标识、来源及包中附带的许可原文；重复原文只保留一份并按编号引用。生成文件随安装包分发，不手动修改或提交。
+
+| 组件 | 用途 | 上游许可 |
+| --- | --- | --- |
+| [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、更新 | MIT OR Apache-2.0 |
+| [Vue](https://github.com/vuejs/core) | 界面与响应式状态 | MIT |
+| [TypeScript](https://github.com/microsoft/TypeScript) | 类型检查 | Apache-2.0 |
+| [Vite](https://github.com/vitejs/vite) | 前端开发与构建 | MIT |
+| [Apache ECharts](https://github.com/apache/echarts) | 用量趋势、额度趋势与热力图 | Apache-2.0；包内 NOTICE 同时保留 |
+| [shadcn-vue](https://github.com/unovue/shadcn-vue) | 通过官方 CLI 引入的界面组件源码 | MIT；Copyright (c) 2023 unovue |
+| [Reka UI](https://github.com/unovue/reka-ui) | shadcn-vue 交互基础 | MIT |
+| [Lucide](https://github.com/lucide-icons/lucide) | 线性图标 | ISC |
+| [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | 组件样式构建 | MIT |
+| [rust_decimal](https://github.com/paupino/rust-decimal) | 十进制定价计算 | MIT |
+| [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
+
+以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；按需调整在调用层和主题 token 完成，不手改生成文件。
+
+Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-switch 等既有来源及版权声明。此前调研的 OpenTokenUsage 和 Sessions Viewer 用于比较跨平台路线，未直接复制其实现或引入依赖。
+
+应用的缺口 Q 图标由本项目 `scripts/make-icon.swift` 绘制，1024 像素源 PNG 经官方 `pnpm tauri icon` 生成 `src-tauri/icons/` 内的平台图标。单色托盘图标以 `src-tauri/icons/tray.svg` 为源，通过 `pnpm tauri icon --png 32` 生成 `tray.png`。生成命令见 README，二进制图标不手工修改。
+
+以下记录保留原实现的历史来源；其中 SwiftUI / AppKit / Swift Charts / Sparkle 的实现描述属于仍保留在 `Sources/` 的旧版，不表示 Tauri 应用继续链接这些框架。旧版相关许可继续保留，避免丢失历史归属。
+
 ## AIHOT 重置动态数据
 
 Codex 重置动态通过 [AIHOT Public API](https://aihot.news/openapi-v1.json) 的 `/api/v1/codex-resets/recent` 获取公开公告、中文摘录与原帖链接，接口核对日期为 2026-10-28。客户端根据公开契约自行实现，未复制 AIHOT 或其他监测项目的代码，未引入依赖。已参考 [Issue #276](https://github.com/KKKKhazix/AIHOT/issues/276) 区分过期预告和确认事件。

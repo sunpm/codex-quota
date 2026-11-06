@@ -1,281 +1,170 @@
 ---
 name: Codex Quota
-description: 克制、清晰、紧凑的原生 macOS 额度与用量仪表盘。
+description: 简洁、紧凑的 macOS 与 Windows 额度和用量工具。
 colors:
-  quota-normal-light: "#6C6C70"
-  quota-normal-dark: "#98989D"
-  quota-warning-light: "#C75300"
-  quota-warning-dark: "#FFA15F"
-  quota-exhausted-light: "#D1243A"
-  quota-exhausted-dark: "#FF7A90"
+  background-light: "#fafafa"
+  foreground-light: "#252629"
+  card-light: "#fff"
+  popover-light: "#fff"
+  sidebar-light: "#f2f3f4"
+  primary-light: "#286fae"
+  primary-foreground-light: "#fff"
+  secondary-light: "#eceef0"
+  accent-light: "#e6e9ed"
+  muted-light: "#686c72"
+  border-light: "#dedfe2"
+  input-light: "#d7d9dd"
+  destructive-light: "#bd354b"
+  chart-text-light: "#666b72"
+  quota-normal-light: "#63798c"
+  quota-warning-light: "#ae661f"
+  quota-exhausted-light: "#bd354b"
+  warning-surface-light: "#fff7ec"
+  warning-text-light: "#86531e"
+  background-dark: "#202124"
+  foreground-dark: "#e9eaed"
+  card-dark: "#26272b"
+  popover-dark: "#2d2f33"
+  sidebar-dark: "#1b1c1f"
+  primary-dark: "#4389c7"
+  primary-foreground-dark: "#fff"
+  secondary-dark: "#323439"
+  accent-dark: "#393b42"
+  muted-dark: "#a3a7af"
+  border-dark: "#3c3e44"
+  input-dark: "#4c4f57"
+  destructive-dark: "#e47786"
+  chart-text-dark: "#a3a7af"
+  quota-normal-dark: "#96adbf"
+  quota-warning-dark: "#e5a05b"
+  quota-exhausted-dark: "#e47786"
+  warning-surface-dark: "#352e26"
+  warning-text-dark: "#e5b983"
+  chart-blue: "#3279bd"
+  chart-teal: "#448d86"
+  chart-amber: "#ad8044"
+  chart-purple: "#9e6686"
+  composition: "#5d8b9e"
+  heatmap-low: "#a3d1ca"
+  heatmap-mid: "#679e94"
+  heatmap-high: "#33786c"
+  chart-quota-normal: "#647d93"
+  chart-quota-warning: "#b87530"
+  chart-quota-exhausted: "#c33f53"
+  unpriced: "#ab743e"
 typography:
-  page-title:
+  caption:
     fontFamily: "system-ui"
-    fontSize: "18px"
-    fontWeight: 600
-  usage-value:
+    fontSize: "10px"
+    fontWeight: 400
+  small:
     fontFamily: "system-ui"
-    fontSize: "25px"
-    fontWeight: 600
-    fontFeature: '"tnum"'
-  quota-value:
-    fontFamily: "system-ui"
-    fontSize: "24px"
-    fontWeight: 600
-    fontFeature: '"tnum"'
-  control:
-    fontFamily: "system-ui"
-    fontSize: "13px"
+    fontSize: "11px"
     fontWeight: 400
   detail:
     fontFamily: "system-ui"
     fontSize: "12px"
     fontWeight: 400
+  control:
+    fontFamily: "system-ui"
+    fontSize: "13px"
+    fontWeight: 400
+  dialog-title:
+    fontFamily: "system-ui"
+    fontSize: "16px"
+    fontWeight: 600
+  page-title:
+    fontFamily: "system-ui"
+    fontSize: "18px"
+    fontWeight: 600
+  compact-value:
+    fontFamily: "system-ui"
+    fontSize: "21px"
+    fontWeight: 600
+  responsive-value:
+    fontFamily: "system-ui"
+    fontSize: "23px"
+    fontWeight: 600
+  quota-value:
+    fontFamily: "system-ui"
+    fontSize: "24px"
+    fontWeight: 600
+  usage-value:
+    fontFamily: "system-ui"
+    fontSize: "25px"
+    fontWeight: 600
 rounded:
-  heatmap-cell: "2px"
-  navigation: "6px"
-  selection-track: "8px"
-  tooltip: "8px"
+  cell: "2px"
+  progress: "3px"
+  control-small: "4px"
+  selection: "5px"
+  control: "6px"
+  selection-track: "7px"
   card: "10px"
+  large: "12px"
 spacing:
   tight: "4px"
-  label: "6px"
   related: "8px"
   compact: "12px"
-  metric: "14px"
   section: "16px"
-  analysis: "18px"
+  surface: "18px"
   page: "24px"
 components:
-  panel-card:
+  surface:
     rounded: "{rounded.card}"
+    padding: "{spacing.surface}"
   sidebar-item:
-    rounded: "{rounded.navigation}"
+    rounded: "{rounded.control}"
     typography: "{typography.control}"
-    padding: "0px 10px"
-  segmented-picker:
-    rounded: "{rounded.selection-track}"
-    typography: "{typography.control}"
-    padding: "3px"
-  segmented-option:
-    rounded: "{rounded.navigation}"
-    height: "26px"
-  metric-card:
-    rounded: "{rounded.card}"
-    padding: "{spacing.metric}"
-  quota-window-progress:
-    height: "6px"
-  chart-tooltip:
-    rounded: "{rounded.tooltip}"
-    padding: "{spacing.compact}"
-    typography: "{typography.detail}"
+    height: "36px"
+  metric-value:
+    typography: "{typography.usage-value}"
 ---
 
 # Design System: Codex Quota
 
 ## Overview
 
-**Creative North Star: "原生仪表盘"**
+沿用现有桌面工具的视觉秩序：稳定的侧栏、紧凑的数字、清晰的表格和图表。此次将 SwiftUI / AppKit 界面迁移为 Tauri WebView 内的 Vue 3、shadcn-vue 与 Apache ECharts，保持用量统计、对话、项目、额度、设置五个入口。不是品牌重设计。
 
-克制、清晰、紧凑。界面帮助用户查看额度、比较用量，以稳定的数字、明确的分组和系统控件建立秩序。识别来自 Codex 标识与细节的一致性；正文、数据和操作优先于装饰。
-
-这是原生 macOS 视觉规范，最低系统版本为 macOS 13。保留 SwiftUI / AppKit 的字体、控件、焦点、菜单和窗口惯例；侧栏使用嵌入式布局，控件遵循系统外观。使用简体中文，保留服务名、模型名、Tokens、USD 等必要标识。产品约束见 [PRODUCT.md](PRODUCT.md)，实现与协作约束见 [AGENTS.md](AGENTS.md)。
-
-**Key Characteristics:**
-
-- 系统字体与语义颜色适应系统外观，额度状态使用独立的语义色。
-- 用底色、细边框、留白和对齐表达层次，操作使用原生控件。
-- 数值便于比较；来源、时间、单位、未知和过期状态贴近对应数据。
-- 文案具体简短，保留表单标签与必要口径，删除重复解释布局的说明。
-
-本次增量核对基于 2026-10-30 工作区源码及仓库中的[额度截图](docs/images/quota.png)、[设置截图](docs/images/settings.png)。[README.md](README.md) 将这些图片标注为更名前 v0.15.0 源码构建的实机截图；图片仍显示旧产品名、额度刷新按钮与更新时间、旧设置分组，只用于参考原生表面和视觉层级，不能代表当前交互，也不据此认定数据为模拟值。当前行为以源码和下文组件说明为准。
-
-2026-10-30 在本地构建中核对了侧栏今日指标、对话明细时间与近似计时、可选列开关及重启持久化；修复了默认列被横向滚动遮住的问题，复查默认八列可完整显示。验收禁用了真实额度客户端。旧版 macOS、深色外观及 VoiceOver 未做本次实机验收，不将编译支持或旧截图写成验收通过。
-
-格式遵循 [DESIGN.md 规范](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md)。文件头仅收录已实现的固定值：为兼容格式，尺寸以 `px` 保存，数值对应 SwiftUI 的逻辑点；原生实现仍使用 point，不进行 CSS 物理单位换算。`system-ui` 对应原生系统字体，`tnum` 对应 `.monospacedDigit()`。系统色、材质和语义字级没有固定值，按下文的原生 API 使用。工具暂未识别 `macos` 平台，不因此将产品改记为 Web 或 iOS。
+实际样式源为 `src/style.css`，交互源为 `src/App.vue` 与 `src/components/`。`src/components/ui/` 由 shadcn-vue CLI 生成；使用其 size、variant 接口和主题变量，覆盖放在调用层或样式源中，不手改生成组件。图标采用当前官方 `@lucide/vue` 包，统一线性图标。
 
 ## Colors
 
-以系统中性色承载内容，强调色标识操作与选中状态，额度灰／预警橙／耗尽红传达额度状态。颜色按用途命名。
+界面跟随操作系统浅深色。背景、内容表面、侧栏、边框、主文字和次要文字分别使用语义变量。蓝色用于选中导航、单选项与提交动作；额度的正常、预警、耗尽状态独立使用灰蓝、橙和红，并保留实际数字。颜色不能把未知数据伪装为正常。
 
-### Primary
-
-- **系统强调色**：`Color.accentColor`，用于导航、分段控件的实色选中底及更新标记；选中项的文字与图标使用白色。原生突出按钮和链接遵循系统样式。不要从截图提取一个蓝色常量代替它。
-- **额度状态色**：统一调用 `quotaColor(remaining:)`，定义位于 [QuotaAppearance.swift](Sources/CodexQuota/QuotaAppearance.swift)。`quota-normal-*` 为额度灰，`quota-warning-*` 为预警橙，`quota-exhausted-*` 为耗尽红；文件头的 `light` / `dark` 成对使用。
-
-| 实际剩余值 | 色彩角色 | 当前应用 |
-| --- | --- | --- |
-| 未知 | 系统 `.secondary` | 不推测正常或耗尽 |
-| 小于等于 0 | 耗尽红 | 百分比与额度进度 |
-| 大于 0、小于 20 | 预警橙 | 百分比、进度及需要关注的提示 |
-| 大于等于 20 | 额度灰 | 百分比与额度进度 |
-
-额度页的错误正文使用主文字色，图标使用预警橙；用量读取警告使用预警橙，缺价状态通过费用标题和悬停说明表达。定价编辑器的校验错误当前直接使用系统 `.red`，这是表单错误样式，不作为额度色的新入口。
-
-### Secondary
-
-图表分类使用 SwiftUI 系统色，不与额度阈值共用含义：趋势与输入为 `.blue`，输出为 `.purple`，缓存读取为 `.teal`，缓存写入为 `.orange`。分类始终配文字或数值，颜色不独自承担识别。热力图使用 `.teal` 的透明度层级；它表达用量强弱，不表达额度健康度。
-
-### Neutral
-
-| 原生语义 | 用途 |
-| --- | --- |
-| `NSColor.windowBackgroundColor` | 主窗口内容背景、旧系统侧栏 |
-| `NSColor.controlBackgroundColor` | 共享卡片背景 |
-| `.primary` / `.secondary` / `.tertiary` | 正文、辅助信息、弱化装饰 |
-| `.primary.opacity(0.07)` | 卡片细边框 |
-| `.secondary.opacity(0.18)` | 额度进度轨道 |
-| `.regularMaterial` | 图表悬停浮层 |
-
-Codex 服务小标识为白底、黑色模板图案；菜单栏图像设置 `isTemplate = true`，由系统处理明暗与高亮。两者都不能替代额度状态色。
-
-**The 状态归属 Rule.** 额度颜色只由真实剩余值决定；品牌色、图表类别和显示舍入不改变它。
+图表按需引入 ECharts 模块。热力图用低至高的青绿色量阶，未定价费用用虚线边界和提示说明；金额缺失不显示为零。系统字体和图表字体遵循系统外观，不加载远程字体。
 
 ## Typography
 
-全界面使用系统字体，不引入自定义展示字体。数值使用等宽数字，正文保持正常字宽。系统 `.headline`、`.body`、`.callout`、`.title2`、`.title3` 保留语义字级，不从截图反推固定字号或行高。
-
-| 角色 | 取值或入口 | 应用 |
-| --- | --- | --- |
-| 页面标题 | `page-title` | 主窗口标题栏下的页面名称 |
-| 用量主数字 | `usage-value` | 概览的总 Tokens 与 API 等价费用 |
-| 额度主数字 | `quota-value` | 每个额度窗口的剩余百分比 |
-| 操作与导航 | `control` | 侧栏和设置；选中导航使用 semibold |
-| 时间、说明、明细 | `PanelTypography.detail` / `detail` | 统一可读的辅助字级 |
-| 恢复倒计时 | 系统字体 13pt、medium | 与主数字相邻，使用等宽数字 |
-| 分组标题 | `.headline` | 卡片、图表与表单分组 |
-
-金额、百分比、倒计时、时间和表格数字使用 `.monospacedDigit()`。表格数值靠右对齐；名称靠左。长名称与路径通常单行截断并提供 `.help`；对话详情中的完整 ID 与工作目录允许选择复制。
-
-费用数字使用 `$`，不重复附加 `US` / `USD`；模型定价表保留 `USD / 百万 Tokens`，说明单价口径。
-
-**The 可比较数字 Rule.** 同列数值保持相同字级、对齐和单位口径；缩写不移除完整值的查看入口。
+基础字号 13px，表格与辅助信息 12px，页标题 18px。主要统计值 25px，紧凑汇总 21px，额度值 24px。较小字号只用于短 ID、图例和版本。数据、金额、百分比、时间使用 tabular-nums；模型与短 ID 使用等宽字体。正文、按钮和导航不使用技术装饰字体。
 
 ## Layout
 
-使用原生 `HSplitView` 分隔侧栏与内容区，拖动分隔线调整侧栏宽度；内容区至少保留 640pt。主窗口初始内容尺寸为 1140 × 760pt，最低内容尺寸为 860 × 560pt；数值来自 [ControlPanelController.swift](Sources/CodexQuota/ControlPanelController.swift)，是实现约束，并非最小尺寸验收记录。
-
-| 空间角色 | 现有规则 |
-| --- | --- |
-| 侧栏 | 宽度范围 168–320pt，向原生分栏提供 168pt 理想宽度，内容区使用更高布局优先级优先扩展，使侧栏默认保持紧凑；内部 padding 12pt |
-| 页面栏 | 高 56pt，左右 padding 使用 `page`，标题与刷新操作分列 |
-| 内容外边距 | `page` |
-| 额度与设置 | 内容随窗口伸展，与用量页共用 24pt 页边距 |
-| 用量内容 | 概览主体纵向滚动；对话与项目的筛选、汇总保持在表格上方，表格填满窗口剩余高度并自行滚动 |
-| 卡片内边距 | 设置与额度常用 `section`，分析常用 `analysis`，概览指标用 `metric` |
-| 密切关联信息 | 使用 `tight`、`label`、`related`，不强制整理为单一倍数网格 |
-
-共享 `panelCard()` 只负责表面，不内置 padding；调用点决定密度。相邻组件先复用既有值，避免为单个位置建立新的全局 token。
-
-分析内容通过 `ViewThatFits(in: .horizontal)` 在横向并列与纵向堆叠间选择；两个并列区域分别保留至少 290pt。热力图保留水平滚动。没有 Web 式设备断点，不将窗口最小宽度登记为 CSS breakpoint。
-
-汇总表使用原生 `Table`，首要比较字段为名称、Tokens、API 等价费用。对话与项目表格可用宽度达到 1000pt 时，身份信息展开为独立列并采用单行：对话增加最近用量、短 ID 列，项目增加目录列；较窄时身份信息合并回名称列的第二行。对话名称列、窄窗口名称列与宽窗口项目目录列吸收剩余宽度，数值列保持紧凑。概览中的嵌入表格保留原有列布局。下表记录当前实现，不代替窗口检查。
-
-| 列 | 最小 / 理想 / 最大宽度（pt） |
-| --- | --- |
-| 名称 | 130 / 170 / 无上限；概览与宽窗口项目表为 130 / 170 / 260 |
-| 目录（宽窗口项目表） | 220 / 300 / 无上限 |
-| 最近用量（宽窗口对话表） | 固定 130 |
-| 短 ID（宽窗口对话表） | 固定 80 |
-| Tokens | 70 / 80 / 140 |
-| API 等价费用 | 100 / 105 / 180 |
-| 占比 | 60 / 65 / 100 |
-| 缓存命中率 | 80 / 85 / 110 |
-
-页面当前排布以 [MainView.swift](Sources/CodexQuota/MainView.swift) 与 [UsageView.swift](Sources/CodexQuota/UsageView.swift) 为准，不把某一页的卡片数量提升为所有页面的规则。
-
-## Elevation & Depth
-
-主要依靠系统底色、细边框、分隔线与留白分组。源码没有自定义阴影层级；原生控件和 sheet 的系统效果继续由平台管理，不声明“全应用没有阴影”。导航与分段选择器在启用动画时共用一个选中背景，匹配目标选项的位置与大小，使用 0.16 秒 ease-out 滑动。滑块覆盖区域显示白色 semibold 标签，外部显示主文字色 regular 标签；两层使用互补遮罩，避免文字提前变白、变粗或叠出重影。“设置 → 动画特性”默认开启并持久保存；关闭或开启系统“减少动态效果”时，改为直接绘制选中项的背景、字色和字重，不创建几何匹配或文字遮罩。数据与页面内容不随选中背景做整体动画。
-
-普通操作按钮统一使用 `.bordered`，突出操作按钮在所有支持系统上统一使用 `.borderedProminent`，并通过 `.tint(.accentColor)` 跟随系统强调色。所有支持系统的侧栏均使用窗口背景与分隔线，贴合窗口边缘，不使用悬浮玻璃外框或额外外边距。开关保留系统外观。图表浮层使用 `.regularMaterial` 和主文字色 10% 透明度的细边框，不添加自行绘制的模糊或阴影。
-
-**The 系统材质 Rule.** 材质与控件状态交给平台；用自定义表面时，复用 `panelCard()` 的底色和边框。
-
-## Shapes
-
-圆角按角色区分：卡片使用 `card`，导航选中底与 Codex 小标识使用 `navigation`，图表浮层使用 `tooltip`，热力单元使用 `heatmap-cell`。分段选择器轨道使用 `selection-track`，选中底使用 `navigation`；原生按钮、输入框与开关的外形由系统样式决定，不强加卡片圆角。
-
-额度条和 Token 拆分条使用 `Capsule`。额度组件默认高度为 7pt，额度页显式使用 `quota-window-progress`；拆分条高 8pt。卡片描边为 1pt；Codex 小标识的黑色 12% 透明度描边为 0.5pt。图标优先使用 SF Symbols，服务标识使用已授权的 [codex.svg](Resources/codex.svg)，来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+初始侧栏 178px，可通过分隔线拖动或方向键调至 168–300px。主窗口内容边距 24px，960px 以下收为 18px；页面最小布局宽度 760px。标题栏高 66px，侧栏今日指标固定底部。概览页纵向滚动；对话和项目页的表格填满剩余高度并独立滚动。960px 以下隐藏表格次要目录/时间列，完整值保留悬停入口；详情表格可横向滚动。
 
 ## Components
 
-### Buttons
+普通操作使用 shadcn-vue `Button` 的 outline、ghost 和 sm；保存、完成使用默认强调样式，清除确认使用 destructive。焦点外框与控件实际布局独立，不用偏移抵消视觉外扩。
 
-使用 [PanelButtonStyle](Sources/CodexQuota/QuotaAppearance.swift)，入口和普通操作按钮统一使用灰色 `.bordered`；仅保存、完成和最终安装确认使用系统强调色。保存及各处完成按钮使用 `.borderedProminent`，安装确认框中的“安装并重启”设为原生默认操作。打开编辑界面、引导、系统设置或确认框的命令按钮使用省略号，例如“添加…”“编辑…”“开启持久通知…”“系统设置…”“下载并安装…”；检查更新、测试通知、重新扫描与重试安装等直接操作不加省略号。链接使用 `.link`，导航与列表内入口使用 `.plain`。不自绘 hover、focus 或按下背景来覆盖原生控件。
+日期范围、Tokens/费用和额度趋势范围使用原生 radio 加选中背景，支持 Tab 与方向键。模型和刷新间隔使用原生 select；自定义日期使用原生 date 输入；自定义刷新间隔使用带原生 number 输入的 Popover，最小 30 秒，保存生效，取消和 Esc 放弃。
 
-默认操作与取消操作使用对应 `keyboardShortcut`；禁用通过 `.disabled` 表达，刷新或提交中的等待通过 `ProgressView` 或动作名称体现。保留必要的按钮名称；纯图标必须有可理解的辅助标签。
+设置项保持左侧标签、右侧控件。额度监测关闭时，依赖设置一起禁用和淡化，菜单栏/托盘、登录启动与用量扫描保持独立。多选指标和列选项采用 Popover + Checkbox，连续选择立即保存。对话明细、价格编辑与清除确认使用 Dialog，保留标题、说明和完成/取消动作。
 
-### Cards / Containers
+## Data presentation
 
-`panelCard()` 位于 [UsageView.swift](Sources/CodexQuota/UsageView.swift)，使用控制背景、`card` 圆角和细边框。图表、设置组、额度块及指标卡复用这一表面；字号与 padding 由内容角色决定。标题、数值和操作通过对齐建立层级，不额外加解释布局的副标题。
+本机扫描时间与来源在筛选下方显示，警告放在汇总前。API 等价费用不代表订阅账单；部分缺价使用“已定价费用”，全无定价显示“未定价”。前端只聚合 Rust 返回的十进制费用字符串，不重新实现定价规则。同期比较仅在概览显示；当前未结束的时间范围按本地时刻对齐上期。
 
-### Settings
+额度页没有刷新按钮、更新时间或加载占位；切换进入页面会请求刷新，读取失败保留已有读数并标为过期。倒计时本地计算，归零显示等待实际重置。额度折线按后端 segment 分段，重置或观测中断处不连线。公开重置动态与个人额度分开，最多展示最近三条，链接经 Rust 检查后打开。
 
-设置依次为额度监测、系统通知、通用、用量显示、模型定价、用量历史和软件更新，额度监测与系统通知相邻。设置项保持左侧标签、右侧控件；独立操作按钮组统一靠右，清除按钮排在组内最后。刷新间隔与通知开关在“额度监测”开关下缩进 12pt，控件右边缘保持对齐；监测关闭时整组使用 `.disabled`、零饱和度和 45% 不透明度，统一弱化标签、数值与控件，保留已有配置，收起正在编辑的刷新间隔。重新开启恢复正常样式及可操作状态。菜单栏显示偏好、登录启动和动画属于独立的通用设置，自动检查更新归入软件更新分组。系统通知组与其他设置卡片等宽，标题与权限状态左对齐，操作按钮组右对齐，保留权限状态与系统设置入口；测试通知仅在监测开启、至少一种通知开启且系统授权时可用，权限与持久通知设置入口始终可用。
+## Motion and accessibility
 
-### Inputs / Fields
+界面过渡使用短时状态变化，图表动画 220ms。应用动画开关和系统减少动态效果均能关闭动画。系统浅深色变化会重新应用 ECharts 主题，图表容器通过 ResizeObserver 调整尺寸并在卸载时释放。
 
-模型定价在设置页仅保留左侧名称与右侧“管理定价…”按钮。点击后打开 680 × 560pt 的原生 sheet，承载搜索、模型列表、更新价格与添加入口；打开时不自动聚焦搜索框，保留点击与键盘导航。列表填充剩余高度，编辑仍使用现有定价表单。右下角“完成”或 Esc 关闭管理面板并返回设置，价格数据与用量页面共用同一模型。
+原生表单控件保留标签、键盘行为及焦点样式。图标动作保留名称；图表具有文字辅助说明和对应汇总数字。页面支持平台常用刷新与设置快捷键，原生菜单事件与页面动作共用业务命令。
 
-额度刷新间隔行固定为 24pt 高，左侧为“刷新间隔”，右侧为按内容宽度收紧的原生下拉菜单（默认“5 分钟”），菜单右边缘与同组开关对齐。预设为 30 秒、1 分钟、2 分钟、5 分钟、10 分钟和 30 分钟，当前选项使用勾选标记；已有自定义值也保留为选中项。选择预设立即保存；“自定义…”打开原生 popover，在带“刷新间隔（秒）”标签的输入框中编辑，回车或点击“保存”提交，取消、Esc 或点击浮层外放弃修改。低于 30 秒按 30 秒保存，无法解析为整数时保留原值。数值使用等宽数字，输入框保留最少 30 秒的占位及悬停提示，不在主设置行重复约束说明。菜单和浮层不参与主设置布局，展开、编辑和关闭时均不挤动下方内容。
+## Evidence and constraints
 
-定价搜索与编辑使用 `.roundedBorder` 的 `TextField`；表单保留字段标签，错误就近显示。时间、指标与分组筛选复用 `PanelSegmentedPicker`，以 SwiftUI 按钮和 `matchedGeometryEffect` 实现滑动选中背景；选中底使用系统强调色实色，文字为白色，不另加边框。`PanelSelectionIndicator` 与 `PanelSelectionLabel` 共用背景和文字遮罩的几何动画。保留控件名称、选中语义、焦点与左右方向键切换。点击或重新点击“自定义”打开原生 popover，其中的 `DatePicker` 保留开始、结束标签及日期先后约束，修改立即生效；点击“完成”或浮层外部关闭。日期范围显示在已有说明行内，展开与关闭浮层不改变筛选区域高度。布尔设置使用 `.switch` 与 `.small`，可见行标签和隐藏控件标签表达同一设置。
+迁移依据为当前 Swift 源码、README、PRODUCT 和旧版额度/设置截图。旧截图包含已取消的刷新按钮与更新时间，不作为当前行为依据。`?preview` 使用明确标注的匿名离线示例，仅用于界面验收；普通浏览器环境不会尝试读取本机凭据或伪造服务成功。
 
-分段选择器的轨道内边距与字级见 `segmented-picker`，选项最小高度与圆角见 `segmented-option`；选项等分可用宽度、文字单行，轨道使用 `.primary.opacity(0.05)`。它复用于日期、Tokens / 费用、汇总分组与额度趋势范围，宽度由调用位置决定，不增加统一的固定宽度。
-
-### Navigation
-
-五个现有入口为用量统计、对话、项目、额度、设置；设置位于额度下方，顶部额外留 12pt 区分主导航与设置。导航图标依次使用 SF Symbols 的 `chart.xyaxis.line`、`bubble.left`、`folder`、`chart.pie`、`gearshape`，统一单色线性样式、14pt 与 regular 字重，选中时图标不加粗。图标槽为 22 × 22pt，图文间距为 `related`，每行最小高度 36pt，导航名称保持完整。选中行使用系统强调色实色背景、白色文字与图标，文字为 semibold，并设置 `.isSelected`；未选中行保持主文字色。设置入口的更新标记在选中时也使用白色。侧栏自定义为按钮列表，不宣称它具备尚未验证的原生列表键盘行为。
-
-今日用量固定在侧栏底部，以分隔线与导航区分，默认展示 Token。指标垂直排列，每行左侧为名称、右侧为数值，使用 12pt 字号和等宽数字；完整值与口径保留在悬停和辅助标签中。部分缺价时费用标签为“已定价费用”，完全缺价显示“未定价”，记录数不称请求数，未读取显示“—”，真实零值继续展示。设置中的“用量显示”用原生 popover 内的复选框配置 Token、估算费用、用量记录数、缓存命中率，可同时选中四项，选择立即保存并保持浮层展开；入口按钮显示已选数量，全部取消或选择“不显示”后隐藏整组今日用量。“明细可选列”使用相同的浮层复选框交互；点击浮层外部或按 Esc 关闭，关闭不撤销已保存的选择。
-
-从其他页面点击侧栏“额度”立即切换页面并后台刷新；已在额度页时重复点击不刷新，由监测模型统一处理开关、正在请求及服务端冷却。额度页不提供刷新按钮或 `⌘R`，也不显示刷新进度和更新时间。用量页保留原有刷新操作。
-
-软件更新卡片展示版本、检查操作和更新结果；检查期间在原按钮位置显示“取消检查”，不插入额外操作行。检查结果或错误与发布页链接共用固定 20pt 高的状态行，长内容单行截断并提供完整悬停提示，检查状态行高度保持不变。下载、取消下载和重试安装操作同样位于顶部按钮区。手动检查结束后在主窗口弹出原生结果框，显示新版本、已是最新或失败原因；有新版时提供“稍后”和默认操作“更新并重启”，并明确下载完成后将重启。弹窗只在检查会话结束、更新操作可用后显示，切换页面不丢失结果；取消检查不弹窗，后台自动检查只更新侧栏标记和卡片。无法应用内更新时提供发布页入口。发现新版时显示“下载并安装…”按钮，系统确认框说明下载完成后会重启，用户点击“安装并重启”后才开始执行；下载显示真实进度与已下载大小，并提供取消，准备安装后禁用重复操作。切换页面或关闭窗口不取消下载。发现新版后，在状态行下展示该版本的 Markdown 更新说明，沿用首次启动说明弹窗的排版；短内容按实际高度显示，超过 220pt 时滚动查看，没有新版时不占位。旧清单缺少说明时显示“暂无更新说明”，发布页链接始终保留。每个版本首次启动的说明弹窗继续保留。“自动检查更新”默认开启，放在“软件更新”分组的状态行之后，以分隔线区分，沿用左侧标签、右侧开关的行布局。“通用”分组依次保留菜单栏显示、登录启动和动画特性，动画作用范围放在开关的悬停提示中。设置底部不重复应用名称或致谢链接；第三方来源与许可保留在文档及随包文件中。
-
-### Tables / Details
-
-汇总表使用 `.inset(alternatesRowBackgrounds: true)`，数值靠右、等宽数字，费用允许两行。宽窗口的单行名称上下内边距为 4pt，窄窗口的双行名称上下内边距为 6pt；项目目录在独立列中使用中间截断，保留两端路径。对话与项目表格填满可用高度，不嵌套在页面级 `ScrollView` 内；概览中的嵌入表格按行数确定高度，最多 420pt。名称区域可点击打开对话详情，并带 chevron；可见身份由项目名、所选范围内最近用量时间、短 ID 组成，完整信息通过悬停或详情查看。详情用 sheet 承载，提供明确的完成操作。
-
-来源、扫描时间及自定义日期范围共用筛选下方一行。账号覆盖范围与 API 等价估算口径通过悬停查看，读取警告仍位于汇总之前。缺价时以“已定价费用”作为费用汇总、表头及图表悬停标题，未定价条数放在费用汇总的悬停提示中；金额不重复追加“（部分）”，无法计算的费用涨跌直接隐藏。完全未定价仍显示“未定价”，不与真实零值或无数据混淆；对话详情沿用同一口径，移除底部重复说明。
-
-对话明细使用 AppKit `NSTableView`，在 macOS 13 上也支持列显隐。面板最小宽度 960pt，默认八列使用紧凑列宽并允许手动拖动调整；额外开启可选列后空间不足时横向滚动。默认按时间、模型、新增输入、输出、缓存命中、估算费用、速度、首字排列；模型使用 12pt 等宽字体，数值保持右对齐与等宽数字。当天时间显示时分秒，其他日期显示月日时分，完整时间通过悬停查看。Token 低于 10,000 保留整数，以上统一 K/M/B 与三位有效数字；精确值在悬停提示中。速度和首字的日志估算带 `≈`，无可靠依据显示 `—`。缓存写入和计费档位默认隐藏，设置中可开启；缓存写入缺失不显示零，单一计费档位不单独展示汇总卡。
-
-同期比较仅出现在概览，标明上期日期，悬停可查看完整时段；对话与项目页只显示当前范围汇总，不显示上期日期或比较提示。
-
-切换页面时，分组名称与路径只在首次遇到该组时生成；已知项目路径是目录，取名称时不通过文件系统推断类型。概览使用 `LazyVStack`，屏幕外的图表与热力图延后创建；对话与项目保留填满可用高度的表格。概览的横排与竖排候选布局共用一次排行计算，表格复用当前范围的费用汇总，避免重复统计挡住点击响应。刷新间隔自定义输入由原生浮层处理焦点与关闭，不在主窗口添加点击提交手势。
-
-### Quota / Charts
-
-额度块以名称、剩余百分比、进度条、恢复倒计时和重置时间组成一组。进度条作为数字的辅助图形隐藏于辅助功能树；百分比与错误文字保留语义。没有读数时显示空态，刷新期间保留读数，失败时在错误提示中标明数据已过期；不显示加载状态和更新时间。重置动态同样移除加载和来源核实时间，保留原帖日期、预告及必要的来源过期提示。
-
-趋势图使用 Swift Charts 的柱形与轴标签，悬停显示时间、Tokens 和估算费用。用量与额度趋势共用 `chartTimeAxis`，按每个标签约 80pt 计算整小时或整天间隔。时间标签统一使用 12pt 等宽数字、双位小时与分钟或月日格式，在刻度下方留出 8pt 间距；所有标签保持 `.top` 锚点，文字中心与对应竖线对齐，不随窗口宽度切换锚点。左右边界采用相同的半标签空间预算，边缘放不下的刻度连同竖线和标签一起省略；不额外增加图表留白，也不移动或裁掉实测数据。采用 `.aligned` 刻度和系统碰撞避让，文字至少间隔 8pt。热力图格子为 12–16pt、间隔 3pt；强度依次使用 `.teal` 透明度 0.25 / 0.45 / 0.70 / 1，无用量使用 `.secondary.opacity(0.10)`。未定价格用虚线框并配图例，悬停框和浮层不阻挡输入；图表数据保持文字辅助标签。
-
-额度消耗趋势位于当前额度与公开重置动态之间。各额度窗口独立显示已用百分比折线，共用 24 小时 / 7 天范围切换，纵轴固定为 0–100%；颜色使用当前窗口的 `quotaColor`。横轴保留真实滚动时间范围，24 小时使用整点刻度，7 天使用日期刻度，数量随宽度调整；允许省略靠近首尾边缘的刻度，不将起止时间强行取整或扩展到未来。单个观测显示点，重置或中断处不连线。鼠标进入绘图区即显示时间指示线，靠近实测点时吸附到采样时间，并在标题行显示实际读数；空白时段的指示线跟随鼠标，标题行显示对应时间与“无采样”，不补零或沿用旧值。移出图表后恢复最新读数。
-
-### Menu Bar
-
-沿用应用图标的原创缺口 Q，以单色模板轮廓与最多两个额度百分比组成紧凑入口；图标为 18pt，画布高 22pt，图文间距 3pt，字体取系统菜单栏等宽数字。无读数显示 `--`，读取错误附加 `!`；系统负责外观与选中着色，不把菜单栏绘成彩色状态徽章。
-
-单击或右键均打开原生菜单，提供“打开面板”和“退出 Codex Quota”。打开面板复用同一窗口；菜单栏本身不直接唤起窗口。
-
-## Do's and Don'ts
-
-### Do
-
-- **Do** 复用 `PanelTypography.detail`、`PanelButtonStyle`、`panelCard()` 与 `quotaColor`。
-- **Do** 保留系统色和原生控件的语义，分别处理品牌、图表类别与额度状态。
-- **Do** 用等宽数字、右对齐和一致单位支持比较，把来源、时间与必要口径贴近数据。
-- **Do** 为截断名称保留完整值入口，为未知、部分和过期状态保留明确文字。
-- **Do** 使用简短中文控件名，保留表单标签和必要错误信息。
-
-### Don't
-
-- **Don't** 从一张浅色截图固化系统背景、强调色、字体度量或玻璃材质。
-- **Don't** 为了装饰增加大面积自造背景、阴影层级、字体或动画系统。
-- **Don't** 用颜色独自表达类别或错误，也不要把未知额度显示成满额、缺价显示成免费。
-- **Don't** 让长名称挤走核心数字，或把重要读取警告放到长页面末尾。
-- **Don't** 把 HTML 示意、源码支持或单次窗口检查写成全尺寸、深色或无障碍验收通过。
-
-配套 [.impeccable/design.json](.impeccable/design.json) 提供描述元数据、原生动效参数与组件示意。色阶为展示用插值，HTML/CSS 仅帮助浏览文档；分段选择器用浏览器单选控件示意选中状态和焦点，不复刻原生滑块及文字遮罩。所有示意都不是 AppKit、SF Symbols 或 Liquid Glass 的像素复刻，也不是原生代码的样式来源。
+本次类型检查和生产构建已通过。Chrome 的关键流程验收由专门代理记录，桌面系统集成与 Windows 实机检查的证据由主代理汇总；本文件不把源码支持或离线预览写成跨平台实测通过。
