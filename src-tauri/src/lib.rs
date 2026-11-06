@@ -94,6 +94,7 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
     }
     if (!previous.recovery_notifications && settings.recovery_notifications)
         || (!previous.reset_credit_reminders && settings.reset_credit_reminders)
+        || (!previous.quota_reset_reminders && settings.quota_reset_reminders)
         || (!previous.announcement_notifications && settings.announcement_notifications)
     {
         let _ = platform::notification_permission(true).await;
@@ -218,6 +219,7 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
     if !settings.monitoring_enabled
         || !(settings.recovery_notifications
             || settings.reset_credit_reminders
+            || settings.quota_reset_reminders
             || settings.announcement_notifications)
     {
         return Err("请先开启额度监测和至少一种通知。".into());
@@ -230,7 +232,7 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
     platform::send_notification(
         &app,
         "Codex 通知测试",
-        "通知已就绪，将按设置发送额度恢复、重置卡到期或重置动态提醒。",
+        "通知已就绪，将按设置发送额度恢复、重置前、重置卡到期或重置动态提醒。",
         None,
     )
     .await
@@ -348,6 +350,7 @@ pub fn run() {
                 if settings.monitoring_enabled
                     && (settings.recovery_notifications
                         || settings.reset_credit_reminders
+                        || settings.quota_reset_reminders
                         || settings.announcement_notifications)
                 {
                     tauri::async_runtime::spawn(async {

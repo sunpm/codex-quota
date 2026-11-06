@@ -225,20 +225,21 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
                     .saved
                     .reminded_credits
                     .retain(|_, expiration| *expiration > time);
+                store.saved.deadline_reminders.prune(time);
                 let mut expirations = Vec::new();
                 if let Some(credits) = &sample.reset_credits {
                     for credit in credits.available_credits() {
-                        if let Some(expiration) = credit
-                            .expires_at
-                            .filter(|v| *v > time && *v - time <= 86400.0)
-                        {
+                        if let Some(expiration) = credit.expires_at.filter(|v| *v > time) {
                             let key = fingerprint(&format!("{}:{}", sample.fingerprint, credit.id));
-                            if store
-                                .saved
-                                .reminded_credits
-                                .insert(key, expiration)
-                                .is_none()
-                            {
+                            let previously_reminded =
+                                store.saved.reminded_credits.remove(&key).is_some();
+                            let due = store.saved.deadline_reminders.observe(
+                                format!("credit:{key}"),
+                                expiration,
+                                time,
+                                &settings.reset_credit_reminder_minutes,
+                            );
+                            if due.is_some() && !previously_reminded {
                                 expirations.push(expiration);
                             }
                         }
@@ -256,9 +257,58 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
                     messages.push((
                         "Codex 重置卡即将到期".into(),
                         format!(
-                            "{} 张重置卡将在 24 小时内到期，最早于 {when} 到期。",
+                            "{} 张重置卡即将到期，最早于 {when} 到期。",
                             expirations.len()
                         ),
+                    ));
+                }
+                let mut upcoming_resets = Vec::new();
+                for window in &sample.windows {
+                    let Some(deadline) = window.resets_at.filter(|deadline| *deadline > time)
+                    else {
+                        continue;
+                    };
+                    // A lead time spanning an entire quota window is not a pre-reset warning.
+                    let minutes: Vec<_> = settings
+                        .quota_reset_reminder_minutes
+                        .iter()
+                        .copied()
+                        .filter(|minutes| {
+                            window
+                                .duration_minutes
+                                .is_none_or(|duration| i64::from(*minutes) < duration)
+                        })
+                        .collect();
+                    let key = fingerprint(&format!("{}:{}", sample.fingerprint, window.id));
+                    let due = store.saved.deadline_reminders.observe(
+                        format!("quota:{key}"),
+                        deadline,
+                        time,
+                        &minutes,
+                    );
+                    if due.is_some() && window.remaining() > 0.0 {
+                        let remaining = if window.remaining() < 0.1 {
+                            "不足 0.1".into()
+                        } else {
+                            format!("{:.1}", window.remaining())
+                        };
+                        let when = chrono::DateTime::from_timestamp(deadline as i64, 0)
+                            .map(|date| {
+                                date.with_timezone(&chrono::Local)
+                                    .format("%m-%d %H:%M")
+                                    .to_string()
+                            })
+                            .unwrap_or_default();
+                        upcoming_resets.push(format!(
+                            "{}还剩 {remaining}%，将于 {when} 重置。",
+                            window.display_label()
+                        ));
+                    }
+                }
+                if settings.quota_reset_reminders && !upcoming_resets.is_empty() {
+                    messages.push((
+                        "Codex 额度即将重置".into(),
+                        format!("{}\n可在重置前使用剩余额度。", upcoming_resets.join("\n")),
                     ));
                 }
                 store.saved.schedule.succeeded();
