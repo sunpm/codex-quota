@@ -13,6 +13,8 @@ struct MainView: View {
     @ObservedObject private var updates: AppUpdateModel
     @State private var confirmsHistoryClear = false
     @State private var showsPricingSettings = false
+    @State private var showsSidebarMetrics = false
+    @State private var showsUsageColumns = false
     @AppStorage("usage.sidebarToday.v1") private var sidebarToday = UsageTodayMetric.tokens.rawValue
     @AppStorage("usage.columns.speed") private var showsUsageSpeed = true
     @AppStorage("usage.columns.firstToken") private var showsUsageFirstToken = true
@@ -24,12 +26,12 @@ struct MainView: View {
     @Namespace private var navigationSelection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(model: MonitorModel, showsSettings: Bool = false, navigation: PanelNavigation? = nil) {
+    init(model: MonitorModel, navigation: PanelNavigation) {
         self.model = model
         _resetAnnouncements = ObservedObject(wrappedValue: model.resetAnnouncements)
         _updates = ObservedObject(wrappedValue: model.updates)
         _refreshIntervalInput = State(initialValue: String(model.refreshInterval))
-        _navigation = StateObject(wrappedValue: navigation ?? PanelNavigation(page: showsSettings ? .settings : .overview))
+        _navigation = StateObject(wrappedValue: navigation)
     }
 
     var body: some View {
@@ -47,6 +49,7 @@ struct MainView: View {
                 }
             }.frame(minWidth: 640, maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
+                .layoutPriority(1)
         }
         .frame(minWidth: 860, idealWidth: 1140, minHeight: 560, idealHeight: 760)
         .buttonStyle(PanelButtonStyle())
@@ -127,7 +130,7 @@ struct MainView: View {
             PanelSelectionIndicator(selection: navigation.page, namespace: navigationSelection)
         }
         .buttonStyle(.plain).font(.system(size: 13)).padding(12)
-        .frame(minWidth: 160, idealWidth: 188, maxWidth: 320)
+        .frame(minWidth: 168, idealWidth: 168, maxWidth: 320)
     }
 
     private func navigationButton(_ page: PanelPage) -> some View {
@@ -143,7 +146,7 @@ struct MainView: View {
                     .frame(width: 22, height: 22)
                 Text(page.rawValue).fixedSize(horizontal: true, vertical: false)
                 Spacer(minLength: 0)
-                if page == .settings, let release = updates.release, release.isNewer {
+                if page == .settings, let release = updates.release {
                     Image(systemName: "arrow.down.circle.fill")
                         .foregroundStyle(navigation.page == .settings && (!model.animationsEnabled || reduceMotion)
                                          ? Color.white : Color.accentColor)
@@ -372,31 +375,42 @@ struct MainView: View {
             HStack {
                 Text("侧栏今日用量")
                 Spacer()
-                Menu {
-                    ForEach(UsageTodayMetric.allCases, id: \.self) { item in
-                        Toggle(item.title, isOn: Binding(
-                            get: { sidebarToday & item.rawValue != 0 },
-                            set: { enabled in
-                                if enabled { sidebarToday |= item.rawValue }
-                                else { sidebarToday &= ~item.rawValue }
-                            }))
+                Button(selected.isEmpty ? "不显示…" : "已选 \(selected.count) 项…") {
+                    showsSidebarMetrics = true
+                }
+                .help("按本地自然日统计。")
+                .popover(isPresented: $showsSidebarMetrics, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(UsageTodayMetric.allCases, id: \.self) { item in
+                            Toggle(item.title, isOn: Binding(
+                                get: { sidebarToday & item.rawValue != 0 },
+                                set: { enabled in
+                                    if enabled { sidebarToday |= item.rawValue }
+                                    else { sidebarToday &= ~item.rawValue }
+                                }))
+                        }
+                        Divider()
+                        Button("不显示") { sidebarToday = 0 }
                     }
-                    Divider()
-                    Button("不显示") { sidebarToday = 0 }
-                } label: {
-                    Text(selected.isEmpty ? "不显示" : "已选 \(selected.count) 项")
-                }.help("按本地自然日统计。")
+                    .toggleStyle(.checkbox).font(.system(size: 13)).padding(16).fixedSize()
+                    .onExitCommand { showsSidebarMetrics = false }
+                }
             }
             Divider()
             HStack {
                 Text("明细可选列")
                 Spacer()
-                Menu("选择列") {
-                    Toggle("速度", isOn: $showsUsageSpeed)
-                    Toggle("首字", isOn: $showsUsageFirstToken)
-                    Toggle("缓存写入", isOn: $showsUsageCacheWrite)
-                    Toggle("计费档位", isOn: $showsUsageBillingTier)
-                }
+                Button("选择列…") { showsUsageColumns = true }
+                    .popover(isPresented: $showsUsageColumns, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Toggle("速度", isOn: $showsUsageSpeed)
+                            Toggle("首字", isOn: $showsUsageFirstToken)
+                            Toggle("缓存写入", isOn: $showsUsageCacheWrite)
+                            Toggle("计费档位", isOn: $showsUsageBillingTier)
+                        }
+                        .toggleStyle(.checkbox).font(.system(size: 13)).padding(16).fixedSize()
+                        .onExitCommand { showsUsageColumns = false }
+                    }
             }
         }.padding(16).panelCard()
     }
