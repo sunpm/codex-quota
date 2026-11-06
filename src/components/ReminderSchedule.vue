@@ -3,6 +3,7 @@ import { nextTick, ref, watch } from 'vue'
 import { Plus, X } from '@lucide/vue'
 import { actionError, changeSettings } from '@/lib/app'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 
 const props = defineProps<{
@@ -84,7 +85,7 @@ watch(() => props.disabled, disabled => { if (disabled) open.value = false })
         <label :for="`${id}-amount`">提前时间</label>
         <div class="reminder-inputs">
           <input :id="`${id}-amount`" v-model.number="amount" type="number" min="1" :max="Math.floor(4294967295 / unit)" step="1" required :disabled="saving" :aria-invalid="!!error" :aria-describedby="error ? `${id}-error` : undefined" @input="error = ''" />
-          <select v-model.number="unit" class="native-select" aria-label="时间单位" :disabled="saving" @change="error = ''"><option v-for="unit in units" :key="unit.value" :value="unit.value">{{ unit.label }}</option></select>
+          <NativeSelect :model-value="unit" aria-label="时间单位" :disabled="saving" data-size="default" @change="unit = Number(($event.target as HTMLSelectElement).value); error = ''"><NativeSelectOption v-for="unit in units" :key="unit.value" :value="unit.value">{{ unit.label }}</NativeSelectOption></NativeSelect>
         </div>
         <p v-if="error" :id="`${id}-error`" class="reminder-error" role="alert">{{ error }}</p>
         <div class="dialog-actions"><Button type="button" variant="outline" size="sm" :disabled="saving" @click="open = false">取消</Button><Button type="submit" size="sm" :disabled="saving">保存</Button></div>
@@ -101,6 +102,5 @@ watch(() => props.disabled, disabled => { if (disabled) open.value = false })
 .reminder-popover { width: 260px; }
 .reminder-inputs { display: flex; gap: 8px; margin-top: 8px; }
 .reminder-inputs input { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }
-.reminder-inputs select { height: 32px; flex-shrink: 0; }
 .reminder-error { margin-top: 8px; color: var(--destructive); font-size: 12px; }
 </style>

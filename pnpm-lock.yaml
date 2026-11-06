@@ -191,7 +191,7 @@ importers:
         specifier: 15.0.3
         version: 15.0.3
       reka-ui:
-        specifier: ^2
+        specifier: ^2.11.0
         version: 2.11.0(vue@3.5.44(typescript@5.9.3))
       vue:
         specifier: ^3.5
