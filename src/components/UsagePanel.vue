@@ -7,6 +7,7 @@ import { basename, costLabel, costTooltip, dateText, dayKey, metricValue, money,
 import { usageRanges, useUsageFilters } from '@/lib/usage-filters'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import Chart from './Chart.vue'
 import SlidingSelection from './SlidingSelection.vue'
 import UsageDetailDialog from './UsageDetailDialog.vue'
@@ -125,7 +126,16 @@ function showDetail(name: string, items: UsageRecord[]) { detail.value = { title
         <SlidingSelection v-slot="{ highlight }" :selection="metric" class="segmented" role="group" aria-label="统计指标"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="metric === 'tokens'"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="usage-metric" value="tokens" />Tokens</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="metric === 'cost'"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="usage-metric" value="cost" />费用</component></SlidingSelection>
       </div>
       <div v-if="period === 'custom'" class="date-range"><label>开始 <input v-model="start" type="date" :max="end" /></label><span>—</span><label>结束 <input v-model="end" type="date" :min="start" :max="dayKey(new Date())" /></label></div>
-      <div class="source-line"><span :title="state.usage.source">本机日志<span v-if="period === 'custom'"> · {{ start }} — {{ end }}</span><span class="info-hint" aria-label="统计范围说明" title="包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。"><Info :size="12" /></span></span><span v-if="state.usage.scannedAt">扫描于 {{ dateText(state.usage.scannedAt) }}</span></div>
+      <div class="source-line">
+        <div class="source-label">
+          <span :title="state.usage.source">本机日志<span v-if="period === 'custom'"> · {{ start }} — {{ end }}</span></span>
+          <Popover>
+            <PopoverTrigger as-child><Button variant="ghost" size="icon-xs" aria-label="统计范围说明"><Info :size="12" /></Button></PopoverTrigger>
+            <PopoverContent class="source-info-popover" align="start" aria-label="统计范围说明">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。</PopoverContent>
+          </Popover>
+        </div>
+        <span v-if="state.usage.scannedAt">扫描于 {{ dateText(state.usage.scannedAt) }}</span>
+      </div>
     </div>
     <div v-for="warning in state.usage.warnings" :key="warning" class="notice warning" role="status">{{ warning }}</div>
     <div class="usage-summary">
