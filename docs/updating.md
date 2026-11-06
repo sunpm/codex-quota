@@ -75,7 +75,9 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 ## 签名配置
 
-现有 Sparkle secret 不用于 Tauri。维护者需要在获得凭据操作授权后，为 Tauri 创建独立密钥，并将其安全备份；此重构不生成、不导出、不轮换发行私钥。
+现有 Sparkle secret 不用于 Tauri。已于 2026-11-06 经维护者授权创建项目独立的 Tauri 签名密钥，并配置下述 GitHub variable 和 secret；旧 Sparkle 配置保留。本机备份位于仓库外的受限目录，后续发布复用同一密钥，不重新生成或替换。
+
+私钥需要另存一份到加密存储；GitHub secret 不能替代维护者自己的备份。重新创建或轮换密钥仍需单独获得凭据操作授权。
 
 官方 CLI 命令为 `pnpm exec tauri signer generate --write-keys <仓库外路径>`。只在可信环境交互执行，不把私钥或密码写入命令参数、日志、聊天和仓库。详细格式见 [Tauri 更新器文档](https://v2.tauri.app/plugin/updater/)。
 
