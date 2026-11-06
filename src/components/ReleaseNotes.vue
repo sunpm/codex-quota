@@ -1,12 +1,24 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
 import { openExternal } from '@/lib/app'
 
 const props = defineProps<{ notes: string }>()
-const markdown = new MarkdownIt({ html: false, linkify: true }).disable('image')
+const markdown = new MarkdownIt({ html: true, linkify: true }).disable('image')
 markdown.validateLink = url => /^https:\/\//i.test(url)
-const content = computed(() => markdown.render(props.notes))
+// Parse GitHub comments and HTML before sanitizing the complete rendered document.
+const content = computed(() => DOMPurify.sanitize(markdown.render(props.notes), {
+  ALLOWED_TAGS: [
+    'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'em', 'strong', 's',
+    'blockquote', 'ul', 'ol', 'li', 'pre', 'code', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    'details', 'summary',
+  ],
+  ALLOWED_ATTR: ['href', 'title', 'start', 'open'],
+  ALLOWED_URI_REGEXP: /^https:\/\//i,
+  ALLOW_DATA_ATTR: false,
+  ALLOW_ARIA_ATTR: false,
+}))
 function openLink(event: MouseEvent) {
   const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href]')
   if (!link) return
@@ -25,12 +37,12 @@ function openLink(event: MouseEvent) {
 .release-markdown :deep(> :last-child) { margin-bottom: 0; }
 .release-markdown :deep(h1), .release-markdown :deep(h2), .release-markdown :deep(h3),
 .release-markdown :deep(h4), .release-markdown :deep(h5), .release-markdown :deep(h6) { font-size: 14px; font-weight: 600; margin: 18px 0 6px; }
-.release-markdown :deep(p), .release-markdown :deep(ul), .release-markdown :deep(ol), .release-markdown :deep(pre) { margin: 8px 0; }
+.release-markdown :deep(p), .release-markdown :deep(ul), .release-markdown :deep(ol), .release-markdown :deep(pre), .release-markdown :deep(details) { margin: 8px 0; }
 .release-markdown :deep(ul) { list-style: disc; padding-left: 22px; }
 .release-markdown :deep(ol) { list-style: decimal; padding-left: 22px; }
 .release-markdown :deep(li + li) { margin-top: 4px; }
 .release-markdown :deep(a) { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
-.release-markdown :deep(a:focus-visible) { outline: 2px solid var(--primary); outline-offset: 3px; }
+.release-markdown :deep(summary) { cursor: pointer; }
 .release-markdown :deep(code) { font-family: ui-monospace, monospace; background: var(--secondary); padding: 1px 4px; border-radius: 3px; }
 .release-markdown :deep(pre) { white-space: pre-wrap; background: var(--secondary); padding: 10px; border-radius: 6px; }
 .release-markdown :deep(pre code) { padding: 0; }
