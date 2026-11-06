@@ -29,7 +29,7 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 构建顺序为：生成依赖许可 → Tauri `beforeBuildCommand` 执行一次 `pnpm build` → Cargo 使用 `--locked` 编译 → Tauri 打包 → 核验并复制产物。前端和 Rust 编译失败都会终止打包，不需要先手动再构建一次前端。依赖许可由 `collect-licenses.mjs` 从已安装 pnpm 依赖和 Cargo metadata 生成，写入随包的 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`；不要手工修改。
 
-普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档；`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
+普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。`RELEASE_TAG` 未设置或为空时使用 `package.json` 的版本号；非空时必须是合法版本标签，并提供更新签名密钥。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
 
 ## CI 打包与发布
 

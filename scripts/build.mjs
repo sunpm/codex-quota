@@ -20,7 +20,7 @@ const platform = platforms[target]
 if (!platform || platform.os !== process.platform) throw new Error('请在 macOS 构建 Mac 包，在 Windows 构建 Windows x64 包。')
 const bundles = (values.bundles ?? platform.bundles).split(',')
 if (bundles.some(bundle => !platform.bundles.split(',').includes(bundle))) throw new Error('当前平台不支持指定的安装包格式。')
-const tag = process.env.RELEASE_TAG
+const tag = process.env.RELEASE_TAG || undefined
 if (tag && !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$/.test(tag)) {
   throw new Error('RELEASE_TAG 必须是 vX.Y.Z 或带 beta / rc 后缀的版本标签。')
 }

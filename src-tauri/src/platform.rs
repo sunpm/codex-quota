@@ -304,7 +304,7 @@ pub mod power {
     use super::*;
     use std::{cell::RefCell, ffi::c_void};
     use windows_sys::Win32::{System::Power::*, UI::WindowsAndMessaging::DEVICE_NOTIFY_CALLBACK};
-    thread_local! {static REGISTRATION:RefCell<Option<(*mut c_void,*mut AppHandle)>>=const{RefCell::new(None)};}
+    thread_local! {static REGISTRATION:RefCell<Option<(HPOWERNOTIFY,*mut AppHandle)>>=const{RefCell::new(None)};}
     unsafe extern "system" fn changed(
         context: *const c_void,
         kind: u32,
@@ -335,7 +335,8 @@ pub mod power {
             )
         };
         if result == 0 {
-            REGISTRATION.with(|r| *r.borrow_mut() = Some((handle, context)));
+            // windows-sys returns a pointer here, but unregister accepts HPOWERNOTIFY.
+            REGISTRATION.with(|r| *r.borrow_mut() = Some((handle as HPOWERNOTIFY, context)));
         } else {
             unsafe { drop(Box::from_raw(context)) };
             controller(app).store.lock().unwrap().snapshot.error =
