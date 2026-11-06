@@ -263,9 +263,18 @@ pub enum NotificationPermission {
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
+pub enum NotificationAlertStyle {
+    Persistent,
+    Banner,
+    Disabled,
+    Unknown,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NotificationStatus {
     pub permission: NotificationPermission,
-    pub persistent: bool,
+    pub alert_style: NotificationAlertStyle,
 }
 
 #[cfg(target_os = "macos")]
@@ -281,7 +290,7 @@ pub async fn notification_permission(request: bool) -> Result<NotificationStatus
     if !crate::notifications::is_bundled() {
         return Ok(NotificationStatus {
             permission: NotificationPermission::System,
-            persistent: false,
+            alert_style: NotificationAlertStyle::Unknown,
         });
     }
     if request {
@@ -323,10 +332,23 @@ pub async fn notification_permission(request: bool) -> Result<NotificationStatus
                 NotificationPermission::Prompt
             };
             if let Some(sender) = sender.lock().unwrap().take() {
+                let alert_style = if status != NotificationPermission::Granted {
+                    NotificationAlertStyle::Unknown
+                } else if settings.alertSetting() == UNNotificationSetting::Disabled {
+                    NotificationAlertStyle::Disabled
+                } else if settings.alertSetting() != UNNotificationSetting::Enabled {
+                    NotificationAlertStyle::Unknown
+                } else if settings.alertStyle() == UNAlertStyle::Alert {
+                    NotificationAlertStyle::Persistent
+                } else if settings.alertStyle() == UNAlertStyle::Banner {
+                    NotificationAlertStyle::Banner
+                } else if settings.alertStyle() == UNAlertStyle::None {
+                    NotificationAlertStyle::Disabled
+                } else {
+                    NotificationAlertStyle::Unknown
+                };
                 let _ = sender.send(NotificationStatus {
-                    persistent: status == NotificationPermission::Granted
-                        && settings.alertSetting() == UNNotificationSetting::Enabled
-                        && settings.alertStyle() == UNAlertStyle::Alert,
+                    alert_style,
                     permission: status,
                 });
             }
@@ -340,7 +362,7 @@ pub async fn notification_permission(request: bool) -> Result<NotificationStatus
 pub async fn notification_permission(_request: bool) -> Result<NotificationStatus, String> {
     Ok(NotificationStatus {
         permission: NotificationPermission::System,
-        persistent: false,
+        alert_style: NotificationAlertStyle::Unknown,
     })
 }
 

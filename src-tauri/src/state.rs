@@ -243,6 +243,7 @@ pub struct AppSnapshot {
     pub platform: String,
     pub update: UpdateState,
     pub installed_release_notes: Option<String>,
+    pub notification_guide_shown: bool,
     pub error: Option<String>,
 }
 

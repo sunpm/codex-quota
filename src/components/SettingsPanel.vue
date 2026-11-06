@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import { ArrowUpRight } from '@lucide/vue'
 import type { AppSnapshot, Settings } from '@/types'
-import { actionError, cancelUpdate, changeSettings, checkForUpdates, execute, isPreview, openExternal, systemCommand } from '@/lib/app'
+import { actionError, cancelUpdate, changeSettings, checkForUpdates, execute, isPreview, notificationGuideOpen, notificationStatus, openExternal, readNotificationStatus, requestNotificationsIfNeeded, systemCommand } from '@/lib/app'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -14,25 +14,30 @@ import ReleaseNotes from './ReleaseNotes.vue'
 import ReminderSchedule from './ReminderSchedule.vue'
 
 const props = defineProps<{ state: AppSnapshot }>()
-const notificationStatus = ref<{ permission: 'system' | 'granted' | 'denied' | 'prompt'; persistent: boolean } | null>(null)
 const intervalOpen = ref(false)
 const intervalDraft = ref(props.state.settings.refreshInterval)
 const pricingOpen = ref(false)
 const clearOpen = ref(false)
-const guideOpen = ref(false)
 const intervals = [{ value: 30, label: '30 秒' }, { value: 60, label: '1 分钟' }, { value: 120, label: '2 分钟' }, { value: 300, label: '5 分钟' }, { value: 600, label: '10 分钟' }, { value: 1800, label: '30 分钟' }]
 const metrics = [{ value: 'tokens', label: 'Token' }, { value: 'cost', label: '估算费用' }, { value: 'records', label: '用量记录数' }, { value: 'hitRate', label: '缓存命中率' }]
 const columns = [{ value: 'speed', label: '速度' }, { value: 'firstToken', label: '首字' }, { value: 'cacheWrite', label: '缓存写入' }, { value: 'billingTier', label: '计费档位' }]
-const permissionText: Record<string, string> = { system: '由系统管理', granted: '已允许系统通知', denied: '通知未获允许', prompt: '尚未允许系统通知', default: '尚未允许系统通知' }
-async function readPermission() {
-  if (!isPreview) notificationStatus.value = await systemCommand<NonNullable<typeof notificationStatus.value>>('notification_permission') ?? null
-}
+const permissionText = computed(() => {
+  const status = notificationStatus.value
+  if (isPreview) return '离线预览'
+  if (!status) return '无法确认通知权限'
+  if (status.permission === 'system') return '由系统管理'
+  if (status.permission === 'denied') return '通知未获允许，请在系统设置中开启'
+  if (status.permission === 'prompt') return '尚未允许系统通知'
+  return { persistent: '持久通知已开启，提醒保留到手动关闭', banner: '临时横幅，提醒会自动消失', disabled: '已允许通知，未开启桌面提醒', unknown: '已允许通知，无法确认提醒样式' }[status.alertStyle]
+})
 async function testNotification() {
+  await requestNotificationsIfNeeded()
+  if (actionError.value) return
   await systemCommand('test_notification')
-  if (!actionError.value) await readPermission()
+  if (!actionError.value) await readNotificationStatus()
 }
-useEventListener(window, 'focus', readPermission)
-onMounted(readPermission)
+useEventListener(window, 'focus', readNotificationStatus)
+onMounted(readNotificationStatus)
 function selectInterval(event: Event) {
   const value = (event.target as HTMLSelectElement).value
   if (value === 'saved-custom') return
@@ -47,7 +52,7 @@ function selectMany(key: 'todayMetrics' | 'detailColumns', value: string, checke
 }
 async function notifications(key: keyof Settings, value: boolean) {
   await changeSettings({ [key]: value })
-  if (value) { await systemCommand('request_notification_permission'); await readPermission() }
+  if (value && !actionError.value) await requestNotificationsIfNeeded()
 }
 watch(() => props.state.settings.monitoringEnabled, enabled => { if (!enabled) intervalOpen.value = false })
 </script>
@@ -59,7 +64,7 @@ watch(() => props.state.settings.monitoringEnabled, enabled => { if (!enabled) i
       <ReminderSchedule v-if="state.settings.quotaResetReminders" id="quota-reset-reminder" :minutes="state.settings.quotaResetReminderMinutes" setting="quotaResetReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
       <p v-if="state.settings.quotaResetReminders" class="muted reminder-note">仅提醒未用完的额度；提前时间须短于额度周期。</p>
       <div class="setting-row"><span id="announcement-notifications-label">Codex 重置动态通知</span><Switch id="announcement-notifications" aria-labelledby="announcement-notifications-label" :model-value="state.settings.announcementNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('announcementNotifications', $event)" /></div></fieldset></section>
-    <section class="surface settings-section"><div class="section-heading"><h2>系统通知</h2><span>{{ isPreview ? '离线预览' : notificationStatus?.persistent ? '已开启持续通知' : permissionText[notificationStatus?.permission ?? ''] ?? '无法确认通知权限' }}</span></div><div class="setting-actions"><Button variant="outline" size="sm" :disabled="!state.settings.monitoringEnabled || !(state.settings.recoveryNotifications || state.settings.resetCreditReminders || state.settings.quotaResetReminders || state.settings.announcementNotifications)" @click="testNotification">测试通知</Button><Button v-if="!isPreview && state.platform === 'macos' && notificationStatus && !notificationStatus.persistent" variant="outline" size="sm" @click="guideOpen = true">持久通知…</Button><Button variant="outline" size="sm" @click="systemCommand('open_notification_settings')">系统设置…</Button></div></section>
+    <section class="surface settings-section"><div class="section-heading"><h2>系统通知</h2><span>{{ permissionText }}</span></div><div class="setting-actions"><Button variant="outline" size="sm" :disabled="!state.settings.monitoringEnabled || !(state.settings.recoveryNotifications || state.settings.resetCreditReminders || state.settings.quotaResetReminders || state.settings.announcementNotifications)" @click="testNotification">测试通知</Button><Button v-if="(isPreview || state.platform === 'macos') && notificationStatus?.alertStyle !== 'persistent'" variant="outline" size="sm" @click="notificationGuideOpen = true">持久通知…</Button><Button variant="outline" size="sm" @click="systemCommand('open_notification_settings')">系统设置…</Button></div></section>
     <section class="surface settings-section"><h2>通用</h2><div class="setting-row"><span id="show-tray-label">{{ state.platform === 'windows' ? '系统托盘显示额度' : '菜单栏显示额度' }}</span><Switch id="show-tray" aria-labelledby="show-tray-label" :model-value="state.settings.showTray" @update:model-value="changeSettings({ showTray: $event })" /></div><div class="setting-row"><span id="autostart-label">登录时启动</span><Switch id="autostart" aria-labelledby="autostart-label" :model-value="state.settings.launchAtLogin" @update:model-value="changeSettings({ launchAtLogin: $event })" /></div><div class="setting-row"><span id="animations-label" title="图表与界面过渡动画；遵循系统减少动态效果设置。">动画特性</span><Switch id="animations" aria-labelledby="animations-label" :model-value="state.settings.animations" @update:model-value="changeSettings({ animations: $event })" /></div></section>
     <section class="surface settings-section"><h2>用量显示</h2><div class="setting-row"><span>侧栏今日用量</span><Popover><PopoverTrigger as-child><Button variant="outline" size="sm">{{ state.settings.todayMetrics.length ? `已选 ${state.settings.todayMetrics.length} 项` : '不显示' }}</Button></PopoverTrigger><PopoverContent class="choices-popover" align="end"><label v-for="item in metrics" :key="item.value" class="checkbox-row"><Checkbox :model-value="state.settings.todayMetrics.includes(item.value)" @update:model-value="selectMany('todayMetrics', item.value, $event)" />{{ item.label }}</label></PopoverContent></Popover></div><div class="setting-row"><span>明细可选列</span><Popover><PopoverTrigger as-child><Button variant="outline" size="sm">已选 {{ state.settings.detailColumns.length }} 项</Button></PopoverTrigger><PopoverContent class="choices-popover" align="end"><label v-for="item in columns" :key="item.value" class="checkbox-row"><Checkbox :model-value="state.settings.detailColumns.includes(item.value)" @update:model-value="selectMany('detailColumns', item.value, $event)" />{{ item.label }}</label></PopoverContent></Popover></div></section>
     <section class="surface settings-section"><div class="setting-row"><h2>模型定价</h2><Button variant="outline" size="sm" @click="pricingOpen = true">管理定价…</Button></div></section>
@@ -67,7 +72,6 @@ watch(() => props.state.settings.monitoringEnabled, enabled => { if (!enabled) i
     <section class="surface settings-section"><div class="section-heading"><h2>软件更新 <span class="version">{{ state.version }}</span></h2><div class="setting-actions"><Button v-if="state.update.status === 'checking'" variant="outline" size="sm" @click="cancelUpdate">取消检查</Button><Button v-else-if="state.update.status === 'downloading'" variant="outline" size="sm" @click="cancelUpdate">取消下载</Button><Button v-else variant="outline" size="sm" :disabled="state.update.status === 'installing'" @click="checkForUpdates">检查更新</Button><Button v-if="state.update.canInstall" size="sm" variant="outline" :disabled="['downloading', 'installing'].includes(state.update.status)" @click="execute('install_update')">下载并安装…</Button></div></div><div class="update-status"><button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/releases')">发布页 <ArrowUpRight :size="13" /></button><span :title="state.update.error ?? ''">{{ state.update.error ?? ({ idle: '', checking: '正在检查…', available: `发现新版本 ${state.update.version}`, current: '已是最新版本', downloading: `正在下载${state.update.progress != null ? ` ${Math.round(state.update.progress)}%` : ''}`, installing: '正在安装…', error: '检查失败' }[state.update.status]) }}</span></div><div v-if="state.update.status === 'downloading'" class="download-track"><div :style="{ width: `${state.update.progress ?? 0}%` }" /></div><div v-if="state.update.version && state.update.notes" class="release-notes"><ReleaseNotes :notes="state.update.notes" /></div><div class="setting-row update-toggle"><span id="auto-update-label">自动检查更新</span><Switch id="auto-update" aria-labelledby="auto-update-label" :model-value="state.settings.automaticUpdates" @update:model-value="changeSettings({ automaticUpdates: $event })" /></div></section>
     <PricingDialog v-model:open="pricingOpen" :state="state" />
     <Dialog v-model:open="clearOpen"><DialogContent><DialogHeader><DialogTitle>清除已保存历史？</DialogTitle><DialogDescription>只清除本应用保存的 Codex 用量历史。源日志保持不变，下次扫描会重新采集仍在本机的记录。</DialogDescription></DialogHeader><div class="dialog-actions"><Button variant="outline" @click="clearOpen = false">取消</Button><Button variant="destructive" @click="execute('clear_history').then(() => { if (!actionError) clearOpen = false })">清除历史</Button></div></DialogContent></Dialog>
-    <Dialog v-model:open="guideOpen"><DialogContent><DialogHeader><DialogTitle>持久通知</DialogTitle><DialogDescription>{{ state.platform === 'windows' ? '在 Windows 设置 → 系统 → 通知中允许 Codex Quota 显示通知横幅和通知中心提醒。' : '在系统设置 → 通知中选择 Codex Quota，开启允许通知，并将桌面提醒样式设为持续或提醒。' }}</DialogDescription></DialogHeader><div class="dialog-actions"><Button variant="outline" @click="guideOpen = false">取消</Button><Button @click="systemCommand('open_notification_settings'); guideOpen = false">前往设置…</Button></div></DialogContent></Dialog>
 
   </div>
 </template>

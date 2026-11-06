@@ -5,9 +5,11 @@ import { BarChart, LineChart, HeatmapChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, AriaComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
+import type { ChartTimeHover } from '@/types'
 
 use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, AriaComponent, CanvasRenderer])
-const props = defineProps<{ option: EChartsCoreOption; label: string; height?: number; animations?: boolean }>()
+const props = defineProps<{ option: EChartsCoreOption; label: string; height?: number; animations?: boolean; timeHover?: boolean }>()
+const emit = defineEmits<{ timeHover: [value: ChartTimeHover | null] }>()
 const element = useTemplateRef('chartElement')
 let chart: EChartsType | undefined
 let observer: ResizeObserver | undefined
@@ -15,6 +17,7 @@ const theme = window.matchMedia('(prefers-color-scheme: dark)')
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 function render() {
   if (!chart || !element.value) return
+  if (props.timeHover) emit('timeHover', null)
   const styles = getComputedStyle(element.value)
   chart.setOption({
     backgroundColor: 'transparent',
@@ -29,6 +32,16 @@ function render() {
 function applyTheme() {
   chart?.dispose()
   chart = init(element.value!, theme.matches ? 'dark' : undefined, { renderer: 'canvas' })
+  if (props.timeHover) {
+    chart.getZr().on('mousemove', event => {
+      const { offsetX: x, offsetY: y } = event
+      if (!chart!.containPixel({ gridIndex: 0 }, [x, y])) { emit('timeHover', null); return }
+      const timestamp = chart!.convertFromPixel({ xAxisIndex: 0 }, x) as number
+      const nearby = chart!.convertFromPixel({ xAxisIndex: 0 }, x + 12) as number
+      emit('timeHover', { timestamp, tolerance: Math.abs(nearby - timestamp) })
+    })
+    chart.getZr().on('globalout', () => emit('timeHover', null))
+  }
   render()
 }
 onMounted(() => {

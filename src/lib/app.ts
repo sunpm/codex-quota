@@ -1,7 +1,7 @@
 import { computed, shallowRef } from 'vue'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import type { AppSnapshot, Settings } from '@/types'
+import type { AppSnapshot, NotificationStatus, Settings } from '@/types'
 import { emptySnapshot, previewSnapshot } from './preview'
 
 export const isDesktop = isTauri()
@@ -11,10 +11,16 @@ export const actionError = shallowRef<string | null>(null)
 export const manualUpdateCheck = shallowRef(false)
 export const connected = shallowRef(isPreview)
 export const settings = computed(() => snapshot.value.settings)
+export const notificationStatus = shallowRef<NotificationStatus | null>(null)
+export const notificationGuideOpen = shallowRef(false)
 export async function initialize() {
   if (!isDesktop) return
   const unlisten = await listen<AppSnapshot>('app-state', event => { snapshot.value = event.payload; connected.value = true })
   await execute('get_snapshot')
+  const preferences = snapshot.value.settings
+  if (preferences.monitoringEnabled && (preferences.recoveryNotifications || preferences.resetCreditReminders || preferences.quotaResetReminders || preferences.announcementNotifications)) {
+    await requestNotificationsIfNeeded()
+  }
   return unlisten
 }
 export async function execute(command: string, args?: Record<string, unknown>) {
@@ -30,6 +36,7 @@ export async function execute(command: string, args?: Record<string, unknown>) {
     else if (command === 'scan_usage') snapshot.value = { ...snapshot.value, usage: previewSnapshot().usage }
     else if (command === 'cancel_update') snapshot.value = { ...snapshot.value, update: { ...snapshot.value.update, status: 'idle' } }
     else if (command === 'check_update') snapshot.value = { ...snapshot.value, update: { ...snapshot.value.update, status: 'current' } }
+    else if (command === 'mark_notification_guide_shown') snapshot.value = { ...snapshot.value, notificationGuideShown: true }
     return
   }
   if (!isDesktop) { actionError.value = '请在 Codex Quota 桌面应用中操作。'; return }
@@ -45,6 +52,25 @@ export async function systemCommand<T = void>(command: string, args?: Record<str
 }
 export const changeSettings = (patch: Partial<Settings>) => execute('save_settings', { settings: { ...snapshot.value.settings, ...patch } })
 export const openExternal = (url: string) => systemCommand('open_external', { url })
+
+export async function readNotificationStatus() {
+  if (!isDesktop) return
+  const status = await systemCommand<NotificationStatus>('notification_permission')
+  notificationStatus.value = status ?? null
+  return status
+}
+
+// Startup, reminder switches and the test button share the same first-authorization flow.
+export async function requestNotificationsIfNeeded() {
+  const before = await readNotificationStatus()
+  if (before?.permission !== 'prompt') return
+  const status = await systemCommand<NotificationStatus>('request_notification_permission')
+  if (!status) return
+  notificationStatus.value = status
+  if (status.permission === 'granted' && status.alertStyle !== 'persistent' && !snapshot.value.notificationGuideShown) {
+    notificationGuideOpen.value = true
+  }
+}
 
 export async function checkForUpdates() {
   manualUpdateCheck.value = true

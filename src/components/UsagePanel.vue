@@ -45,9 +45,13 @@ const previous = computed(() => {
 function changeText(kind: Metric) {
   if (props.state.usage.scannedAt === null || !previous.value || kind === 'cost' && (total.value.unpriced || previous.value.total.unpriced)) return null
   const current = metricValue(total.value, kind), before = metricValue(previous.value.total, kind)
-  if (!before) return current ? '新增' : '持平'
-  const difference = (current - before) / before
-  return `${difference > 0 ? '+' : ''}${(difference * 100).toFixed(1)}%`
+  const delta = current - before
+  const amount = kind === 'tokens' ? `${shortTokens(Math.abs(delta))} Tokens` : money(String(Math.abs(delta)))
+  const title = `上期：${kind === 'tokens' ? `${before.toLocaleString('zh-CN')} Tokens` : costTooltip(previous.value.total)}`
+  if (!delta) return { text: '较上期持平', title }
+  if (!before) return { text: `较上期新增 ${amount}`, title }
+  const sign = delta > 0 ? '+' : '−'
+  return { text: `${sign}${(Math.abs(delta) / before * 100).toFixed(1)}% · ${sign}${amount}`, title }
 }
 const byHour = computed(() => period.value === 'today' || period.value === 'yesterday')
 const buckets = computed(() => {
@@ -63,7 +67,12 @@ const buckets = computed(() => {
 })
 const trend = computed<EChartsCoreOption>(() => ({
   grid: { left: 54, right: 16, top: 20, bottom: 35 },
-  tooltip: { trigger: 'axis', renderMode: 'richText', valueFormatter: (value: number) => metric.value === 'tokens' ? value.toLocaleString('zh-CN') : money(String(value)) },
+  tooltip: { trigger: 'axis', renderMode: 'richText', formatter: (params: { dataIndex: number }[]) => {
+    const bucket = buckets.value[params[0]?.dataIndex ?? -1]
+    if (!bucket) return ''
+    const date = byHour.value ? `${dayKey(new Date(range.value.from * 1000))} ${bucket.key}` : bucket.key
+    return `${date}\n${bucket.total.tokens.toLocaleString('zh-CN')} Tokens\n${costLabel(bucket.total)}：${summaryMoney(bucket.total)}${bucket.total.unpriced ? `\n${bucket.total.unpriced} 条未定价` : ''}`
+  } },
   xAxis: { type: 'category', data: buckets.value.map(bucket => bucket.key), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { hideOverlap: true, formatter: (value: string) => byHour.value ? value : value.slice(5).replace('-', '/') } },
   yAxis: { type: 'value', splitNumber: 3, axisLabel: { formatter: (value: number) => metric.value === 'tokens' ? shortTokens(value) : `$${value}` }, splitLine: { lineStyle: { color: '#88888820' } } },
   series: [{ name: metric.value === 'tokens' ? 'Tokens' : costLabel(total.value), type: 'bar', barMaxWidth: 30, itemStyle: { borderRadius: [3, 3, 0, 0] }, data: buckets.value.map(bucket => metric.value === 'cost' && bucket.total.count && !bucket.total.priced ? null : metricValue(bucket.total, metric.value)) }],
@@ -85,13 +94,16 @@ const heatmap = computed<EChartsCoreOption>(() => {
   const last = startOfDay(new Date(props.clock.now * 1000)), first = shiftDay(last, -370)
   const days = new Map<string, UsageRecord[]>()
   for (const record of availableRecords.value) { const key = dayKey(new Date(record.date * 1000)); const bucket = days.get(key) ?? []; bucket.push(record); days.set(key, bucket) }
-  const data = []
-  for (let day = first; day <= last; day = shiftDay(day, 1)) {
+  const data = Array.from({ length: 371 }, (_, index) => {
+    const day = shiftDay(first, index)
     const summary = summarize(days.get(dayKey(day)) ?? [])
-    data.push({ value: [dayKey(day), metricValue(summary, heatMetric.value)], priced: summary.priced, unpriced: summary.unpriced, count: summary.count, itemStyle: summary.unpriced && heatMetric.value === 'cost' ? { borderType: 'dashed', borderColor: '#ab743e', borderWidth: 1 } : undefined })
-  }
+    return { value: [dayKey(day), metricValue(summary, heatMetric.value)], summary, itemStyle: summary.unpriced && heatMetric.value === 'cost' ? { borderType: 'dashed', borderColor: '#ab743e', borderWidth: 1 } : undefined }
+  })
   return {
-    tooltip: { renderMode: 'richText', formatter: (params: { value: [string, number]; data: { priced: number; unpriced: number; count: number } }) => `${params.value[0]}\n${heatMetric.value === 'tokens' ? `${params.value[1].toLocaleString()} Tokens` : params.data.count && !params.data.priced ? '未定价' : money(String(params.value[1]))}${heatMetric.value === 'cost' && params.data.unpriced ? `\n${params.data.unpriced} 条未定价` : ''}` },
+    tooltip: { renderMode: 'richText', formatter: (params: { dataIndex: number }) => {
+      const day = data[params.dataIndex]!, summary = day.summary
+      return `${day.value[0]}\n${summary.tokens.toLocaleString('zh-CN')} Tokens\n${costLabel(summary)}：${summaryMoney(summary)}${summary.unpriced ? `\n${summary.unpriced} 条未定价` : ''}`
+    } },
     visualMap: { show: false, min: 0, max: Math.max(1, ...data.map(item => Number(item.value[1]))), inRange: { color: ['#88888815', '#a3d1ca', '#679e94', '#33786c'] } },
     calendar: { top: 28, left: 32, right: 8, bottom: 4, range: [dayKey(first), dayKey(last)], cellSize: ['auto', 15], splitLine: { show: false }, itemStyle: { borderWidth: 2, borderColor: 'transparent' }, yearLabel: { show: false }, dayLabel: { firstDay: 1, nameMap: 'ZH', fontSize: 10, color: '#888' }, monthLabel: { nameMap: 'ZH', color: '#888', fontSize: 11 } },
     series: [{ type: 'heatmap', coordinateSystem: 'calendar', data }],
@@ -118,8 +130,8 @@ function showDetail(name: string, items: UsageRecord[]) { detail.value = { title
     <div v-for="warning in state.usage.warnings" :key="warning" class="notice warning" role="status">{{ warning }}</div>
     <div class="usage-summary">
       <div class="summary-strip" :class="{ compact: page !== 'overview' }">
-        <div><span class="metric-label">总 Tokens</span><strong :title="state.usage.scannedAt === null ? '尚未读取本机日志' : total.tokens.toLocaleString()">{{ state.usage.scannedAt ? shortTokens(total.tokens) : '—' }}</strong><span v-if="page === 'overview' && changeText('tokens')" class="comparison">{{ changeText('tokens') }} <span>较上期</span></span></div>
-        <div :title="`API 等价估算，非订阅账单。${total.unpriced} 条记录未定价。`"><span class="metric-label">{{ costLabel(total) }}</span><strong>{{ state.usage.scannedAt ? summaryMoney(total) : '—' }}</strong><span v-if="page === 'overview' && changeText('cost')" class="comparison">{{ changeText('cost') }} <span>较上期</span></span></div>
+        <div><span class="metric-label">总 Tokens</span><strong :title="state.usage.scannedAt === null ? '尚未读取本机日志' : total.tokens.toLocaleString()">{{ state.usage.scannedAt ? shortTokens(total.tokens) : '—' }}</strong><span v-if="page === 'overview' && changeText('tokens')" class="comparison" :title="changeText('tokens')!.title">{{ changeText('tokens')!.text }}</span></div>
+        <div :title="`API 等价估算，非订阅账单。${total.unpriced} 条记录未定价。`"><span class="metric-label">{{ costLabel(total) }}</span><strong>{{ state.usage.scannedAt ? summaryMoney(total) : '—' }}</strong><span v-if="page === 'overview' && changeText('cost')" class="comparison" :title="changeText('cost')!.title">{{ changeText('cost')!.text }}</span></div>
       </div>
       <div class="summary-details"><span>{{ state.usage.scannedAt ? total.sessions.toLocaleString() : '—' }} 个对话</span><span title="缓存命中 ÷ 全部输入">缓存命中率 {{ state.usage.scannedAt ? percent(total.hitRate) : '—' }}</span><span v-if="page === 'overview' && state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - 1) }}</span></div>
     </div>
