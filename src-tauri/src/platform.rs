@@ -193,69 +193,96 @@ pub fn set_autostart(app: &AppHandle, enabled: bool) -> Result<(), String> {
     .map_err(|_| "设置登录启动失败，请检查系统权限。".into())
 }
 
+#[derive(serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum NotificationPermission {
+    Granted,
+    Denied,
+    Prompt,
+    System,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationStatus {
+    pub permission: NotificationPermission,
+    pub persistent: bool,
+}
+
 #[cfg(target_os = "macos")]
-pub async fn notification_permission(request: bool) -> Result<String, String> {
+pub async fn notification_permission(request: bool) -> Result<NotificationStatus, String> {
     use block2::RcBlock;
     use objc2::runtime::Bool;
     use objc2_foundation::NSError;
     use objc2_user_notifications::{
-        UNAuthorizationOptions, UNAuthorizationStatus, UNNotificationSettings,
-        UNUserNotificationCenter,
+        UNAlertStyle, UNAuthorizationOptions, UNAuthorizationStatus, UNNotificationSetting,
+        UNNotificationSettings, UNUserNotificationCenter,
     };
     use std::sync::Mutex;
-    // Apple's notification center requires an application bundle; cargo dev is an unbundled executable.
-    if !std::env::current_exe().is_ok_and(|p| p.to_string_lossy().contains(".app/Contents/MacOS/"))
-    {
-        return Ok("system".into());
+    if !crate::notifications::is_bundled() {
+        return Ok(NotificationStatus {
+            permission: NotificationPermission::System,
+            persistent: false,
+        });
+    }
+    if request {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        {
+            let sender = Mutex::new(Some(sender));
+            let block = RcBlock::new(move |_granted: Bool, error: *mut NSError| {
+                if let Some(sender) = sender.lock().unwrap().take() {
+                    let _ = sender.send(if error.is_null() {
+                        Ok(())
+                    } else {
+                        Err("无法申请通知权限。".to_string())
+                    });
+                }
+            });
+            UNUserNotificationCenter::currentNotificationCenter()
+                .requestAuthorizationWithOptions_completionHandler(
+                    UNAuthorizationOptions::Alert | UNAuthorizationOptions::Sound,
+                    &block,
+                );
+        }
+        receiver
+            .await
+            .map_err(|_| "无法申请通知权限。".to_string())??;
     }
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    let sender = Mutex::new(Some(sender));
-    if request {
-        let block = RcBlock::new(move |granted: Bool, error: *mut NSError| {
-            if let Some(sender) = sender.lock().unwrap().take() {
-                let _ = sender.send(if error.is_null() {
-                    Ok(if granted.as_bool() {
-                        "granted"
-                    } else {
-                        "denied"
-                    }
-                    .to_string())
-                } else {
-                    Err("无法申请通知权限。".to_string())
-                });
-            }
-        });
-        UNUserNotificationCenter::currentNotificationCenter()
-            .requestAuthorizationWithOptions_completionHandler(
-                UNAuthorizationOptions::Alert | UNAuthorizationOptions::Sound,
-                &block,
-            );
-    } else {
+    {
+        let sender = Mutex::new(Some(sender));
         let block = RcBlock::new(move |settings: std::ptr::NonNull<UNNotificationSettings>| {
-            let status = unsafe { settings.as_ref() }.authorizationStatus();
+            let settings = unsafe { settings.as_ref() };
+            let status = settings.authorizationStatus();
             let status = if status == UNAuthorizationStatus::Authorized
                 || status == UNAuthorizationStatus::Provisional
             {
-                "granted"
+                NotificationPermission::Granted
             } else if status == UNAuthorizationStatus::Denied {
-                "denied"
+                NotificationPermission::Denied
             } else {
-                "prompt"
+                NotificationPermission::Prompt
             };
             if let Some(sender) = sender.lock().unwrap().take() {
-                let _ = sender.send(Ok(status.to_string()));
+                let _ = sender.send(NotificationStatus {
+                    persistent: status == NotificationPermission::Granted
+                        && settings.alertSetting() == UNNotificationSetting::Enabled
+                        && settings.alertStyle() == UNAlertStyle::Alert,
+                    permission: status,
+                });
             }
         });
         UNUserNotificationCenter::currentNotificationCenter()
             .getNotificationSettingsWithCompletionHandler(&block);
     }
-    receiver
-        .await
-        .map_err(|_| "无法读取通知权限。".to_string())?
+    receiver.await.map_err(|_| "无法读取通知权限。".to_string())
 }
 #[cfg(not(target_os = "macos"))]
-pub async fn notification_permission(_request: bool) -> Result<String, String> {
-    Ok("system".into())
+pub async fn notification_permission(_request: bool) -> Result<NotificationStatus, String> {
+    Ok(NotificationStatus {
+        permission: NotificationPermission::System,
+        persistent: false,
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -360,4 +387,28 @@ pub mod power {
     use super::*;
     pub fn install(_app: &AppHandle) {}
     pub fn cleanup() {}
+}
+
+pub async fn send_notification(
+    app: &AppHandle,
+    title: &str,
+    body: &str,
+    source_url: Option<&str>,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app;
+        crate::notifications::send(title, body, source_url).await
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        use tauri_plugin_notification::NotificationExt;
+        let mut notification = app.notification().builder().title(title).body(body);
+        if let Some(url) = source_url {
+            notification = notification.extra("sourceUrl", url);
+        }
+        notification
+            .show()
+            .map_err(|_| "通知发送失败，请检查系统通知设置。".into())
+    }
 }

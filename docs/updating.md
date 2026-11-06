@@ -2,6 +2,8 @@
 
 跨平台版本使用 Tauri 2 updater，在 macOS 和 Windows 上检查、下载、验签、安装与重启。默认每天检查最新正式版；用户确认安装后才下载与安装，后台检查不自行安装。更新保留原有设置与用量历史。
 
+手动检查更新仅在发现新版本时弹窗；已是最新版本或检查失败时，在设置页更新区域显示结果。
+
 本文是当前打包入口、产物和发布流程的维护文档。Release 固定安装提示维护在 [release-notes.md](release-notes.md)，版本变更由 GitHub 原生 Release Notes 生成；脚本只负责组合，不另写一份说明。
 
 ## 本地打包
@@ -68,6 +70,8 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 | `darwin-aarch64` | `CodexQuota-macOS-AppleSilicon.app.tar.gz` | Apple Silicon DMG |
 | `darwin-x86_64` | `CodexQuota-macOS-Intel.app.tar.gz` | Intel DMG |
 | `windows-x86_64` | `CodexQuota-Windows-x64-setup.exe` | 同一 NSIS 安装器 |
+
+最新正式版仍为旧 Sparkle 发布、尚无 `latest.json` 时，应用回退查询 GitHub 正式版信息：没有更高版本则显示“已是最新版本”；存在更高版本则显示版本与说明，通过发布页手动安装。此路径不启用应用内安装。网络或清单解析失败仍显示错误，不视为已是最新版本。
 
 使用 Tauri v2 的 `createUpdaterArtifacts: true`，由官方 CLI 生成更新包和 `.sig`。macOS 更新包是应用归档，DMG 用于首次安装；Windows 使用 NSIS 安装器。更新器下载后使用应用内公钥验证签名，验签失败不得安装。
 
