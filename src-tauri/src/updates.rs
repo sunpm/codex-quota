@@ -1,12 +1,42 @@
 use crate::{
     monitor::controller,
-    state::{now, AppSnapshot},
+    state::{now, AppSnapshot, SavedState},
 };
 use serde::Deserialize;
 use std::time::Duration;
 use tauri::AppHandle;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_updater::{Update, UpdaterExt};
+
+pub fn installed_release_notes(app: &AppHandle, saved: &SavedState) -> Option<String> {
+    let notes = include_str!(concat!(env!("OUT_DIR"), "/installed-release-notes.md")).trim();
+    let version = app.package_info().version.to_string();
+    let shown = saved
+        .preferences
+        .get("updates.lastShownReleaseNotesVersion")
+        .and_then(serde_json::Value::as_str);
+    (!notes.is_empty() && shown != Some(version.as_str())).then(|| notes.to_string())
+}
+
+#[tauri::command]
+pub fn mark_release_notes_shown(app: AppHandle) -> Result<AppSnapshot, String> {
+    let state = controller(&app);
+    let snapshot = {
+        let mut store = state.store.lock().unwrap();
+        if store.snapshot.installed_release_notes.is_some() {
+            let mut saved = store.saved.clone();
+            saved.preferences.insert(
+                "updates.lastShownReleaseNotesVersion".into(),
+                serde_json::json!(store.snapshot.version),
+            );
+            store.commit(saved)?;
+            store.snapshot.installed_release_notes = None;
+        }
+        store.snapshot.clone()
+    };
+    state.emit(&app);
+    Ok(snapshot)
+}
 
 #[derive(Default)]
 pub struct UpdateRuntime {

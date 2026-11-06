@@ -261,6 +261,15 @@ fn quit_app(app: AppHandle) {
 }
 
 pub fn run() {
+    let window_state_directory = std::env::var_os("CODEX_QUOTA_DATA_DIR")
+        .map(std::path::PathBuf::from)
+        .or_else(|| dirs::data_dir().map(|path| path.join("CodexQuotaDock")))
+        .expect("无法找到应用数据目录");
+    let window_state_path = std::path::absolute(window_state_directory.join("window-state.json"))
+        .expect("无法解析窗口状态保存路径");
+    let window_state_flags = tauri_plugin_window_state::StateFlags::SIZE
+        | tauri_plugin_window_state::StateFlags::POSITION
+        | tauri_plugin_window_state::StateFlags::MAXIMIZED;
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             platform::open_window(app)
@@ -270,6 +279,10 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::new()
+            .with_filename(window_state_path.to_string_lossy())
+            .with_state_flags(window_state_flags)
+            .build())
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
             refresh_quota,
@@ -287,10 +300,16 @@ pub fn run() {
             check_update,
             install_update,
             cancel_update,
+            updates::mark_release_notes_shown,
             quit_app
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let state = Arc::new(Controller::new(app.handle()).map_err(std::io::Error::other)?);
+            // The plugin creates its default config directory, not a custom file's parent.
+            if std::fs::create_dir_all(&window_state_directory).is_err() {
+                state.store.lock().unwrap().snapshot.error
+                    .get_or_insert_with(|| "无法创建窗口状态保存目录。".into());
+            }
             state
                 .store
                 .lock()
@@ -344,10 +363,15 @@ pub fn run() {
                 }
             }
             state.emit(app.handle());
+            platform::open_window(app.handle());
             monitor::start(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::WindowEvent::ThemeChanged(theme) = event {
+                platform::update_app_icon(window.app_handle(), *theme);
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let app = window.app_handle();

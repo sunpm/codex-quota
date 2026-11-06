@@ -12,7 +12,7 @@
   "app": {
     "windows": [{
       "label": "main", "title": "Codex Quota", "width": 1140, "height": 760,
-      "minWidth": 860, "minHeight": 560, "center": true, "visible": true
+      "minWidth": 860, "minHeight": 560, "center": true, "visible": false
     }],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data:; font-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'"

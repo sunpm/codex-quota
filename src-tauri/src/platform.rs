@@ -16,22 +16,43 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
     if let Some(tray) = app.tray_by_id("quota") {
         let visible = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled;
         let _ = tray.set_visible(visible);
-        let mut title = if snapshot.quota.windows.is_empty() {
+        let has_codex = snapshot.quota.windows.iter().any(|window| window.bucket == "codex");
+        let mut windows = snapshot.quota.windows.iter()
+            .filter(|window| !has_codex || window.bucket == "codex")
+            .collect::<Vec<_>>();
+        windows.sort_by_key(|window| window.duration_minutes.unwrap_or(i64::MAX));
+        let mut title = if windows.is_empty() {
             "--".into()
         } else {
-            snapshot
-                .quota
-                .windows
+            windows
                 .iter()
                 .take(2)
-                .map(|window| format!("{}%", (100.0 - window.used_percent).floor() as u64))
+                .map(|window| format!("{}%", window.remaining().floor() as u64))
                 .collect::<Vec<_>>()
                 .join(" ")
         };
         if snapshot.quota.error.is_some() {
             title.push_str(" !");
         }
-        let _ = tray.set_tooltip(Some(format!("Codex Quota · {title}")));
+        let mut description = snapshot.quota.windows.iter().map(|window| {
+            let name = if window.bucket == "codex" {
+                window.display_label()
+            } else {
+                format!("{} · {}", window.name, window.display_label())
+            };
+            let reset = window.resets_at
+                .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
+                .map(|date| format!("，{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
+                .unwrap_or_default();
+            format!("{name}：剩余 {}%{reset}", window.remaining().floor() as u64)
+        }).collect::<Vec<_>>();
+        if description.is_empty() {
+            description.push("等待额度数据".into());
+        }
+        if let Some(error) = &snapshot.quota.error {
+            description.push(format!("额度可能已过期：{error}"));
+        }
+        let _ = tray.set_tooltip(Some(format!("Codex Quota\n{}", description.join("\n"))));
         #[cfg(target_os = "macos")]
         {
             let _ = tray.set_title(Some(title));
@@ -51,7 +72,7 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-    let open = MenuItem::with_id(app, "open", "打开面板", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?;
     let quit = MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
     tauri::tray::TrayIconBuilder::with_id("quota")
@@ -79,6 +100,13 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             &PredefinedMenuItem::quit(app, Some("退出 Codex Quota"))?,
         ],
     )?;
+    #[cfg(target_os = "macos")]
+    main.insert_items(&[
+        &PredefinedMenuItem::hide(app, Some("隐藏 Codex Quota"))?,
+        &PredefinedMenuItem::hide_others(app, Some("隐藏其他"))?,
+        &PredefinedMenuItem::show_all(app, Some("显示全部"))?,
+        &PredefinedMenuItem::separator(app)?,
+    ], 2)?;
     let edit = Submenu::with_items(
         app,
         "编辑",
@@ -101,9 +129,15 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             &open,
             &refresh,
             &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::maximize(app, Some("缩放"))?,
             &PredefinedMenuItem::close_window(app, None)?,
         ],
     )?;
+    #[cfg(target_os = "macos")]
+    window.append_items(&[
+        &PredefinedMenuItem::separator(app)?,
+        &PredefinedMenuItem::bring_all_to_front(app, Some("前置全部窗口"))?,
+    ])?;
     app.set_menu(Menu::with_items(app, &[&main, &edit, &window])?)?;
     #[cfg(windows)]
     if let Some(window) = app.get_webview_window("main") {
@@ -121,7 +155,32 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         _ => {}
     });
     power::install(app);
+    #[cfg(target_os = "macos")]
+    if let Some(window) = app.get_webview_window("main") {
+        update_app_icon(app, window.theme()?);
+    }
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+pub fn update_app_icon(app: &AppHandle, theme: tauri::Theme) {
+    use objc2::{AnyThread, MainThreadMarker};
+    use objc2_app_kit::{NSApplication, NSImage};
+    use objc2_foundation::NSData;
+
+    let _ = app.run_on_main_thread(move || {
+        let mtm = MainThreadMarker::new().expect("Dock icon updates run on the main thread");
+        let bytes: &[u8] = if theme == tauri::Theme::Dark {
+            include_bytes!("../icons/dock-dark.png")
+        } else {
+            include_bytes!("../icons/icon.icns")
+        };
+        let data = NSData::with_bytes(bytes);
+        if let Some(image) = NSImage::initWithData(NSImage::alloc(), &data) {
+            // AppKit requires a non-null image; both variants are bundled assets.
+            unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(Some(&image)) };
+        }
+    });
 }
 
 pub fn open_external(app: &AppHandle, value: &str) -> Result<(), String> {

@@ -31,7 +31,9 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 构建顺序为：生成依赖许可 → Tauri `beforeBuildCommand` 执行一次 `pnpm build` → Cargo 使用 `--locked` 编译 → Tauri 打包 → 核验并复制产物。前端和 Rust 编译失败都会终止打包，不需要先手动再构建一次前端。依赖许可由 `collect-licenses.mjs` 从已安装 pnpm 依赖和 Cargo metadata 生成，写入随包的 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`；不要手工修改。
 
-普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。`RELEASE_TAG` 未设置或为空时使用 `package.json` 的版本号；非空时必须是合法版本标签，并提供更新签名密钥。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
+普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。`RELEASE_TAG` 未设置或为空时使用 `package.json` 的版本号；非空时必须是合法版本标签，并提供更新签名密钥及 `CODEX_QUOTA_RELEASE_NOTES_FILE` 指向的本版本 Markdown 变更说明。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
+
+本地可选设置 `CODEX_QUOTA_RELEASE_NOTES_FILE`（相对于构建命令的工作目录或绝对路径），构建脚本会将 UTF-8 Markdown 嵌入安装包。该版本首次打开时展示，关闭后沿用 `updates.lastShownReleaseNotesVersion` 记录已读；未提供说明时不弹窗。说明使用标题、列表、代码与链接排版，链接沿用应用的外部来源限制。此文件应为对应版本的实际变更，不使用 `docs/release-notes.md` 中的通用安装提示代替。
 
 ## CI 打包与发布
 
@@ -46,10 +48,12 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 标签发布依次执行：
 
-1. 安装锁定依赖，注入同一公钥与标签版本，运行统一构建入口。每个平台先上传为 workflow artifact。
-2. 全部构建成功后生成 GitHub 原生 Release Notes，按最近正式版本累计 PR。
+1. 由 GitHub 原生 Release Notes 按最近正式版本累计 PR，生成一次版本变更说明并保存为 artifact。
+2. 三平台安装锁定依赖，下载同一份说明，注入公钥、标签版本及说明路径，运行统一构建入口；安装产物上传为 workflow artifact。
 3. `prepare-release.mjs` 检查三套产物、版本与签名附件，生成 `latest.json` 和 `SHA256SUMS.txt`；读取 `docs/release-notes.md` 并附上本次变更，生成 `dist/release-notes.md`。应用内更新清单只包含本次变更，不重复安装提示。
 4. 安装包、签名、完整清单和校验值上传 draft Release，全部成功后才公开。预发布不替换 latest。
+
+三平台构建从同一 artifact 嵌入版本说明，汇总步骤将同一内容写入 `latest.json`，并与通用安装提示组合为 Release 正文，避免安装后与更新前看到不同说明。
 
 提交、推送和版本标签仍需用户授权。修改或运行只打包工作流不代表已发布；编译和产物检查不能代替安装与真实升级验收。
 

@@ -267,3 +267,7 @@ th svg { display: inline; vertical-align: middle; }
 @media (max-width: 960px) { .page-content { padding: 18px; } .page-header { padding: 0 18px; } .filter-bar { gap: 8px; } .segment-option { padding-left: 9px; padding-right: 9px; } .native-select { max-width: 165px; } .analysis-grid { grid-template-columns: 1fr; } .summary-strip { gap: 12px; } .summary-strip:not(.compact) strong { font-size: 23px; } .secondary-column { display: none; } }
 
 .segmented label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 3px; }
+
+.overview-table { flex: none; }
+.overview-table .table-scroll { max-height: 420px; }
+.ranking-row small { display: block; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
