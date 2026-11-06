@@ -83,6 +83,11 @@ impl Controller {
             platform: std::env::consts::OS.into(),
             update: UpdateState::default(),
             installed_release_notes: crate::updates::installed_release_notes(app, &saved),
+            notification_guide_shown: saved
+                .preferences
+                .get("notifications.persistentGuideShown")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false),
             error: error.clone(),
             settings: settings.clone(),
         };

@@ -92,13 +92,6 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
             monitor::refresh_quota(&handle, true).await;
         });
     }
-    if (!previous.recovery_notifications && settings.recovery_notifications)
-        || (!previous.reset_credit_reminders && settings.reset_credit_reminders)
-        || (!previous.quota_reset_reminders && settings.quota_reset_reminders)
-        || (!previous.announcement_notifications && settings.announcement_notifications)
-    {
-        let _ = platform::notification_permission(true).await;
-    }
     Ok(get_snapshot(app))
 }
 
@@ -208,6 +201,22 @@ async fn request_notification_permission() -> Result<platform::NotificationStatu
     platform::notification_permission(true).await
 }
 #[tauri::command]
+fn mark_notification_guide_shown(app: AppHandle) -> Result<AppSnapshot, String> {
+    let state = controller(&app);
+    {
+        let mut store = state.store.lock().unwrap();
+        let mut saved = store.saved.clone();
+        saved.preferences.insert(
+            "notifications.persistentGuideShown".into(),
+            serde_json::json!(true),
+        );
+        store.commit(saved)?;
+        store.snapshot.notification_guide_shown = true;
+    }
+    state.emit(&app);
+    Ok(get_snapshot(app))
+}
+#[tauri::command]
 async fn test_notification(app: AppHandle) -> Result<(), String> {
     let settings = controller(&app)
         .store
@@ -224,9 +233,10 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
     {
         return Err("请先开启额度监测和至少一种通知。".into());
     }
-    if platform::notification_permission(true).await?.permission
-        == platform::NotificationPermission::Denied
-    {
+    if !matches!(
+        platform::notification_permission(false).await?.permission,
+        platform::NotificationPermission::Granted | platform::NotificationPermission::System
+    ) {
         return Err("通知未获允许，请在系统设置中开启。".into());
     }
     platform::send_notification(
@@ -296,6 +306,7 @@ pub fn run() {
             clear_history,
             notification_permission,
             request_notification_permission,
+            mark_notification_guide_shown,
             test_notification,
             open_notification_settings,
             open_external,
@@ -344,25 +355,6 @@ pub fn run() {
             if state.preview {
                 if let Some(window) = app.get_webview_window("main") {
                     window.set_title("Codex Quota · 离线验收")?;
-                }
-            } else {
-                let settings = state.store.lock().unwrap().snapshot.settings.clone();
-                if settings.monitoring_enabled
-                    && (settings.recovery_notifications
-                        || settings.reset_credit_reminders
-                        || settings.quota_reset_reminders
-                        || settings.announcement_notifications)
-                {
-                    tauri::async_runtime::spawn(async {
-                        if platform::notification_permission(false)
-                            .await
-                            .is_ok_and(|status| {
-                                status.permission == platform::NotificationPermission::Prompt
-                            })
-                        {
-                            let _ = platform::notification_permission(true).await;
-                        }
-                    });
                 }
             }
             state.emit(app.handle());

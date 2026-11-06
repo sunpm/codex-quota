@@ -11,6 +11,7 @@ import QuotaPanel from './components/QuotaPanel.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import UpdateResultDialog from './components/UpdateResultDialog.vue'
 import InstalledReleaseNotesDialog from './components/InstalledReleaseNotesDialog.vue'
+import NotificationGuide from './components/NotificationGuide.vue'
 import SlidingSelection from './components/SlidingSelection.vue'
 
 const page = ref<Page>('overview')
@@ -75,5 +76,6 @@ onBeforeUnmount(() => { clearInterval(clock); unlisten?.(); menuListeners.forEac
     <main class="main-panel"><header class="page-header"><h1>{{ title }}</h1><Button v-if="isUsage" variant="outline" size="sm" :disabled="snapshot.usage.refreshing || !isDesktop && !isPreview" @click="execute('scan_usage', { rescan: false })"><RefreshCw :size="14" :class="{ spinning: snapshot.usage.refreshing }" />{{ snapshot.usage.refreshing ? '读取中…' : '刷新' }}</Button></header><div v-if="!isDesktop && !isPreview" class="notice browser-notice">浏览器无法访问本机 Codex。请启动桌面应用，或使用 <a href="?preview">离线预览</a> 查看示例界面。</div><div v-if="snapshot.error" class="notice warning app-notice" role="alert">{{ snapshot.error }}</div><div v-if="actionError" class="notice warning app-notice" role="alert"><span>{{ actionError }}</span><button aria-label="关闭提示" @click="actionError = null"><X :size="14" /></button></div><div class="page-content" :class="{ 'table-content': page === 'sessions' || page === 'projects' }" :aria-busy="isDesktop && !connected"><UsagePanel v-if="isUsage" :state="snapshot" :page="page" :clock="usageClock" /><QuotaPanel v-else-if="page === 'quota'" :state="snapshot" :now="now" /><SettingsPanel v-else :state="snapshot" /></div></main>
     <UpdateResultDialog />
     <InstalledReleaseNotesDialog />
+    <NotificationGuide />
   </div>
 </template>

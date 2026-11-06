@@ -1,5 +1,10 @@
 export type Page = 'overview' | 'sessions' | 'projects' | 'quota' | 'settings'
 export type Metric = 'tokens' | 'cost'
+export interface ChartTimeHover { timestamp: number; tolerance: number }
+export interface NotificationStatus {
+  permission: 'system' | 'granted' | 'denied' | 'prompt'
+  alertStyle: 'persistent' | 'banner' | 'disabled' | 'unknown'
+}
 export interface Settings {
   monitoringEnabled: boolean
   recoveryNotifications: boolean
@@ -53,4 +58,5 @@ export interface AppSnapshot {
   platform: string
   update: UpdateState
   installedReleaseNotes: string | null
+  notificationGuideShown: boolean
 }
