@@ -1,133 +1,49 @@
 # Codex Quota
 
-在一个桌面窗口中查看 Codex 的剩余额度、Token 用量和 API 等价费用，额度恢复时收到通知，也可在菜单栏或系统托盘快速查看。
+Codex Quota 是面向 OpenAI Codex 用户的桌面额度与用量工具，支持 macOS 和 Windows。
 
-[下载发行版](https://github.com/sunpm/codex-quota/releases/latest) · [更新记录](https://github.com/sunpm/codex-quota/releases) · [反馈问题](https://github.com/sunpm/codex-quota/issues)
+- 查看剩余额度、重置倒计时、额度趋势和重置卡到期时间。
+- 接收额度恢复、额度重置前和重置卡到期提醒。
+- 按日期、模型、对话和项目分析 Token 用量与估算费用，支持自定义价格。
+- 查看用量趋势、缓存命中率、热力图和逐条明细。
+- 在菜单栏或系统托盘查看额度，关闭窗口后继续监测，退出应用后停止。
+- 查看公开重置动态，经确认后安装应用更新。
 
-当前源码使用 **Tauri 2、Vue 3、Rust、TypeScript、Vite、Apache ECharts 和 shadcn-vue**，目标平台为 macOS 13+（Apple Silicon / Intel）与 Windows 10 / 11 x64。已发布版本的功能和平台以对应 Release 附件为准。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/usage-dark.png">
+  <img src="docs/images/usage.png" alt="用量分析界面：Token、估算费用与用量趋势（离线示例数据）">
+</picture>
 
-## 安装与接入
+<details>
+<summary>查看额度监测截图</summary>
 
-| 平台 | 安装包 |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/quota-dark.png">
+  <img src="docs/images/quota.png" alt="额度监测界面：剩余额度、重置倒计时与额度趋势（离线示例数据）">
+</picture>
+
+</details>
+
+额度监测复用 Codex 登录态，不保存或改写凭据。用量分析可独立使用，读取本机日志与已采集历史，可能包含多个账号。费用按 API 单价估算，**不代表订阅账单**。
+
+[使用说明](docs/usage.md) · [版本历史](CHANGELOG.md) · [反馈问题](https://github.com/sunpm/codex-quota/issues)
+
+[开发与构建](docs/development.md) · [升级与发布](docs/updating.md) · [第三方来源与许可](THIRD_PARTY_NOTICES.md)
+
+## 环境要求
+
+| 项目 | 要求 |
 | --- | --- |
-| macOS Apple Silicon | `CodexQuota-macOS-AppleSilicon.dmg` |
-| macOS Intel | `CodexQuota-macOS-Intel.dmg` |
-| Windows x64 | `CodexQuota-Windows-x64-setup.exe` |
+| macOS | macOS 13+，Apple Silicon 或 Intel |
+| Windows | Windows 10 / 11 x64；缺少 WebView2 Runtime 时，安装器会引导安装 |
+| 额度监测 | 已安装并登录 Codex CLI（命令行工具）；Windows 需原生版本，暂不自动连接 WSL |
+| 用量分析 | 本机 Codex 会话日志，支持 `.jsonl` 和 `.jsonl.zst` |
 
-macOS 打开 DMG 后将应用拖入“应用程序”。Windows 运行安装器，按当前用户安装；界面需要 Microsoft Edge WebView2 Runtime，缺少时安装器会引导安装。
+## 安装
 
-先安装并登录 Codex，再打开 Codex Quota。额度查询复用 `codex app-server`，本应用不保存或改写 Codex 凭据。Windows 使用原生 Windows Codex；当前不自动连接 WSL 中的 Codex。可通过 `CODEX_QUOTA_CLI` 指定 CLI 可执行文件，通过 `CODEX_HOME` 指定日志目录。
+安装包尚未提供 Apple 公证或 Windows 代码签名。macOS 首次打开受阻时，见 [首次打开指引](docs/release-notes.md)。
 
-从旧 Swift / Sparkle 版本升级时，先退出旧应用，**手动安装一次跨平台版本**。macOS 保留 Bundle ID `local.codexquotadock.app` 和 `CodexQuotaDock` 数据目录，首次启动导入旧偏好。后续更新使用 Tauri 签名更新包；旧 Sparkle appcast 不用于安装新更新包，详见 [更新说明](docs/updating.md)。
-
-当前发布配置未接入 Apple Developer ID 公证或 Windows 代码签名证书。macOS 首次运行被阻止时，确认下载来源后，在“系统设置 → 隐私与安全性”选择该应用的“仍要打开”。更新包签名用于验证更新来源，不代表通过了平台公证。
-
-## 日常使用
-
-侧栏包含用量统计、对话、项目、额度和设置。界面跟随系统浅色 / 深色外观，数值使用等宽数字；“动画特性”与系统减少动态效果共同控制动效。
-
-- **额度**：显示接口实际返回的额度窗口、剩余百分比、本地倒计时和重置卡。进入额度页后台刷新；默认每 1 分钟查询，可设置不少于 30 秒的间隔。缺失额度显示不可用，失败保留上次读数并标明过期。启动、唤醒和重新开启监测会刷新，所有入口遵守服务端冷却时间。
-- **用量统计**：查看 Tokens、API 等价费用、缓存命中率、用量趋势、高消耗对话前五项、完整模型 / 项目汇总和最近 53 周热力图；可按日期与模型筛选。今天和昨天使用小时趋势，较长范围使用每日趋势。同期对比显示百分比与绝对增减量，悬停查看上期值；采用等长自然日范围，进行中的范围对齐当地截止时刻，费用缺价时不计算涨跌。趋势图与热力图悬停同时显示 Tokens、费用及未定价记录数。
-- **对话与项目**：按实际用量汇总，查看逐条时间、模型、Token 拆分、费用、计费档位及可确认的速度与首字估算。可确认的 Git worktree 归入主仓库，子模块独立；无法确认时保留原始目录。详情可选择复制完整会话 ID 与工作目录，展示主仓库映射、当前范围总量和多档位汇总；悬停费用查看精确值，拖动表头分隔线或聚焦后按左右方向键调整列宽。
-- **设置**：管理监测、恢复通知、额度重置前提醒、重置卡到期提醒、公开动态通知、菜单栏 / 托盘、登录启动、刷新间隔、今日指标、明细列、模型价格、历史和更新。监测与托盘开关独立，用量分析不依赖监测开关。
-
-启动恢复上次的窗口位置、尺寸与最大化状态，并显示主窗口。macOS Dock 图标跟随系统外观，`⌘0` 打开面板，系统菜单保留隐藏、缩放与前置全部窗口。
-
-菜单栏优先显示 Codex 额度桶，按窗口时长取前两个；没有 Codex 桶时回退到其他窗口。悬停可查看窗口名称、剩余额度、当地重置时间与具体错误。
-
-关闭窗口后继续监测，从菜单栏 / 托盘或应用入口重新打开同一窗口；退出应用才停止后台任务并清理本应用启动的子进程。macOS 有可用菜单栏入口时隐藏 Dock 图标，否则保留 Dock 入口。Windows 关闭后可从托盘或再次启动应用恢复窗口。
-
-本机日志只在窗口可见时定期扫描，默认每 30 秒一次，也可手动刷新。读取本地日志不发起模型请求。额度与公开重置动态各自独立调度，倒计时在本地计算。
-
-额度趋势保留每个实测点，重置或观测中断处不连线，独立采样点也可见。悬停只读取附近的真实采样；空白时段显示“无采样”，不借用远处读数。
-
-### 提醒与公开动态
-
-macOS 通知使用系统通知中心，应用在前台时也会显示提醒；设置页区分持续提醒、临时横幅、已授权但未开启桌面提醒及无法确认的样式，从系统设置返回后刷新。首次允许通知后，若尚未开启持续提醒，会展示一次设置引导；沿用旧版已显示记录，也可从“持久通知…”手动打开。已开启持续通知时隐藏该入口。测试通知与自动提醒使用同一发送通道，发送失败会保留错误提示。未打包的开发进程不能测试 macOS 通知，请使用应用包。
-
-恢复通知只依据同一账号、同一额度窗口的真实用量从非零恢复到零触发；启动时已满额、显示舍入和倒计时归零均不会触发。通知按账号与窗口跨重启去重，关闭通知期间仍更新基线，重新开启不会补发旧事件。两次轮询之间发生且已再次消耗的恢复可能无法观察到。
-
-重置卡到期提醒与额度重置前提醒分别设置，默认关闭。开启后可按天、小时或分钟添加、编辑和删除提前时间，例如提前 1 天、5 小时和 2 小时；每个有效时间点最多提醒一次，相同时间不能重复。重置卡默认提前 1 天，兼容已有开关与提醒记录；额度默认提前 2 小时。额度提醒仅在接口返回明确的未来重置时间且仍有剩余额度时发送，通知包含额度窗口、剩余百分比与重置时间；提前时间须短于对应额度窗口时长。
-
-两类提醒都在成功刷新后检查，实际提醒时间受刷新间隔、休眠和网络状态影响；应用退出后不发送。每个时间点按账号、卡片或额度窗口及对应到期 / 重置时间跨重启去重。错过多个时间点时，同一张卡或同一窗口只提醒当前最近的一次；同次刷新的多张卡或多个窗口合并通知。关闭通知期间仍更新记录，重新开启不补发已观测到的旧提醒；失败或过期数据不触发。重置卡仅提醒仍可用且有到期明细的卡，不推测缺失信息。卡片到期标识随本地时间更新；可用数量仍以接口快照为准，不由本地推算改写。应用不使用重置卡。
-
-额度页展示 [AIHOT](https://aihot.news/codex-reset) 的公开重置动态，约每 10 分钟查询，独立遵守缓存与 `Retry-After`。动态展示适用范围，以“预告”和“AIHOT 估计”区分时间来源。公告不表示当前账号已经恢复，不改写个人额度或倒计时。预告过期后仍需确认，首次读取只建立通知基线。数据使用遵循 [AIHOT 使用条款](https://aihot.news/terms)。
-
-应用包含当前版本更新说明时，该版本首次打开会展示，关闭后保存已读版本。设置中的新版说明与首次展示共用 Markdown 排版，支持标题、列表和链接；没有随包说明的本地构建不显示空弹窗。
-
-## 统计口径与数据
-
-默认读取 `~/.codex/sessions` 和 `~/.codex/archived_sessions`，Windows 的 `~` 为当前用户目录；`CODEX_HOME` 可覆盖。支持 `.jsonl` 与 `.jsonl.zst`，压缩日志按块解码，不生成解压文件。
-
-- 按日志中的 `last_token_usage` 统计，使用累计签名去重；普通 / 压缩副本、归档迁移、分段和 fork 重放不会重复计数。缺少逐次用量的旧事件不从累计值倒推。
-- 总 Tokens = 新增输入 + 输出 + 缓存命中 + 缓存写入。输入已扣除缓存，不重复加上推理 Token。缓存命中率分母为全部输入（含缓存），分母为零显示不可用。
-- 费用以 Rust `Decimal` 逐项计算，是美元 API 等价估算，**不代表订阅账单**。价格未知与真实零价分开；部分缺价显示“已定价费用”，完全缺价显示“未定价”。统计范围内含未定价记录时，所有分组的费用占比显示“—”，不把已定价部分视为完整费用；Tokens 占比照常计算。
-- 内置 [models.dev](https://models.dev) 的 OpenAI 文字模型价格快照，支持公开价格更新和自定义价格。定价列表自动合并日志中出现的模型，已知别名沿用实际计价规则，未知模型可直接补价；自定义值优先，空白表示未知，`0` 表示免费；价格变更重新计算历史，不保存价格版本。
-- 长上下文倍率按单条请求全部输入判定。未知计费档位不按 Standard 猜测；缺少档位的旧记录按 Standard 估算；没有明确报告来源时，包括旧历史字段缺失或 null，均显示“Standard（估算）”。
-- 速度与首字为日志边界估算，带 `≈`；缺少可靠依据显示 `—`。缓存写入缺失不伪装成零。记录数指解析出的用量事件数，不代表全部网络请求数。
-
-本机统计包含现存日志与已采集历史，可能包含多个账号，不代表当前账号或其他设备的全部用量。应用只保存统计所需元数据，不保存消息正文、浏览器 Cookie 或登录 token。
-
-| 平台 | 应用数据目录 |
-| --- | --- |
-| macOS | `~/Library/Application Support/CodexQuotaDock/` |
-| Windows | `%APPDATA%\CodexQuotaDock\` |
-
-`usage-history.json` 沿用旧版格式，保留旧服务历史；当前只采集与展示 Codex。设置、额度趋势、通知基线及冷却时间保存在同一应用数据目录中。读取损坏或未知版本的数据时保留原文件并提示，不按空数据覆盖。
-
-“重新扫描日志”清空内存扫描缓存、保留已保存历史；“清除已保存历史”经确认后只清除本应用的 Codex 历史，现存日志可再次采集，不删除源日志、其他服务旧记录或模型定价。
-
-## 开发与构建
-
-需要 Node.js 22.12+、项目指定版本的 pnpm、Rust stable（至少 1.90），以及 [Tauri 平台构建依赖](https://v2.tauri.app/start/prerequisites/)。macOS 安装 Xcode Command Line Tools；Windows 安装 Visual Studio C++ Build Tools 与 Windows SDK。Windows 命令行可使用 PowerShell，`.sh` 入口需要 Git Bash。
-
-```sh
-pnpm install --frozen-lockfile
-pnpm tauri dev
-```
-
-只预览前端：
-
-```sh
-pnpm dev
-```
-
-浏览器不能访问桌面进程与本机数据。显式加 `?preview` 可查看标注为离线预览的匿名示例，不会连接真实 Codex。
-
-原生窗口离线验收需同时开启预览模式并使用新的空数据目录：
-
-```sh
-CODEX_QUOTA_PREVIEW=1 CODEX_QUOTA_DATA_DIR="$PWD/work/native-preview" pnpm tauri dev
-```
-
-`CODEX_QUOTA_PREVIEW` 停止监测和日志扫描，`CODEX_QUOTA_DATA_DIR` 隔离设置与历史并跳过旧偏好导入，两者配合避免读取真实账号或历史。验收结束后退出应用并删除本次临时目录；正常启动不设置这两个变量。
-
-macOS 与 Windows 共用 `node scripts/build.mjs`，安装包输出到 `dist/`。构建依赖、架构参数、产物名称和 CI 打包入口统一维护在 [打包、更新与发布](docs/updating.md#本地打包)。
-
-最小验证：
-
-```sh
-bash scripts/test.sh
-```
-
-`scripts/test.sh` 已包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行。在 macOS 还会运行保留的 Swift 核心与应用检查；这些检查验证旧实现，是迁移规则的基线，不能当成新 Rust 实现的自动化测试。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](docs/updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
-
-生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`；`Sources/`、`Tests/` 和 `Package.swift` 暂留作旧版行为参考与检查，不参与 Tauri 应用构建。旧打包工具归档到 `scripts/legacy/`，说明与验收记录见 [Swift / Sparkle 历史流程](docs/archive/updating-sparkle.md)。
-
-### 图标再生成
-
-应用图标的源为 `scripts/make-icon.swift`。在 macOS 先生成 1024 像素 PNG，再由项目锁定的 Tauri CLI 转为平台图标；托盘源为 `src-tauri/icons/tray.svg`，同样通过官方 CLI 生成 PNG。只修改这些源文件，不手工编辑 PNG、ICNS 或 ICO。
-
-```sh
-swift scripts/make-icon.swift work/app-icon.iconset
-pnpm tauri icon work/app-icon.iconset/icon_512x512@2x.png --output work/app-icons
-cp work/app-icons/32x32.png work/app-icons/128x128.png work/app-icons/128x128@2x.png work/app-icons/icon.icns work/app-icons/icon.ico src-tauri/icons/
-pnpm tauri icon src-tauri/icons/tray.svg --png 32 --output work/tray-icons
-cp work/tray-icons/32x32.png src-tauri/icons/tray.png
-swift scripts/make-icon.swift work/dark-app-icon.iconset dark
-cp work/dark-app-icon.iconset/icon_512x512@2x.png src-tauri/icons/dock-dark.png
-```
-
-生成后清理 `work/app-icon.iconset`、`work/app-icons`、`work/tray-icons` 和 `work/dark-app-icon.iconset`。托盘使用独立的单色图形，不从带背景的应用图标裁切。
-
-发布流程与签名配置统一见 [打包、更新与发布](docs/updating.md)。第三方来源与许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+1. **准备 Codex CLI**：如需额度监测，按 [官方指南](https://learn.chatgpt.com/docs/codex/cli) 安装，在终端运行 `codex` 并登录。仅查看本机用量可跳过。
+2. **下载安装包**：在 [最新发行版](https://github.com/sunpm/codex-quota/releases/latest) 选择对应系统和芯片的安装包。Mac 芯片类型可在“关于本机”中查看；功能与平台以该版本说明为准。
+3. **安装应用**：macOS 打开 DMG，将 **Codex Quota** 拖入“应用程序”；Windows 运行安装器，按提示完成安装。
+4. **开始使用**：打开 Codex Quota 查看用量，在“设置”中按需开启额度监测和提醒，并允许系统通知。

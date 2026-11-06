@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ArrowDown, ChevronRight, Info, Search } from '@lucide/vue'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { AppSnapshot, Metric, Page, UsageRecord } from '@/types'
 import { basename, costLabel, costTooltip, dateText, dayKey, metricValue, money, percent, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from '@/lib/usage'
+import { usageRanges, useUsageFilters } from '@/lib/usage-filters'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import Chart from './Chart.vue'
 import SlidingSelection from './SlidingSelection.vue'
 import UsageDetailDialog from './UsageDetailDialog.vue'
 
 const props = defineProps<{ state: AppSnapshot; page: Page; clock: { now: number; calendar: string } }>()
-const period = ref('7')
-const metric = ref<Metric>('tokens')
+const { view, period, metric, model, search, start, end } = useUsageFilters(() => props.page)
 const heatMetric = ref<Metric>('tokens')
 const groupBy = ref('model')
-const model = ref('all')
-const search = ref('')
-const start = ref(dayKey(shiftDay(new Date(), -6)))
-const end = ref(dayKey(new Date()))
+const grouping = computed(() => props.page === 'details' ? view.value : groupBy.value)
 const detail = ref<{ title: string; records: UsageRecord[] } | null>(null)
 const limit = ref(100)
-const ranges = [{ value: 'today', label: '今天' }, { value: 'yesterday', label: '昨天' }, { value: '7', label: '7 天' }, { value: '30', label: '30 天' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }]
+const tableScroll = ref<HTMLElement | null>(null)
+watch([() => props.page, view], () => { tableScroll.value?.scrollTo(0, 0); limit.value = 100; detail.value = null }, { flush: 'post' })
 const range = computed(() => {
   const today = startOfDay(new Date(props.clock.now * 1000))
   if (period.value === 'all') return { from: 0, to: props.clock.now + 1, days: 0 }
@@ -32,7 +32,7 @@ const range = computed(() => {
   return { from: from.getTime() / 1000, to: Math.min(to.getTime() / 1000, props.clock.now + 1), days }
 })
 const availableRecords = computed(() => props.state.usage.records.filter(record => record.service === 'codex' && record.date <= props.clock.now))
-const models = computed(() => [...new Set(availableRecords.value.map(record => record.model))].sort())
+const models = computed(() => [...new Set([...availableRecords.value.map(record => record.model), ...(model.value === 'all' ? [] : [model.value])])].sort())
 const inModel = (record: UsageRecord) => model.value === 'all' || record.model === model.value
 const records = computed(() => availableRecords.value.filter(record => record.date >= range.value.from && record.date < range.value.to && inModel(record)))
 const total = computed(() => summarize(records.value))
@@ -88,7 +88,8 @@ function grouped(kind: string) {
     return { key, records, total: summarize(records), name: kind === 'session' ? basename(project) : kind === 'project' ? basename(key) : key, subtitle: kind === 'session' ? key.slice(0, 12) : kind === 'project' ? key : '', last: records.reduce((latest, record) => Math.max(latest, record.date), 0) }
   }).sort((a, b) => metricValue(b.total, metric.value) - metricValue(a.total, metric.value))
 }
-const groups = computed(() => grouped(props.page === 'sessions' ? 'session' : props.page === 'projects' ? 'project' : groupBy.value).filter(group => props.page === 'overview' || !search.value || `${group.name} ${group.key}`.toLowerCase().includes(search.value.toLowerCase())))
+const groups = computed(() => grouped(grouping.value).filter(group => props.page === 'overview' || !search.value || `${group.name} ${group.key}`.toLowerCase().includes(search.value.toLowerCase())))
+const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, group) => Math.max(width, group.total.tokens.toLocaleString('zh-CN').length), 14)}ch + 26px)`)
 const topSessions = computed(() => grouped('session').slice(0, 5))
 const heatmap = computed<EChartsCoreOption>(() => {
   const last = startOfDay(new Date(props.clock.now * 1000)), first = shiftDay(last, -370)
@@ -117,20 +118,29 @@ function showDetail(name: string, items: UsageRecord[]) { detail.value = { title
     <div class="usage-filters">
       <div class="filter-bar">
         <SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented" role="group" aria-label="日期范围">
-          <component :is="highlight ? 'span' : 'label'" v-for="item in ranges" :key="item.value" class="segment-option" :data-selected="period === item.value"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="date-range" :value="item.value" @change="limit = 100" />{{ item.label }}</component>
+          <component :is="highlight ? 'span' : 'label'" v-for="item in usageRanges" :key="item.value" class="segment-option" :data-selected="period === item.value"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="date-range" :value="item.value" @change="limit = 100" />{{ item.label }}</component>
         </SlidingSelection>
         <div class="filter-spacer" />
         <label class="sr-only" for="model-filter">模型</label>
-        <select id="model-filter" v-model="model" class="native-select"><option value="all">全部模型</option><option v-for="item in models" :key="item">{{ item }}</option></select>
+        <NativeSelect id="model-filter" :model-value="model" @change="model = ($event.target as HTMLSelectElement).value"><NativeSelectOption value="all">全部模型</NativeSelectOption><NativeSelectOption v-for="item in models" :key="item" :value="item">{{ item }}</NativeSelectOption></NativeSelect>
         <SlidingSelection v-slot="{ highlight }" :selection="metric" class="segmented" role="group" aria-label="统计指标"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="metric === 'tokens'"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="usage-metric" value="tokens" />Tokens</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="metric === 'cost'"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="usage-metric" value="cost" />费用</component></SlidingSelection>
       </div>
       <div v-if="period === 'custom'" class="date-range"><label>开始 <input v-model="start" type="date" :max="end" /></label><span>—</span><label>结束 <input v-model="end" type="date" :min="start" :max="dayKey(new Date())" /></label></div>
-      <div class="source-line"><span :title="state.usage.source">本机日志<span v-if="period === 'custom'"> · {{ start }} — {{ end }}</span><span class="info-hint" aria-label="统计范围说明" title="包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。"><Info :size="12" /></span></span><span v-if="state.usage.scannedAt">扫描于 {{ dateText(state.usage.scannedAt) }}</span></div>
+      <div class="source-line">
+        <div class="source-label">
+          <span :title="state.usage.source">本机日志<span v-if="period === 'custom'"> · {{ start }} — {{ end }}</span></span>
+          <Popover>
+            <PopoverTrigger as-child><Button variant="ghost" size="icon-xs" aria-label="统计范围说明"><Info :size="12" /></Button></PopoverTrigger>
+            <PopoverContent class="source-info-popover" align="start" aria-label="统计范围说明">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。</PopoverContent>
+          </Popover>
+        </div>
+        <span v-if="state.usage.scannedAt">扫描于 {{ dateText(state.usage.scannedAt) }}</span>
+      </div>
     </div>
     <div v-for="warning in state.usage.warnings" :key="warning" class="notice warning" role="status">{{ warning }}</div>
     <div class="usage-summary">
       <div class="summary-strip" :class="{ compact: page !== 'overview' }">
-        <div><span class="metric-label">总 Tokens</span><strong :title="state.usage.scannedAt === null ? '尚未读取本机日志' : total.tokens.toLocaleString()">{{ state.usage.scannedAt ? shortTokens(total.tokens) : '—' }}</strong><span v-if="page === 'overview' && changeText('tokens')" class="comparison" :title="changeText('tokens')!.title">{{ changeText('tokens')!.text }}</span></div>
+        <div><span class="metric-label">总 Tokens</span><strong :title="state.usage.scannedAt === null ? '尚未读取本机日志' : undefined">{{ state.usage.scannedAt ? total.tokens.toLocaleString('zh-CN') : '—' }}</strong><span v-if="page === 'overview' && changeText('tokens')" class="comparison" :title="changeText('tokens')!.title">{{ changeText('tokens')!.text }}</span></div>
         <div :title="`API 等价估算，非订阅账单。${total.unpriced} 条记录未定价。`"><span class="metric-label">{{ costLabel(total) }}</span><strong>{{ state.usage.scannedAt ? summaryMoney(total) : '—' }}</strong><span v-if="page === 'overview' && changeText('cost')" class="comparison" :title="changeText('cost')!.title">{{ changeText('cost')!.text }}</span></div>
       </div>
       <div class="summary-details"><span>{{ state.usage.scannedAt ? total.sessions.toLocaleString() : '—' }} 个对话</span><span title="缓存命中 ÷ 全部输入">缓存命中率 {{ state.usage.scannedAt ? percent(total.hitRate) : '—' }}</span><span v-if="page === 'overview' && state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - 1) }}</span></div>
@@ -145,8 +155,19 @@ function showDetail(name: string, items: UsageRecord[]) { detail.value = { title
       </div>
     </template>
     <section class="surface table-surface" :class="{ 'overview-table': page === 'overview' }">
-      <div class="section-heading"><h2>{{ page === 'sessions' ? '对话明细' : page === 'projects' || groupBy === 'project' ? '项目汇总' : '模型汇总' }} <span class="count">{{ state.usage.scannedAt === null ? '—' : groups.length }}</span></h2><select v-if="page === 'overview'" v-model="groupBy" class="native-select small" aria-label="汇总分组" @change="limit = 100"><option value="model">按模型</option><option value="project">按项目</option></select><label v-else class="search-box"><Search :size="14" /><input v-model="search" :placeholder="page === 'sessions' ? '搜索对话或项目' : '搜索项目'" aria-label="搜索" /></label></div>
-      <div class="table-scroll"><table><thead><tr><th>{{ page === 'sessions' ? '对话' : page === 'projects' || groupBy === 'project' ? '项目' : '模型' }}</th><th v-if="page !== 'overview' || groupBy === 'project'" class="secondary-column">{{ page === 'sessions' ? '最近用量' : '目录' }}</th><th class="number">记录数</th><th class="number">Tokens <ArrowDown v-if="metric === 'tokens'" :size="11" /></th><th class="number">{{ costLabel(total) }} <ArrowDown v-if="metric === 'cost'" :size="11" /></th><th class="number">占比</th><th class="number">缓存命中率</th></tr></thead><tbody><tr v-for="group in groups.slice(0, limit)" :key="group.key"><td><button class="table-link" :title="group.key" @click="showDetail(group.name, group.records)"><span>{{ group.name }}<small v-if="page === 'sessions'">{{ group.subtitle }}</small></span><ChevronRight :size="13" /></button></td><td v-if="page !== 'overview' || groupBy === 'project'" class="muted secondary-column"><span :title="page === 'sessions' ? dateText(group.last, true) : group.subtitle">{{ page === 'sessions' ? dateText(group.last) : group.subtitle }}</span></td><td class="number">{{ group.total.count }}</td><td class="number" :title="group.total.tokens.toLocaleString()">{{ shortTokens(group.total.tokens) }}</td><td class="number" :title="costTooltip(group.total)">{{ summaryMoney(group.total) }}</td><td class="number muted">{{ metric === 'cost' && total.unpriced ? '—' : metricValue(total, metric) ? percent(metricValue(group.total, metric) / metricValue(total, metric)) : '—' }}</td><td class="number muted">{{ percent(group.total.hitRate) }}</td></tr></tbody></table><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : search ? '没有匹配的记录' : '此时间范围没有用量记录' }}</div><Button v-if="groups.length > limit" class="load-more" variant="outline" size="sm" @click="limit += 100">显示更多</Button></div>
+      <div class="section-heading">
+        <template v-if="page === 'overview'">
+          <h2>{{ grouping === 'project' ? '项目汇总' : '模型汇总' }} <span class="count">{{ state.usage.scannedAt === null ? '—' : groups.length }}</span></h2>
+          <NativeSelect :model-value="groupBy" aria-label="汇总分组" @change="groupBy = ($event.target as HTMLSelectElement).value; limit = 100"><NativeSelectOption value="model">按模型</NativeSelectOption><NativeSelectOption value="project">按项目</NativeSelectOption></NativeSelect>
+        </template>
+        <template v-else>
+          <SlidingSelection v-slot="{ highlight }" :selection="view" class="segmented" role="group" aria-label="明细分组">
+            <component :is="highlight ? 'span' : 'label'" v-for="item in [{ value: 'session', label: '按对话' }, { value: 'project', label: '按项目' }]" :key="item.value" class="segment-option" :data-selected="view === item.value"><input v-if="!highlight" v-model="view" class="sr-only" type="radio" name="detail-view" :value="item.value" @change="search = ''" />{{ item.label }}</component>
+          </SlidingSelection>
+          <label class="search-box"><Search :size="14" /><input v-model="search" :placeholder="view === 'session' ? '搜索对话或项目' : '搜索项目'" aria-label="搜索" /></label>
+        </template>
+      </div>
+      <div ref="tableScroll" class="table-scroll"><table class="usage-table" :class="{ 'project-table': grouping === 'project' }" :style="{ '--tokens-column-width': tokenColumnWidth }"><thead><tr><th class="name-column">{{ grouping === 'session' ? '对话' : grouping === 'project' ? '项目' : '模型' }}</th><th v-if="grouping !== 'model'" class="secondary-column" :class="{ 'time-column': grouping === 'session' }">{{ grouping === 'session' ? '最近用量' : '目录' }}</th><th class="number count-column">记录数</th><th class="number tokens-column">Tokens <ArrowDown v-if="metric === 'tokens'" :size="11" /></th><th class="number cost-column">{{ costLabel(total) }} <ArrowDown v-if="metric === 'cost'" :size="11" /></th><th class="number share-column">占比</th><th class="number cache-column">缓存命中率</th></tr></thead><tbody><tr v-for="group in groups.slice(0, limit)" :key="group.key"><td><button class="table-link" :title="group.key" @click="showDetail(group.name, group.records)"><span>{{ group.name }}<small v-if="grouping === 'session'">{{ group.subtitle }}</small></span><ChevronRight :size="13" /></button></td><td v-if="grouping !== 'model'" class="muted secondary-column"><span :title="grouping === 'session' ? dateText(group.last, true) : group.subtitle">{{ grouping === 'session' ? dateText(group.last) : group.subtitle }}</span></td><td class="number" :title="group.total.count.toLocaleString()">{{ group.total.count.toLocaleString() }}</td><td class="number">{{ group.total.tokens.toLocaleString('zh-CN') }}</td><td class="number" :title="costTooltip(group.total)">{{ summaryMoney(group.total) }}</td><td class="number muted">{{ metric === 'cost' && total.unpriced ? '—' : metricValue(total, metric) ? percent(metricValue(group.total, metric) / metricValue(total, metric)) : '—' }}</td><td class="number muted">{{ percent(group.total.hitRate) }}</td></tr></tbody></table><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : search ? '没有匹配的记录' : '此时间范围没有用量记录' }}</div><Button v-if="groups.length > limit" class="load-more" variant="outline" size="sm" @click="limit += 100">显示更多</Button></div>
     </section>
     <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>最近 53 周</h2><SlidingSelection v-slot="{ highlight }" :selection="heatMetric" class="segmented small" role="group" aria-label="热力图指标"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="heatMetric === 'tokens'"><input v-if="!highlight" v-model="heatMetric" class="sr-only" type="radio" name="heatmap-metric" value="tokens" />Tokens</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="heatMetric === 'cost'"><input v-if="!highlight" v-model="heatMetric" class="sr-only" type="radio" name="heatmap-metric" value="cost" />费用</component></SlidingSelection></div><Chart v-if="state.usage.scannedAt !== null" :option="heatmap" label="最近53周每日用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">尚未读取本机日志</div><p v-if="state.usage.scannedAt !== null" class="heatmap-legend">低 <span class="heatmap-scale" /> 高<span v-if="heatMetric === 'cost'"> · 虚线表示含未定价记录</span></p></section>
     <UsageDetailDialog v-if="detail" :title="detail.title" :records="detail.records" :state="state" @close="detail = null" />

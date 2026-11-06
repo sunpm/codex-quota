@@ -25,7 +25,7 @@ interface Column {
 }
 const columns = computed<Column[]>(() => [
   { id: 'time', label: '时间', width: 120, min: 100, value: (r: UsageRecord) => dateText(r.date), title: (r: UsageRecord) => dateText(r.date, true) },
-  { id: 'model', label: '模型', width: 150, min: 100, value: (r: UsageRecord) => r.model },
+  { id: 'model', label: '模型', width: 200, min: 100, value: (r: UsageRecord) => r.model },
   { id: 'input', label: '新增输入', width: 90, min: 75, numeric: true, value: (r: UsageRecord) => shortTokens(r.tokens.input), title: (r: UsageRecord) => r.tokens.input.toLocaleString() },
   { id: 'output', label: '输出', width: 80, min: 64, numeric: true, value: (r: UsageRecord) => shortTokens(r.tokens.output), title: (r: UsageRecord) => r.tokens.output.toLocaleString() },
   { id: 'cached', label: '缓存命中', width: 90, min: 75, numeric: true, value: (r: UsageRecord) => shortTokens(r.tokens.cached), title: (r: UsageRecord) => r.tokens.cached.toLocaleString() },
@@ -37,11 +37,13 @@ const columns = computed<Column[]>(() => [
 ].filter(column => !column.optional || props.state.settings.detailColumns.includes(column.id)))
 const widths = ref<Record<string, number>>({})
 const tableWidth = computed(() => columns.value.reduce((sum, column) => sum + (widths.value[column.id] ?? column.width), 0))
+function freezeColumnWidths(row: HTMLElement) {
+  Array.from(row.children).forEach((cell, index) => { widths.value[columns.value[index]!.id] = cell.getBoundingClientRect().width })
+}
 function resizeColumn(event: PointerEvent, column: Column) {
   if (event.button !== 0) return
   const handle = event.currentTarget as HTMLElement
-  const row = handle.parentElement!.parentElement!
-  Array.from(row.children).forEach((cell, index) => { widths.value[columns.value[index]!.id] = cell.getBoundingClientRect().width })
+  freezeColumnWidths(handle.parentElement!.parentElement!)
   const start = event.clientX, width = widths.value[column.id]!
   handle.setPointerCapture(event.pointerId)
   const move = (next: PointerEvent) => { widths.value[column.id] = Math.max(column.min, width + next.clientX - start) }
@@ -49,8 +51,8 @@ function resizeColumn(event: PointerEvent, column: Column) {
   handle.addEventListener('pointermove', move); handle.addEventListener('lostpointercapture', stop)
 }
 function stepColumn(event: KeyboardEvent, column: Column, amount: number) {
-  const width = (event.currentTarget as HTMLElement).parentElement!.getBoundingClientRect().width
-  widths.value[column.id] = Math.max(column.min, width + amount)
+  freezeColumnWidths((event.currentTarget as HTMLElement).parentElement!.parentElement!)
+  widths.value[column.id] = Math.max(column.min, widths.value[column.id]! + amount)
 }
 </script>
 <template>
@@ -62,7 +64,7 @@ function stepColumn(event: KeyboardEvent, column: Column, amount: number) {
       <details v-if="directories.length"><summary>工作目录</summary><div v-for="{ directory, root } in directories" :key="directory" class="directory"><code>{{ directory }}</code><div v-if="root !== directory" class="muted">主项目：<code>{{ root }}</code></div></div></details>
       <div v-if="tiers.length > 1" class="tier-summary"><div v-for="item in tiers" :key="item.tier"><h3>{{ item.tier }}</h3><span :title="item.total.tokens.toLocaleString()">{{ shortTokens(item.total.tokens) }} Tokens</span><span class="muted" :title="costTooltip(item.total)">{{ costLabel(item.total) }} {{ summaryMoney(item.total) }}</span></div></div>
     </div>
-    <div class="table-scroll"><table class="detail-table" :style="{ width: `${tableWidth}px` }"><colgroup><col v-for="column in columns" :key="column.id" :style="{ width: `${widths[column.id] ?? column.width}px` }" /></colgroup><thead><tr><th v-for="column in columns" :key="column.id" :class="{ number: column.numeric }">{{ column.label }}<span class="column-resize" role="separator" tabindex="0" aria-orientation="vertical" :aria-label="`调整${column.label}列宽`" :aria-valuenow="Math.round(widths[column.id] ?? column.width)" :aria-valuemin="column.min" @pointerdown.prevent="resizeColumn($event, column)" @keydown.left.prevent="stepColumn($event, column, -10)" @keydown.right.prevent="stepColumn($event, column, 10)" /></th></tr></thead><tbody><tr v-for="record in records.slice(0, limit)" :key="record.id"><td v-for="column in columns" :key="column.id" :class="{ number: column.numeric, 'model-cell': column.id === 'model' }" :title="column.title ? column.title(record) : column.value(record)">{{ column.value(record) }}</td></tr></tbody></table><Button v-if="records.length > limit" class="load-more" variant="outline" size="sm" @click="limit += 150">显示更多</Button></div>
+    <div class="table-scroll"><table class="detail-table" :style="{ width: `${tableWidth}px`, minWidth: widths.model === undefined ? '100%' : undefined }"><colgroup><col v-for="column in columns" :key="column.id" :style="{ width: column.id === 'model' && widths.model === undefined ? undefined : `${widths[column.id] ?? column.width}px` }" /></colgroup><thead><tr><th v-for="column in columns" :key="column.id" :class="{ number: column.numeric }">{{ column.label }}<span class="column-resize" role="separator" tabindex="0" aria-orientation="vertical" :aria-label="`调整${column.label}列宽`" :aria-valuenow="Math.round(widths[column.id] ?? column.width)" :aria-valuemin="column.min" @pointerdown.prevent="resizeColumn($event, column)" @keydown.left.prevent="stepColumn($event, column, -10)" @keydown.right.prevent="stepColumn($event, column, 10)" /></th></tr></thead><tbody><tr v-for="record in records.slice(0, limit)" :key="record.id"><td v-for="column in columns" :key="column.id" :class="{ number: column.numeric, 'model-cell': column.id === 'model' }" :title="column.title ? column.title(record) : column.value(record)">{{ column.value(record) }}</td></tr></tbody></table><Button v-if="records.length > limit" class="load-more" variant="outline" size="sm" @click="limit += 150">显示更多</Button></div>
     <div class="dialog-actions"><Button @click="emit('close')">完成</Button></div>
   </DialogContent></Dialog>
 </template>
@@ -71,12 +73,11 @@ function stepColumn(event: KeyboardEvent, column: Column, amount: number) {
 .detail-totals, .session-identity { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; font-variant-numeric: tabular-nums; }
 .detail-context code { user-select: text; overflow-wrap: anywhere; }
 .detail-context summary { cursor: pointer; width: fit-content; }
-.detail-context summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .session-id { display: block; margin-top: 6px; }
 .directory { display: grid; gap: 4px; margin-top: 8px; }
 .tier-summary { display: flex; flex-wrap: wrap; gap: 12px 28px; padding-top: 12px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
 .tier-summary > div { display: grid; gap: 4px; }
-.detail-table { table-layout: fixed; min-width: 100%; font-variant-numeric: tabular-nums; }
+.detail-table { table-layout: fixed; font-variant-numeric: tabular-nums; }
 .detail-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .column-resize { position: absolute; top: 0; bottom: 0; right: 0; width: 6px; cursor: col-resize; touch-action: none; }
 .column-resize:hover, .column-resize:focus-visible { background: var(--primary); }
