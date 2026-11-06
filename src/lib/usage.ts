@@ -33,6 +33,17 @@ export function summarize(records: UsageRecord[]): Summary {
 export const costLabel = (summary: Summary) => summary.unpriced && summary.priced ? '已定价费用' : '估算费用'
 export function money(amount: string | null) { return amount == null ? '未定价' : `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: Number(amount) > 0 && Number(amount) < 0.01 ? 6 : 2 })}` }
 export const summaryMoney = (summary: Summary) => summary.count && !summary.priced ? '未定价' : money(summary.amount)
+export const exactMoney = (amount: string | null) => amount == null ? '未定价' : `$${amount.includes('.') ? amount.replace(/\.?0+$/, '') : amount}`
+export const costTooltip = (summary: Summary) => `${summary.count && !summary.priced ? '未定价' : exactMoney(summary.amount)}${summary.unpriced ? `\n${summary.unpriced} 条未定价` : ''}`
+export function billingTier(record: UsageRecord) {
+  switch (record.serviceTier.toLowerCase()) {
+    case 'standard': case 'default': case 'auto': return 'Standard'
+    case 'fast': case 'priority': return 'Fast'
+    case 'ultrafast': return 'Ultrafast'
+    default: return '未知档位'
+  }
+}
+export const billingTierLabel = (record: UsageRecord) => `${billingTier(record) === '未知档位' ? `${record.serviceTier || '未知'}（未知档位）` : billingTier(record)}${billingTier(record) === 'Standard' && record.serviceTierReported !== true ? '（估算）' : ''}`
 export const metricValue = (summary: Summary, metric: Metric) => metric === 'tokens' ? summary.tokens : Number(summary.amount)
 export const percent = (value: number | null) => value == null ? '—' : `${(value * 100).toFixed(1)}%`
 export function countdown(resetsAt: number | null, now: number) {

@@ -25,6 +25,12 @@ if (tag && !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z]+([.-][0-9A-
   throw new Error('RELEASE_TAG 必须是 vX.Y.Z 或带 beta / rc 后缀的版本标签。')
 }
 const version = tag?.slice(1) ?? JSON.parse(readFileSync('package.json', 'utf8')).version
+const notesFile = process.env.CODEX_QUOTA_RELEASE_NOTES_FILE
+if (tag && !notesFile) throw new Error('发布构建必须提供 CODEX_QUOTA_RELEASE_NOTES_FILE。')
+if (notesFile) {
+  process.env.CODEX_QUOTA_RELEASE_NOTES_FILE = resolve(notesFile)
+  if (!readFileSync(process.env.CODEX_QUOTA_RELEASE_NOTES_FILE, 'utf8').trim()) throw new Error('本版本更新说明不能为空。')
+}
 const publicKey = process.env.TAURI_UPDATER_PUBLIC_KEY?.trim()
 const signing = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
 if (tag && (!publicKey || !signing)) throw new Error('发布构建必须配置 TAURI_UPDATER_PUBLIC_KEY 和 TAURI_SIGNING_PRIVATE_KEY。')

@@ -49,4 +49,5 @@ export interface AppSnapshot {
   version: string
   platform: string
   update: UpdateState
+  installedReleaseNotes: string | null
 }

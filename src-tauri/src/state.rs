@@ -204,6 +204,7 @@ pub struct AppSnapshot {
     pub version: String,
     pub platform: String,
     pub update: UpdateState,
+    pub installed_release_notes: Option<String>,
     pub error: Option<String>,
 }
 
@@ -430,13 +431,41 @@ impl Store {
         for record in &mut self.snapshot.usage.records {
             record.cost = quota_core::price_record(record, &prices).map(|v| v.to_string());
         }
-        self.snapshot.prices = prices
+        let mut display_prices = prices.clone();
+        for record in self
+            .snapshot
+            .usage
+            .records
+            .iter()
+            .filter(|record| record.service == "codex")
+        {
+            let key = format!("codex:{}", record.model.to_lowercase());
+            display_prices.entry(key).or_insert_with(|| {
+                let mut price = quota_core::lookup_price("codex", &record.model, &prices)
+                    .cloned()
+                    .unwrap_or_else(|| ModelPricing {
+                        service: "codex".into(),
+                        model: record.model.clone(),
+                        rates: Default::default(),
+                        context_threshold: None,
+                        long_context_rates: None,
+                        fast_multiplier: None,
+                        ultrafast_multiplier: None,
+                    });
+                price.model = record.model.clone();
+                price
+            });
+        }
+        self.snapshot.prices = display_prices
             .into_iter()
             .map(|(key, price)| DisplayPrice {
                 custom: self.saved.overrides.contains_key(&key),
                 price,
             })
             .collect();
+        self.snapshot
+            .prices
+            .sort_by(|left, right| left.price.model.cmp(&right.price.model));
         self.snapshot.price_date = self.saved.price_date.clone();
     }
 }

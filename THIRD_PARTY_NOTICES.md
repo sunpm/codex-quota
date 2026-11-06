@@ -6,8 +6,9 @@
 
 | 组件 | 用途 | 上游许可 |
 | --- | --- | --- |
-| [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、更新 | MIT OR Apache-2.0 |
+| [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、窗口状态、更新 | MIT OR Apache-2.0 |
 | [Vue](https://github.com/vuejs/core) | 界面与响应式状态 | MIT |
+| [markdown-it](https://github.com/markdown-it/markdown-it) | 更新说明 Markdown 渲染 | MIT；Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin |
 | [TypeScript](https://github.com/microsoft/TypeScript) | 类型检查 | Apache-2.0 |
 | [Vite](https://github.com/vitejs/vite) | 前端开发与构建 | MIT |
 | [Apache ECharts](https://github.com/apache/echarts) | 用量趋势、额度趋势与热力图 | Apache-2.0；包内 NOTICE 同时保留 |
@@ -19,6 +20,10 @@
 | [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
 
 以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；按需调整在调用层和主题 token 完成，不手改生成文件。
+
+更新说明采用 markdown-it 15.0.3，关闭原始 HTML 与图片，链接沿用应用的外部来源入口；其 MIT 许可另存于 `Resources/ThirdPartyNotices/markdown-it-LICENSE.txt` 并随包分发。选择前比较了 marked 的额外 HTML 清理要求，并核对 markdown-it 的协议相对链接问题 [#1076](https://github.com/markdown-it/markdown-it/issues/1076)，渲染仅接受显式 HTTPS 链接。
+
+窗口状态使用官方 `tauri-plugin-window-state`，仅恢复尺寸、位置和最大化；参考官方可见性恢复问题 [#2340](https://github.com/tauri-apps/plugins-workspace/issues/2340)，保持启动显示主窗口。许可随生成的依赖声明分发。
 
 Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-switch 等既有来源及版权声明。此前调研的 OpenTokenUsage 和 Sessions Viewer 用于比较跨平台路线，未直接复制其实现或引入依赖。
 

@@ -82,6 +82,7 @@ impl Controller {
             version: app.package_info().version.to_string(),
             platform: std::env::consts::OS.into(),
             update: UpdateState::default(),
+            installed_release_notes: crate::updates::installed_release_notes(app, &saved),
             error: error.clone(),
             settings: settings.clone(),
         };

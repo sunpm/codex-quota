@@ -5,7 +5,7 @@ export function emptySnapshot(): AppSnapshot {
     quota: { windows: [], resetCredits: null, history: {}, error: null, lastSuccess: null, refreshing: false },
     announcements: { events: [], error: null, sourceStatus: null },
     usage: { records: [], projectRoots: {}, warnings: [], scannedAt: null, fileCount: 0, refreshing: false, source: '' },
-    prices: [], priceDate: '', version: '0.23.0', platform: 'preview', update: { status: 'idle', version: null, notes: null, error: null, progress: null, canInstall: false },
+    prices: [], priceDate: '', version: '0.23.0', platform: 'preview', update: { status: 'idle', version: null, notes: null, error: null, progress: null, canInstall: false }, installedReleaseNotes: null,
   }
 }
 export function previewSnapshot(): AppSnapshot {
