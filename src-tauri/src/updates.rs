@@ -51,10 +51,11 @@ pub async fn check(app: &AppHandle) -> Result<AppSnapshot, String> {
     state.emit(app);
     let handle = app.clone();
     let task = tokio::spawn(async move {
-        if let Some(key) = public_key(&handle) {
+        let public_key = public_key(&handle);
+        if let Some(key) = &public_key {
             let builder = handle
                 .updater_builder()
-                .pubkey(key)
+                .pubkey(key.clone())
                 .timeout(Duration::from_secs(25));
             #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
             let builder = if std::process::Command::new("/usr/sbin/sysctl")
@@ -67,20 +68,28 @@ pub async fn check(app: &AppHandle) -> Result<AppSnapshot, String> {
                 builder
             };
             let updater = builder.build().map_err(|_| "更新配置不可用。")?;
-            let update = updater
-                .check()
-                .await
-                .map_err(|_| "无法检查更新，请稍后重试或打开发布页。")?;
-            Ok::<_, String>(
-                update.map(|update| (update.version.clone(), update.body.clone(), Some(update))),
-            )
-        } else {
+            match updater.check().await {
+                Ok(update) => {
+                    return Ok(update
+                        .map(|update| (update.version.clone(), update.body.clone(), Some(update))))
+                }
+                // The latest stable release can still be a Sparkle release without latest.json.
+                Err(tauri_plugin_updater::Error::ReleaseNotFound) => {}
+                Err(error) => return Err(format!("无法检查更新：{error}")),
+            }
+        }
+        {
             #[derive(Deserialize)]
             struct Release {
                 tag_name: String,
                 body: Option<String>,
                 prerelease: bool,
                 draft: bool,
+                assets: Vec<Asset>,
+            }
+            #[derive(Deserialize)]
+            struct Asset {
+                name: String,
             }
             let response = controller(&handle)
                 .http
@@ -91,6 +100,14 @@ pub async fn check(app: &AppHandle) -> Result<AppSnapshot, String> {
                 .error_for_status()
                 .map_err(|_| "发布信息暂不可用，请打开发布页。")?;
             let release: Release = response.json().await.map_err(|_| "发布信息格式不兼容。")?;
+            if public_key.is_some()
+                && release
+                    .assets
+                    .iter()
+                    .any(|asset| asset.name == "latest.json")
+            {
+                return Err("更新清单暂不可用，请稍后重试或打开发布页。".into());
+            }
             let version = semver::Version::parse(release.tag_name.trim_start_matches('v'))
                 .map_err(|_| "发布版本格式不兼容。")?;
             if !release.draft && !release.prerelease && version > handle.package_info().version {

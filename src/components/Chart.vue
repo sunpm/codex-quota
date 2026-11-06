@@ -8,7 +8,7 @@ import type { EChartsType } from 'echarts/core'
 
 use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, AriaComponent, CanvasRenderer])
 const props = defineProps<{ option: EChartsCoreOption; label: string; height?: number; animations?: boolean }>()
-const element = useTemplateRef('chart')
+const element = useTemplateRef('chartElement')
 let chart: EChartsType | undefined
 let observer: ResizeObserver | undefined
 const theme = window.matchMedia('(prefers-color-scheme: dark)')
@@ -42,4 +42,4 @@ onMounted(() => {
 watch(() => [props.option, props.animations], render)
 onBeforeUnmount(() => { observer?.disconnect(); chart?.dispose(); theme.removeEventListener('change', applyTheme); reducedMotion.removeEventListener('change', render) })
 </script>
-<template><div ref="chart" class="chart" :style="{ height: `${height ?? 210}px` }" role="img" :aria-label="label" /></template>
+<template><div ref="chartElement" class="chart" :style="{ height: `${height ?? 210}px` }" role="img" :aria-label="label" /></template>

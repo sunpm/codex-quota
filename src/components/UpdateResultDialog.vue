@@ -9,15 +9,15 @@ const result = shallowRef<UpdateState | null>(null)
 watch(() => snapshot.value.update, update => {
   if (!manualUpdateCheck.value || !['available', 'current', 'error'].includes(update.status)) return
   manualUpdateCheck.value = false
-  result.value = { ...update }
+  if (update.status === 'available') result.value = { ...update }
 })
 </script>
 <template>
   <Dialog :open="result !== null" @update:open="value => { if (!value) result = null }">
     <DialogContent>
       <DialogHeader>
-        <DialogTitle>{{ result?.status === 'available' ? `发现新版本 ${result.version}` : result?.status === 'current' ? '已是最新版本' : '检查更新失败' }}</DialogTitle>
-        <DialogDescription>{{ result?.error ?? `当前版本 ${snapshot.version}` }}</DialogDescription>
+        <DialogTitle>发现新版本 {{ result?.version }}</DialogTitle>
+        <DialogDescription>当前版本 {{ snapshot.version }}</DialogDescription>
       </DialogHeader>
       <div class="dialog-actions">
         <Button variant="outline" @click="result = null">{{ result?.canInstall ? '稍后' : '好' }}</Button>

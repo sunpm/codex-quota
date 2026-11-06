@@ -1,5 +1,7 @@
 mod client;
 mod monitor;
+#[cfg(target_os = "macos")]
+mod notifications;
 mod platform;
 mod state;
 mod updates;
@@ -8,6 +10,7 @@ use monitor::{controller, Controller};
 use state::{AppSnapshot, Settings};
 use std::sync::{atomic::Ordering, Arc};
 use tauri::{AppHandle, Manager};
+#[cfg(not(target_os = "macos"))]
 use tauri_plugin_notification::NotificationExt;
 
 #[tauri::command]
@@ -196,11 +199,11 @@ async fn clear_history(app: AppHandle) -> Result<AppSnapshot, String> {
 }
 
 #[tauri::command]
-async fn notification_permission() -> Result<String, String> {
+async fn notification_permission() -> Result<platform::NotificationStatus, String> {
     platform::notification_permission(false).await
 }
 #[tauri::command]
-async fn request_notification_permission() -> Result<String, String> {
+async fn request_notification_permission() -> Result<platform::NotificationStatus, String> {
     platform::notification_permission(true).await
 }
 #[tauri::command]
@@ -219,15 +222,18 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
     {
         return Err("请先开启额度监测和至少一种通知。".into());
     }
-    if platform::notification_permission(true).await? == "denied" {
+    if platform::notification_permission(true).await?.permission
+        == platform::NotificationPermission::Denied
+    {
         return Err("通知未获允许，请在系统设置中开启。".into());
     }
-    app.notification()
-        .builder()
-        .title("Codex 通知测试")
-        .body("通知已就绪，将按设置发送额度恢复、重置卡到期或重置动态提醒。")
-        .show()
-        .map_err(|_| "通知发送失败，请检查系统设置。".into())
+    platform::send_notification(
+        &app,
+        "Codex 通知测试",
+        "通知已就绪，将按设置发送额度恢复、重置卡到期或重置动态提醒。",
+        None,
+    )
+    .await
 }
 #[tauri::command]
 fn open_notification_settings(app: AppHandle) -> Result<(), String> {
@@ -294,21 +300,26 @@ pub fn run() {
                 .launch_at_login = platform::autostart_enabled(app.handle());
             app.manage(state.clone());
             platform::setup(app.handle())?;
-            let handle = app.handle().clone();
-            app.notification().on_action(move |action| {
-                if action.action_id() == "dismiss" {
-                    return;
-                }
-                if let Some(url) = action
-                    .notification()
-                    .and_then(|v| v.extra().get("sourceUrl"))
-                    .and_then(serde_json::Value::as_str)
-                {
-                    let _ = platform::open_external(&handle, url);
-                } else {
-                    platform::open_window(&handle);
-                }
-            })?;
+            #[cfg(target_os = "macos")]
+            notifications::setup(app.handle());
+            #[cfg(not(target_os = "macos"))]
+            {
+                let handle = app.handle().clone();
+                app.notification().on_action(move |action| {
+                    if action.action_id() == "dismiss" {
+                        return;
+                    }
+                    if let Some(url) = action
+                        .notification()
+                        .and_then(|v| v.extra().get("sourceUrl"))
+                        .and_then(serde_json::Value::as_str)
+                    {
+                        let _ = platform::open_external(&handle, url);
+                    } else {
+                        platform::open_window(&handle);
+                    }
+                })?;
+            }
             if state.preview {
                 if let Some(window) = app.get_webview_window("main") {
                     window.set_title("Codex Quota · 离线验收")?;
@@ -321,7 +332,11 @@ pub fn run() {
                         || settings.announcement_notifications)
                 {
                     tauri::async_runtime::spawn(async {
-                        if platform::notification_permission(false).await.as_deref() == Ok("prompt")
+                        if platform::notification_permission(false)
+                            .await
+                            .is_ok_and(|status| {
+                                status.permission == platform::NotificationPermission::Prompt
+                            })
                         {
                             let _ = platform::notification_permission(true).await;
                         }

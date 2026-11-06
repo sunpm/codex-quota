@@ -11,7 +11,6 @@ use std::{
     time::Duration,
 };
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_notification::{NotificationExt, PermissionState};
 use tokio::sync::{watch, Mutex as AsyncMutex};
 
 pub struct Controller {
@@ -148,20 +147,22 @@ impl Controller {
     }
 }
 
-pub fn notify(app: &AppHandle, title: &str, body: &str, source_url: Option<&str>) {
-    if matches!(
-        app.notification().permission_state(),
-        Ok(PermissionState::Granted)
-    ) {
-        let mut notification = app.notification().builder().title(title).body(body);
-        if let Some(url) = source_url {
-            notification = notification.extra("sourceUrl", url);
+pub async fn notify(app: &AppHandle, title: &str, body: &str, source_url: Option<&str>) {
+    let result = match crate::platform::notification_permission(false).await {
+        Ok(status)
+            if matches!(
+                status.permission,
+                crate::platform::NotificationPermission::Granted
+                    | crate::platform::NotificationPermission::System
+            ) =>
+        {
+            crate::platform::send_notification(app, title, body, source_url).await
         }
-        if notification.show().is_err() {
-            let state = controller(app);
-            state.store.lock().unwrap().snapshot.error =
-                Some("通知发送失败，请检查系统通知设置。".into());
-        }
+        Ok(_) => return,
+        Err(error) => Err(error),
+    };
+    if let Err(error) = result {
+        controller(app).store.lock().unwrap().snapshot.error = Some(error);
     }
 }
 
@@ -294,7 +295,7 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
         }
     }
     for (title, body) in messages {
-        notify(app, &title, &body, None);
+        notify(app, &title, &body, None).await;
     }
     state.emit(app);
 }
@@ -473,7 +474,8 @@ pub async fn refresh_announcements(app: &AppHandle) {
                 &event.notification_title(),
                 &post.text,
                 Some(&post.url),
-            );
+            )
+            .await;
         }
     }
     state.emit(app);
