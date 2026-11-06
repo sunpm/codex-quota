@@ -42,4 +42,4 @@ onMounted(() => {
 watch(() => [props.option, props.animations], render)
 onBeforeUnmount(() => { observer?.disconnect(); chart?.dispose(); theme.removeEventListener('change', applyTheme); reducedMotion.removeEventListener('change', render) })
 </script>
-<template><div ref="chart" class="chart" :style="{ height: `${height ?? 240}px` }" role="img" :aria-label="label" /></template>
+<template><div ref="chart" class="chart" :style="{ height: `${height ?? 210}px` }" role="img" :aria-label="label" /></template>

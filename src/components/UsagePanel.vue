@@ -7,6 +7,7 @@ import { basename, costLabel, dateText, dayKey, metricValue, money, percent, sho
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import Chart from './Chart.vue'
+import SlidingSelection from './SlidingSelection.vue'
 
 const props = defineProps<{ state: AppSnapshot; page: Page; clock: { now: number; calendar: string } }>()
 const period = ref('7')
@@ -104,25 +105,27 @@ const hasColumn = (name: string) => props.state.settings.detailColumns.includes(
 
 <template>
   <div class="usage-page" :class="{ 'table-page': page !== 'overview' }">
-    <div class="filter-bar">
-      <div class="segmented" role="group" aria-label="日期范围">
-        <label v-for="item in ranges" :key="item.value" :class="{ active: period === item.value }"><input v-model="period" class="sr-only" type="radio" name="date-range" :value="item.value" @change="limit = 100" />{{ item.label }}</label>
+    <div class="usage-filters">
+      <div class="filter-bar">
+        <SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented" role="group" aria-label="日期范围">
+          <component :is="highlight ? 'span' : 'label'" v-for="item in ranges" :key="item.value" class="segment-option" :data-selected="period === item.value"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="date-range" :value="item.value" @change="limit = 100" />{{ item.label }}</component>
+        </SlidingSelection>
+        <div class="filter-spacer" />
+        <label class="sr-only" for="model-filter">模型</label>
+        <select id="model-filter" v-model="model" class="native-select"><option value="all">全部模型</option><option v-for="item in models" :key="item">{{ item }}</option></select>
+        <SlidingSelection v-slot="{ highlight }" :selection="metric" class="segmented" role="group" aria-label="统计指标"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="metric === 'tokens'"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="usage-metric" value="tokens" />Tokens</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="metric === 'cost'"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="usage-metric" value="cost" />费用</component></SlidingSelection>
       </div>
-      <div class="filter-spacer" />
-      <label class="sr-only" for="model-filter">模型</label>
-      <select id="model-filter" v-model="model" class="native-select"><option value="all">全部模型</option><option v-for="item in models" :key="item">{{ item }}</option></select>
-      <div class="segmented" role="group" aria-label="统计指标"><label :class="{ active: metric === 'tokens' }"><input v-model="metric" class="sr-only" type="radio" name="usage-metric" value="tokens" />Tokens</label><label :class="{ active: metric === 'cost' }"><input v-model="metric" class="sr-only" type="radio" name="usage-metric" value="cost" />费用</label></div>
+      <div v-if="period === 'custom'" class="date-range"><label>开始 <input v-model="start" type="date" :max="end" /></label><span>—</span><label>结束 <input v-model="end" type="date" :min="start" :max="dayKey(new Date())" /></label></div>
+      <div class="source-line"><span :title="state.usage.source">本机日志<span v-if="period === 'custom'"> · {{ start }} — {{ end }}</span><span class="info-hint" aria-label="统计范围说明" title="包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。"><Info :size="12" /></span></span><span v-if="state.usage.scannedAt">扫描于 {{ dateText(state.usage.scannedAt) }}</span></div>
     </div>
-    <div v-if="period === 'custom'" class="date-range"><label>开始 <input v-model="start" type="date" :max="end" /></label><span>—</span><label>结束 <input v-model="end" type="date" :min="start" :max="dayKey(new Date())" /></label></div>
-    <p class="source-line" :title="state.usage.source">本机日志<span v-if="state.usage.scannedAt"> · 扫描于 {{ dateText(state.usage.scannedAt) }}</span><span v-if="period === 'custom'"> · {{ start }} — {{ end }}</span><span class="info-hint" aria-label="统计范围说明" title="包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。"><Info :size="12" /></span></p>
     <div v-for="warning in state.usage.warnings" :key="warning" class="notice warning" role="status">{{ warning }}</div>
-    <div class="summary-strip" :class="{ compact: page !== 'overview' }">
-      <div><span class="metric-label">总 Tokens</span><strong :title="state.usage.scannedAt === null ? '尚未读取本机日志' : total.tokens.toLocaleString()">{{ state.usage.scannedAt ? shortTokens(total.tokens) : '—' }}</strong><span v-if="page === 'overview' && changeText('tokens')" class="comparison">{{ changeText('tokens') }} <span>较上期</span></span></div>
-      <div :title="`API 等价估算，非订阅账单。${total.unpriced} 条记录未定价。`"><span class="metric-label">{{ costLabel(total) }}</span><strong>{{ state.usage.scannedAt ? summaryMoney(total) : '—' }}</strong><span v-if="page === 'overview' && changeText('cost')" class="comparison">{{ changeText('cost') }} <span>较上期</span></span></div>
-      <div><span class="metric-label">对话</span><strong>{{ state.usage.scannedAt ? total.sessions.toLocaleString() : '—' }}</strong></div>
-      <div title="缓存命中 ÷ 全部输入"><span class="metric-label">缓存命中率</span><strong>{{ state.usage.scannedAt ? percent(total.hitRate) : '—' }}</strong></div>
+    <div class="usage-summary">
+      <div class="summary-strip" :class="{ compact: page !== 'overview' }">
+        <div><span class="metric-label">总 Tokens</span><strong :title="state.usage.scannedAt === null ? '尚未读取本机日志' : total.tokens.toLocaleString()">{{ state.usage.scannedAt ? shortTokens(total.tokens) : '—' }}</strong><span v-if="page === 'overview' && changeText('tokens')" class="comparison">{{ changeText('tokens') }} <span>较上期</span></span></div>
+        <div :title="`API 等价估算，非订阅账单。${total.unpriced} 条记录未定价。`"><span class="metric-label">{{ costLabel(total) }}</span><strong>{{ state.usage.scannedAt ? summaryMoney(total) : '—' }}</strong><span v-if="page === 'overview' && changeText('cost')" class="comparison">{{ changeText('cost') }} <span>较上期</span></span></div>
+      </div>
+      <div class="summary-details"><span>{{ state.usage.scannedAt ? total.sessions.toLocaleString() : '—' }} 个对话</span><span title="缓存命中 ÷ 全部输入">缓存命中率 {{ state.usage.scannedAt ? percent(total.hitRate) : '—' }}</span><span v-if="page === 'overview' && state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - 1) }}</span></div>
     </div>
-    <p v-if="page === 'overview' && state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - 1) }}</p>
     <template v-if="page === 'overview'">
       <section class="surface chart-section"><div class="section-heading"><h2>用量趋势</h2><span>{{ metric === 'tokens' ? 'Tokens' : costLabel(total) }}</span></div><Chart v-if="records.length" :option="trend" :label="`当前期间${metric === 'tokens' ? 'Token' : '费用'}趋势`" :animations="state.settings.animations" /><div v-else class="empty-state chart-empty">{{ state.usage.scannedAt ? '此时间范围没有用量记录' : '尚未读取本机日志' }}</div></section>
       <div class="analysis-grid">
@@ -131,7 +134,7 @@ const hasColumn = (name: string) => props.state.settings.detailColumns.includes(
         </div><div v-else class="empty-state">尚未读取本机日志</div></section>
         <section class="surface"><div class="section-heading"><h2>消耗排行</h2><select v-model="groupBy" class="native-select small" aria-label="排行分组"><option value="model">按模型</option><option value="project">按项目</option></select></div><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : '暂无记录' }}</div><button v-for="group in groups.slice(0, 5)" :key="group.key" class="ranking-row" @click="showDetail(group.name, group.records)"><span :title="group.key">{{ group.name }}</span><strong>{{ metric === 'tokens' ? shortTokens(group.total.tokens) : summaryMoney(group.total) }}</strong><ChevronRight :size="14" /></button></section>
       </div>
-      <section class="surface heatmap-section"><div class="section-heading"><h2>最近 53 周</h2><div class="segmented small" role="group" aria-label="热力图指标"><label :class="{ active: heatMetric === 'tokens' }"><input v-model="heatMetric" class="sr-only" type="radio" name="heatmap-metric" value="tokens" />Tokens</label><label :class="{ active: heatMetric === 'cost' }"><input v-model="heatMetric" class="sr-only" type="radio" name="heatmap-metric" value="cost" />费用</label></div></div><Chart v-if="state.usage.scannedAt !== null" :option="heatmap" label="最近53周每日用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">尚未读取本机日志</div><p v-if="state.usage.scannedAt !== null" class="heatmap-legend">低 <span class="heatmap-scale" /> 高<span v-if="heatMetric === 'cost'"> · 虚线表示含未定价记录</span></p></section>
+      <section class="surface heatmap-section"><div class="section-heading"><h2>最近 53 周</h2><SlidingSelection v-slot="{ highlight }" :selection="heatMetric" class="segmented small" role="group" aria-label="热力图指标"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="heatMetric === 'tokens'"><input v-if="!highlight" v-model="heatMetric" class="sr-only" type="radio" name="heatmap-metric" value="tokens" />Tokens</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="heatMetric === 'cost'"><input v-if="!highlight" v-model="heatMetric" class="sr-only" type="radio" name="heatmap-metric" value="cost" />费用</component></SlidingSelection></div><Chart v-if="state.usage.scannedAt !== null" :option="heatmap" label="最近53周每日用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">尚未读取本机日志</div><p v-if="state.usage.scannedAt !== null" class="heatmap-legend">低 <span class="heatmap-scale" /> 高<span v-if="heatMetric === 'cost'"> · 虚线表示含未定价记录</span></p></section>
     </template>
     <section v-else class="surface table-surface">
       <div class="section-heading"><h2>{{ page === 'sessions' ? '对话明细' : '项目汇总' }} <span class="count">{{ state.usage.scannedAt === null ? '—' : groups.length }}</span></h2><label class="search-box"><Search :size="14" /><input v-model="search" :placeholder="page === 'sessions' ? '搜索对话或项目' : '搜索项目'" aria-label="搜索" /></label></div>
