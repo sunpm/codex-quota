@@ -1,0 +1,442 @@
+use quota_core::{
+    ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow, RateLimitResetCredits, RecoveryTracker,
+    RefreshSchedule, ResetAnnouncement, ResetAnnouncementFeed, ResetAnnouncementTracker,
+    UsageRecord, SWIFT_EPOCH_OFFSET,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
+
+pub fn now() -> f64 {
+    chrono::Utc::now().timestamp_millis() as f64 / 1000.0
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Settings {
+    pub monitoring_enabled: bool,
+    pub recovery_notifications: bool,
+    pub reset_credit_reminders: bool,
+    pub announcement_notifications: bool,
+    pub show_tray: bool,
+    pub launch_at_login: bool,
+    pub animations: bool,
+    pub refresh_interval: u64,
+    pub automatic_updates: bool,
+    pub today_metrics: Vec<String>,
+    pub detail_columns: Vec<String>,
+}
+
+impl Settings {
+    pub fn from_preferences(p: &BTreeMap<String, Value>) -> Self {
+        let flag = |key: &str, default| p.get(key).and_then(Value::as_bool).unwrap_or(default);
+        let today = p
+            .get("usage.sidebarToday.v1")
+            .and_then(Value::as_u64)
+            .unwrap_or(1);
+        Self {
+            monitoring_enabled: flag("service.codex.enabled", true),
+            recovery_notifications: flag("service.codex.notifications", true),
+            reset_credit_reminders: flag("resetCredits.expirationReminders", false),
+            announcement_notifications: flag("resetAnnouncements.notifications", false),
+            show_tray: flag(
+                "menuBar.codex.visible",
+                flag("menuBar.visible", true) && flag("service.codex.menuBar", true),
+            ),
+            launch_at_login: flag("launchAtLogin", false),
+            animations: flag("appearance.animationsEnabled", true),
+            refresh_interval: p
+                .get("quota.refreshIntervalSeconds")
+                .and_then(Value::as_u64)
+                .unwrap_or(300)
+                .max(30),
+            automatic_updates: flag(
+                "SUEnableAutomaticChecks",
+                flag("updates.automaticallyChecks", true),
+            ),
+            today_metrics: [(1, "tokens"), (2, "cost"), (4, "records"), (8, "hitRate")]
+                .into_iter()
+                .filter(|(bit, _)| today & bit != 0)
+                .map(|(_, name)| name.into())
+                .collect(),
+            detail_columns: [
+                ("speed", true),
+                ("firstToken", true),
+                ("cacheWrite", false),
+                ("billingTier", false),
+            ]
+            .into_iter()
+            .filter(|(name, default)| flag(&format!("usage.columns.{name}"), *default))
+            .map(|(name, _)| name.into())
+            .collect(),
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), String> {
+        if self.refresh_interval < 30 || self.refresh_interval > i32::MAX as u64 {
+            return Err("刷新间隔必须为 30 秒至 2147483647 秒。".into());
+        }
+        if self
+            .today_metrics
+            .iter()
+            .any(|v| !["tokens", "cost", "records", "hitRate"].contains(&v.as_str()))
+            || self.detail_columns.iter().any(|v| {
+                !["speed", "firstToken", "cacheWrite", "billingTier"].contains(&v.as_str())
+            })
+        {
+            return Err("用量显示设置无效。".into());
+        }
+        Ok(())
+    }
+
+    pub fn save_into(&self, p: &mut BTreeMap<String, Value>) {
+        for (key, value) in [
+            ("service.codex.enabled", self.monitoring_enabled),
+            ("service.codex.notifications", self.recovery_notifications),
+            (
+                "resetCredits.expirationReminders",
+                self.reset_credit_reminders,
+            ),
+            (
+                "resetAnnouncements.notifications",
+                self.announcement_notifications,
+            ),
+            ("menuBar.codex.visible", self.show_tray),
+            ("launchAtLogin", self.launch_at_login),
+            ("appearance.animationsEnabled", self.animations),
+            ("updates.automaticallyChecks", self.automatic_updates),
+            ("SUEnableAutomaticChecks", self.automatic_updates),
+        ] {
+            p.insert(key.into(), json!(value));
+        }
+        p.insert(
+            "quota.refreshIntervalSeconds".into(),
+            json!(self.refresh_interval),
+        );
+        let bits: u64 = [(1, "tokens"), (2, "cost"), (4, "records"), (8, "hitRate")]
+            .into_iter()
+            .filter(|(_, name)| self.today_metrics.iter().any(|value| value == name))
+            .map(|(bit, _)| bit)
+            .sum();
+        p.insert("usage.sidebarToday.v1".into(), json!(bits));
+        for key in ["speed", "firstToken", "cacheWrite", "billingTier"] {
+            p.insert(
+                format!("usage.columns.{key}"),
+                json!(self.detail_columns.iter().any(|v| v == key)),
+            );
+        }
+    }
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct QuotaSnapshot {
+    pub windows: Vec<QuotaWindow>,
+    pub reset_credits: Option<RateLimitResetCredits>,
+    pub history: BTreeMap<String, QuotaSeries>,
+    pub error: Option<String>,
+    pub last_success: Option<f64>,
+    pub refreshing: bool,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AnnouncementSnapshot {
+    pub events: Vec<ResetAnnouncement>,
+    pub error: Option<String>,
+    pub source_status: Option<String>,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageSnapshot {
+    pub records: Vec<UsageRecord>,
+    pub project_roots: BTreeMap<String, String>,
+    pub warnings: Vec<String>,
+    pub scanned_at: Option<f64>,
+    pub file_count: usize,
+    pub refreshing: bool,
+    pub source: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct DisplayPrice {
+    #[serde(flatten)]
+    pub price: ModelPricing,
+    pub custom: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateState {
+    pub status: String,
+    pub version: Option<String>,
+    pub notes: Option<String>,
+    pub error: Option<String>,
+    pub progress: Option<f64>,
+    pub can_install: bool,
+}
+impl Default for UpdateState {
+    fn default() -> Self {
+        Self {
+            status: "idle".into(),
+            version: None,
+            notes: None,
+            error: None,
+            progress: None,
+            can_install: false,
+        }
+    }
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSnapshot {
+    pub settings: Settings,
+    pub quota: QuotaSnapshot,
+    pub announcements: AnnouncementSnapshot,
+    pub usage: UsageSnapshot,
+    pub prices: Vec<DisplayPrice>,
+    pub price_date: String,
+    pub version: String,
+    pub platform: String,
+    pub update: UpdateState,
+    pub error: Option<String>,
+}
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SavedAnnouncements {
+    pub feed: Option<ResetAnnouncementFeed>,
+    pub etag: Option<String>,
+    pub tracker: ResetAnnouncementTracker,
+    pub next_request: f64,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct SavedState {
+    pub version: u32,
+    pub preferences: BTreeMap<String, Value>,
+    pub recovery: RecoveryTracker,
+    pub quota_history: QuotaHistory,
+    pub schedule: RefreshSchedule,
+    pub reminded_credits: BTreeMap<String, f64>,
+    pub announcements: SavedAnnouncements,
+    pub catalog: BTreeMap<String, ModelPricing>,
+    pub overrides: BTreeMap<String, ModelPricing>,
+    pub price_date: String,
+    pub next_update_check: f64,
+}
+
+impl Default for SavedState {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            preferences: BTreeMap::new(),
+            recovery: RecoveryTracker::default(),
+            quota_history: QuotaHistory::default(),
+            schedule: RefreshSchedule::default(),
+            reminded_credits: BTreeMap::new(),
+            announcements: SavedAnnouncements::default(),
+            catalog: quota_core::bundled_prices(),
+            overrides: BTreeMap::new(),
+            price_date: quota_core::BUNDLED_PRICE_DATE.into(),
+            next_update_check: 0.0,
+        }
+    }
+}
+
+impl SavedState {
+    pub fn load(path: &Path) -> Result<Self, String> {
+        match std::fs::read(path) {
+            Ok(bytes) => {
+                let mut saved: Self = serde_json::from_slice(&bytes)
+                    .map_err(|_| "设置文件无法读取；原文件已保留，请修复后重新打开。")?;
+                if saved.version != 1 {
+                    return Err("设置版本不兼容；原文件已保留，请使用兼容版本。".into());
+                }
+                saved.catalog.retain(|_, price| price.is_valid());
+                saved.overrides.retain(|_, price| price.is_valid());
+                Ok(saved)
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Self::migrate_legacy(),
+            Err(_) => Err("无法读取设置文件，请检查访问权限。".into()),
+        }
+    }
+
+    fn migrate_legacy() -> Result<Self, String> {
+        let mut saved = Self::default();
+        #[cfg(target_os = "macos")]
+        if std::env::var_os("CODEX_QUOTA_DATA_DIR").is_none() {
+            let path = dirs::home_dir()
+                .ok_or("无法找到用户目录")?
+                .join("Library/Preferences/local.codexquotadock.app.plist");
+            if !path.exists() {
+                return Ok(saved);
+            }
+            let plist =
+                plist::Value::from_file(path).map_err(|_| "旧版偏好读取失败；原文件已保留。")?;
+            let dictionary = plist
+                .as_dictionary()
+                .ok_or("旧版偏好格式不兼容；原文件已保留。")?;
+            for (key, value) in dictionary {
+                if let Some(v) = value.as_boolean() {
+                    saved.preferences.insert(key.clone(), json!(v));
+                } else if let Some(v) = value.as_signed_integer() {
+                    saved.preferences.insert(key.clone(), json!(v));
+                } else if let Some(v) = value.as_string() {
+                    saved.preferences.insert(key.clone(), json!(v));
+                }
+            }
+            let data = |key: &str| -> Result<Option<Value>, String> {
+                dictionary
+                    .get(key)
+                    .and_then(plist::Value::as_data)
+                    .map(|bytes| {
+                        serde_json::from_slice(bytes)
+                            .map_err(|_| "旧版保存数据格式不兼容；原文件已保留。".into())
+                    })
+                    .transpose()
+            };
+            if let Some(value) = data("recoveryState.v2")? {
+                saved.recovery.state = value
+                    .get("states")
+                    .and_then(|v| v.get("codex"))
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|_| "旧版通知状态无法迁移。")?;
+            } else if let Some(value) = data("recoveryState.v1")? {
+                saved.recovery.state =
+                    Some(serde_json::from_value(value).map_err(|_| "旧版通知状态无法迁移。")?);
+            }
+            if let Some(mut value) = data("quotaHistory.v1")? {
+                convert_swift_dates(&mut value, "");
+                saved.quota_history =
+                    serde_json::from_value(value).map_err(|_| "旧版额度历史无法迁移。")?;
+            }
+            if let Some(mut value) = data("resetAnnouncements.state.v1")? {
+                convert_swift_dates(&mut value, "");
+                saved.announcements =
+                    serde_json::from_value(value).map_err(|_| "旧版重置动态无法迁移。")?;
+            }
+            if let Some(mut value) = data("resetCredits.reminded.v1")? {
+                convert_swift_dates(&mut value, "seen");
+                saved.reminded_credits =
+                    serde_json::from_value(value).map_err(|_| "旧版重置卡提醒无法迁移。")?;
+            }
+            if let Some(value) = data("usage.pricing.catalog.v1")? {
+                saved.catalog =
+                    serde_json::from_value(value).map_err(|_| "旧版定价目录无法迁移。")?;
+            }
+            if let Some(value) = data("usage.pricing.overrides.v1")? {
+                saved.overrides =
+                    serde_json::from_value(value).map_err(|_| "旧版自定义定价无法迁移。")?;
+            }
+            if let Some(value) = saved
+                .preferences
+                .get("usage.pricing.date")
+                .and_then(Value::as_str)
+            {
+                saved.price_date = value.into();
+            }
+        }
+        saved.catalog.retain(|_, price| price.is_valid());
+        saved.overrides.retain(|_, price| price.is_valid());
+        Ok(saved)
+    }
+
+    pub fn prices(&self) -> BTreeMap<String, ModelPricing> {
+        let mut prices = self.catalog.clone();
+        prices.extend(self.overrides.clone());
+        prices.retain(|_, price| price.service == "codex");
+        prices
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn convert_swift_dates(value: &mut Value, field: &str) {
+    let date_fields = [
+        "date",
+        "lastObservation",
+        "resetsAt",
+        "nextRequest",
+        "checkedAt",
+        "lastCollectedAt",
+        "lastVerifiedAt",
+        "confirmedAt",
+        "through",
+        "updatedAt",
+        "publishedAt",
+    ];
+    match value {
+        Value::Object(fields) => {
+            for (key, value) in fields {
+                convert_swift_dates(value, if field == "seen" { "date" } else { key });
+            }
+        }
+        Value::Array(values) => {
+            for value in values {
+                convert_swift_dates(value, field);
+            }
+        }
+        Value::Number(number) if date_fields.contains(&field) => {
+            if let Some(seconds) = number.as_f64() {
+                *value = json!(seconds + SWIFT_EPOCH_OFFSET);
+            }
+        }
+        _ => {}
+    }
+}
+
+pub struct Store {
+    pub saved: SavedState,
+    pub snapshot: AppSnapshot,
+    pub path: PathBuf,
+    pub writable: bool,
+    pub continuous: bool,
+    pub announcements_refreshing: bool,
+    pub updating_prices: bool,
+}
+
+impl Store {
+    pub fn commit(&mut self, saved: SavedState) -> Result<(), String> {
+        let previous = std::mem::replace(&mut self.saved, saved);
+        let result = self.persist();
+        if result.is_err() {
+            self.saved = previous;
+        }
+        result
+    }
+
+    pub fn persist(&mut self) -> Result<(), String> {
+        if !self.writable {
+            return Err(self
+                .snapshot
+                .error
+                .clone()
+                .unwrap_or_else(|| "设置无法保存".into()));
+        }
+        let result = quota_core::write_json_atomic(&self.path, &self.saved);
+        self.snapshot.error = result.as_ref().err().cloned();
+        result
+    }
+
+    pub fn reprice(&mut self) {
+        let prices = self.saved.prices();
+        for record in &mut self.snapshot.usage.records {
+            record.cost = quota_core::price_record(record, &prices).map(|v| v.to_string());
+        }
+        self.snapshot.prices = prices
+            .into_iter()
+            .map(|(key, price)| DisplayPrice {
+                custom: self.saved.overrides.contains_key(&key),
+                price,
+            })
+            .collect();
+        self.snapshot.price_date = self.saved.price_date.clone();
+    }
+}

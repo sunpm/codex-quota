@@ -18,19 +18,19 @@
 
 ## 项目结构
 
-- Codex 专用的原生 macOS 额度与用量应用，以主窗口为主体，菜单栏额度显示可选；Swift Package，最低 macOS 13，应用内更新依赖固定版本的 Sparkle。
-- `Sources/CodexQuota/`：入口、服务客户端、监测调度、SwiftUI 面板和 AppKit 菜单栏。
-- `Sources/QuotaCore/`：额度模型、响应解析、倒计时与通知判定；保持可离线验证。
-- `Sources/CZstd/`：随应用静态编译的 Zstandard 解码源码；版本、生成方式和许可见 `THIRD_PARTY_NOTICES.md`，不依赖系统安装的 `zstd`。
-- `Tests/QuotaCoreTests/`：可执行的自包含检查，不依赖完整 Xcode / XCTest。
-- `Tests/AppChecks/`：注入模拟客户端检查监测流程，可生成离线界面预览。
-- `Resources/`：应用元数据、图标、随包分发的第三方许可。
-- `scripts/test.sh`、`scripts/build.sh` 和 `scripts/package-dmg.sh`：验证、应用构建及按架构打包 DMG 的入口；产物放 `dist/`，临时预览放 `work/`。
+- Codex 专用的桌面额度与用量应用，支持 macOS 13+（Apple Silicon / Intel）与 Windows x64；主窗口为主体，菜单栏 / 托盘可选。
+- `src/`：Vue 3、TypeScript 与 shadcn-vue 界面，Vite 构建，Apache ECharts 按需加载图表。
+- `src-tauri/`：Rust 桌面入口、Codex 子进程、监测调度、系统集成、设置迁移与 Tauri updater。
+- `crates/quota-core/`：额度、日志解析、增量扫描、历史、Decimal 定价与通知判定；保持与桌面运行时分离。
+- `Sources/`、`Tests/` 和 `Package.swift`：保留的 Swift 实现与已有检查，供迁移规则对照；不参与 Tauri 生产构建。`Sources/CZstd/` 为旧版静态解码源码，勿手改生成文件。
+- `Resources/`：品牌资源和随包许可。`dependencies-LICENSES.txt` 由 `scripts/collect-licenses.mjs` 从锁定依赖生成，不能手工修改。
+- `scripts/test.sh`、`scripts/build.sh` / `scripts/build.mjs` 和 `scripts/package-dmg.sh`：验证、跨平台构建与 Mac 架构打包入口。前端产物在 `dist-web/`，用户安装包在 `dist/`，临时文件在 `work/`。
+- 打包、更新与发布说明统一维护在 `docs/updating.md`，Release 固定提示源为 `docs/release-notes.md`；旧打包工具与说明分别归档到 `scripts/legacy/`、`docs/archive/`，旧产物写入 `dist/legacy/`。
 
 ## 实现与界面
 
 - 产品名为 `Codex Quota`，仓库为 `sunpm/codex-quota`；保留 Bundle ID `local.codexquotadock.app`、原配置键及 `CodexQuotaDock` 历史数据目录，更新检查兼容旧附件名。
-- 优先 SwiftUI / AppKit 系统控件、SF Symbols 和原生 macOS 风格；不添加无关装饰或大面积自造背景。
+- 界面使用 Vue 3 + shadcn-vue，简单日期、单选和文件交互优先可用的原生控件。保持紧凑桌面风格、系统字体与浅深色适配；不添加无关装饰或大面积自造背景。
 - 百分比和倒计时使用等宽数字。额度状态色统一使用 `quotaColor`；品牌识别与额度状态分开。
 - 仅接入和展示 Codex，保留额度监测与用量分析；不恢复其他服务的接入、解析或选择器。旧服务标识仅用于兼容已有持久化数据，不参与新采集与展示。
 - 启动显示主窗口和 Dock 图标；关闭窗口继续后台监测，有菜单栏额度入口时隐藏 Dock 图标，否则保留 Dock 入口。重新打开复用同一窗口并恢复 Dock 图标；`⌘Q` 或菜单栏退出项彻底退出。菜单栏显示偏好与额度监测开关独立。
@@ -43,17 +43,17 @@
 - 仅在启用额度监测时复用 Codex 登录态；凭据不输出到日志、错误、测试夹具或 UserDefaults，不改写 Codex 登录态。
 - 用量分析只读取 Codex 日志；旧版其他服务的历史和自定义价格保留存储，不参与统计或展示。“清除已保存历史”只清除 Codex 历史，不删除源日志或其他服务旧记录。
 - 引用或改编外部代码、图标时保留来源和许可，并同步 `THIRD_PARTY_NOTICES.md` 与打包资源。
-- 应用内更新由 Sparkle 负责下载、验签、安装和重启，默认自动检查，安装必须由用户确认；公钥由构建环境注入，私钥仅用于发布签名。双架构更新清单、密钥配置和发布约定见 `docs/updating.md`。
+- 应用内更新由 Tauri updater 负责下载、验签、安装和重启，默认自动检查，安装必须由用户确认；公钥由构建环境注入，私钥仅用于发布签名。旧 Sparkle 版本需手动迁移一次，不将新更新包写入旧 appcast。多平台清单、独立密钥配置和发布约定见 `docs/updating.md`。
 
 ## 验证与打包
 
 - 按风险选择必要验证；纯文案无需跑完整构建，跨模块或服务接入应做离线解析/状态测试及编译验证。
-- 核心检查：`bash scripts/test.sh`；仅编译：`CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-module-cache" swift build --disable-sandbox`。
-- 本地打包使用 `bash scripts/build.sh`，不要另拼签名/导出流程。构建成功只证明编译通过，不等于服务已实测连接。
+- 验证入口：`bash scripts/test.sh`；其中 `pnpm build` 执行 TypeScript 检查与前端构建，`cargo check --locked --manifest-path src-tauri/Cargo.toml` 检查桌面实现。macOS 另执行 `scripts/check-legacy.sh` 中未修改的 Swift 检查；旧检查不能当成 Rust 实现已通过测试。
+- 本地打包使用 `bash scripts/build.sh`（PowerShell 用 `node scripts/build.mjs`），由锁定的 Tauri CLI 打包，不另拼签名 / 导出流程。Mac 包在 macOS 构建，Windows 包在 Windows 构建；构建成功不等于真实服务连接或系统交互已验收。
 - 带凭据的真实服务验证需有相应授权；优先用不含隐私的响应夹具验证解析、去重、账号切换和开关行为。
 - 人工验收覆盖菜单栏、展开面板、Codex 空态/错误态、设置持久化、系统通知及退出清理。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
-- `.github/workflows/release.yml` 在推送 `vX.Y.Z` 或预发布标签后运行现有检查，分别构建 Apple Silicon / Intel 应用，签名并验证对应 appcast，再将两个 DMG、两个清单与 SHA256 校验值上传完整后公开发布；预发布不替换 latest。更新说明由 GitHub 原生 Release Notes 按最近正式版本以来的 PR 生成，配置见 `.github/release.yml`。推送版本标签即触发发布，仍需用户对应授权，不能把参考项目的“发版”命令视为本项目预授权。
+- `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64。`release.yml` 手动运行只生成三平台安装包 artifacts；推送 `vX.Y.Z` 或预发布标签后生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在发布流程中预先重复编译。预发布不替换 latest，更新说明按 GitHub 原生 Release Notes 从最近正式版累计。推送版本标签即触发发布，仍需用户对应授权。
 
 ## Git 提交规范
 

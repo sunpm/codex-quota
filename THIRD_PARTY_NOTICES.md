@@ -1,5 +1,31 @@
 # 第三方来源
 
+## 跨平台应用与前端依赖
+
+当前生产入口使用 Tauri 2 + Vue 3 + Rust + TypeScript + Vite + Apache ECharts + shadcn-vue。依赖版本由 `pnpm-lock.yaml`、`src-tauri/Cargo.lock` 固定。构建脚本从已安装包生成 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`，包含包名、版本、许可标识、来源及包中附带的许可原文；重复原文只保留一份并按编号引用。生成文件随安装包分发，不手动修改或提交。
+
+| 组件 | 用途 | 上游许可 |
+| --- | --- | --- |
+| [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、更新 | MIT OR Apache-2.0 |
+| [Vue](https://github.com/vuejs/core) | 界面与响应式状态 | MIT |
+| [TypeScript](https://github.com/microsoft/TypeScript) | 类型检查 | Apache-2.0 |
+| [Vite](https://github.com/vitejs/vite) | 前端开发与构建 | MIT |
+| [Apache ECharts](https://github.com/apache/echarts) | 用量趋势、额度趋势与热力图 | Apache-2.0；包内 NOTICE 同时保留 |
+| [shadcn-vue](https://github.com/unovue/shadcn-vue) | 通过官方 CLI 引入的界面组件源码 | MIT；Copyright (c) 2023 unovue |
+| [Reka UI](https://github.com/unovue/reka-ui) | shadcn-vue 交互基础 | MIT |
+| [Lucide](https://github.com/lucide-icons/lucide) | 线性图标 | ISC |
+| [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | 组件样式构建 | MIT |
+| [rust_decimal](https://github.com/paupino/rust-decimal) | 十进制定价计算 | MIT |
+| [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
+
+以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；按需调整在调用层和主题 token 完成，不手改生成文件。
+
+Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-switch 等既有来源及版权声明。此前调研的 OpenTokenUsage 和 Sessions Viewer 用于比较跨平台路线，未直接复制其实现或引入依赖。
+
+应用的缺口 Q 图标由本项目 `scripts/make-icon.swift` 绘制，1024 像素源 PNG 经官方 `pnpm tauri icon` 生成 `src-tauri/icons/` 内的平台图标。单色托盘图标以 `src-tauri/icons/tray.svg` 为源，通过 `pnpm tauri icon --png 32` 生成 `tray.png`。生成命令见 README，二进制图标不手工修改。
+
+以下记录保留原实现的历史来源；其中 SwiftUI / AppKit / Swift Charts / Sparkle 的实现描述属于仍保留在 `Sources/` 的旧版，不表示 Tauri 应用继续链接这些框架。旧版相关许可继续保留，避免丢失历史归属。
+
 ## AIHOT 重置动态数据
 
 Codex 重置动态通过 [AIHOT Public API](https://aihot.news/openapi-v1.json) 的 `/api/v1/codex-resets/recent` 获取公开公告、中文摘录与原帖链接，接口核对日期为 2026-10-28。客户端根据公开契约自行实现，未复制 AIHOT 或其他监测项目的代码，未引入依赖。已参考 [Issue #276](https://github.com/KKKKhazix/AIHOT/issues/276) 区分过期预告和确认事件。
@@ -25,7 +51,7 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 额度趋势的悬停交互核对了 CodexBar 的悬停选错日期问题 [#3062](https://github.com/steipete/CodexBar/issues/3062)（2026-10-30）。使用本项目原生 Charts 与实测点吸附逻辑实现，空白时段明确显示“无采样”，未复制上游组件或增加依赖；沿用随包分发的 CodexBar MIT 声明。
 
-本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新服务；应用内更新使用下文的 Sparkle。
+本项目继续使用 Codex App Server 复用 Codex 登录，并保留自身的额度恢复通知判定。未引入外部项目的凭据刷新服务。当前应用内更新使用 Tauri updater；下文 Sparkle 声明仅对应归档的 Swift 实现。
 
 主窗口、侧栏菜单及设置分组的视觉层级参考 [cc-switch v4 主界面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/main-zh.png)、[用量页面](https://github.com/farion1231/cc-switch/blob/main/assets/release-notes/v4.0.0/usage-zh.png) 与 `src/index.css` 的中性色分层（参考日期：2026-10-28）。使用本项目的 SwiftUI / AppKit 控件实现，未复制其前端组件或加入依赖；沿用下文的 cc-switch MIT 许可声明。
 
@@ -55,11 +81,11 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
-软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。构建脚本的嵌套签名流程按该项目改编。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
+旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，现归档于 `scripts/legacy/build.sh`。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
 
-## Sparkle 应用内更新
+## Sparkle 应用内更新（旧版归档）
 
-通过 Swift Package Manager 固定接入 [sparkle-project/Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1)，提交 `ab7d71291238df6e0492143b120c9b696a35f603`。使用官方预编译 framework、安装助手及发布签名工具，不修改上游二进制代码。
+旧 Swift 实现通过 Swift Package Manager 固定接入 [sparkle-project/Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1)，提交 `ab7d71291238df6e0492143b120c9b696a35f603`。使用官方预编译 framework、安装助手及发布签名工具，不修改上游二进制代码；当前 Tauri 产物不链接这些框架。历史流程见 [归档说明](docs/archive/updating-sparkle.md)。
 
 Sparkle 主体采用 MIT License，并包含 BSD、zlib 等组件许可；完整上游 `LICENSE` 保存在 `Resources/ThirdPartyNotices/Sparkle-LICENSE.txt`，随应用分发。依赖版本与制品 checksum 由 `Package.swift`、`Package.resolved` 及上游 package manifest 固定。
 
