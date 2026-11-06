@@ -30,7 +30,7 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
     @Published private(set) var release: Release?
     @Published private(set) var error: String?
     @Published private(set) var automaticallyChecks: Bool
-    @Published private(set) var completedManualChecks = 0
+    @Published var showsCheckResult = false
     @Published private(set) var downloadedBytes: UInt64 = 0
     @Published private(set) var expectedBytes: UInt64 = 0
     @Published private(set) var extractionProgress = 0.0
@@ -161,6 +161,7 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         if let configurationError {
             error = configurationError
             phase = .failed
+            showsCheckResult = true
             return
         }
         guard let updater else { return }
@@ -193,11 +194,6 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         retryTermination()
     }
 
-    private func finishManualCheck() {
-        if manualCheckPending && confirmedBuild == nil { completedManualChecks += 1 }
-        manualCheckPending = false
-    }
-
     // MARK: SPUUserDriver — Sparkle 保证在主线程调用。
 
     func show(_ request: SPUUpdatePermissionRequest, reply: @escaping (SUUpdatePermissionResponse) -> Void) {
@@ -225,13 +221,13 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         extractionProgress = 0
         error = nil
         phase = .available
-        finishManualCheck()
         let requestedBuild = confirmedBuild
         confirmedBuild = nil
         if informationOnly {
             error = "该版本需要从发布页手动安装。"
             reply(.dismiss)
         } else if requestedBuild == appcastItem.versionString {
+            manualCheckPending = false
             installWasConfirmed = true
             phase = .downloading
             reply(.install)
@@ -257,6 +253,7 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
         manualCheckPending = false
         confirmedBuild = nil
         showSettings?()
+        showsCheckResult = true
         acknowledgement()
     }
 
@@ -343,23 +340,27 @@ final class AppUpdateModel: NSObject, ObservableObject, SPUUserDriver, SPUUpdate
                 ? "已是最新正式版" : "当前版本高于最新正式版"
             phase = .upToDate
             self.error = nil
-            finishManualCheck()
             confirmedBuild = nil
         } else {
             phase = .failed
             self.error = error.localizedRecoverySuggestion ?? error.localizedDescription
-            manualCheckPending = false
             confirmedBuild = nil
         }
     }
 
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
-        guard !paused, let error = error as NSError?,
-              !(error.domain == SUSparkleErrorDomain && error.code == Int(SUError.noUpdateError.rawValue)),
-              !(error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled) else { return }
-        self.error = error.localizedDescription
-        phase = .failed
-        manualCheckPending = false
+        if !paused, let error = error as NSError?,
+           !(error.domain == SUSparkleErrorDomain && error.code == Int(SUError.noUpdateError.rawValue)),
+           !(error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled) {
+            self.error = error.localizedDescription
+            phase = .failed
+        }
+        // Sparkle 结束会话后再展示结果，保证弹窗里的更新按钮可立即开始新会话。
+        canCheck = updater.canCheckForUpdates && !updater.sessionInProgress
+        if manualCheckPending {
+            manualCheckPending = false
+            showsCheckResult = true
+        }
         confirmedBuild = nil
     }
 }

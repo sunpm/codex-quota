@@ -34,15 +34,7 @@ struct MainView: View {
 
     var body: some View {
         HSplitView {
-            #if compiler(>=6.2)
-            if #available(macOS 26, *) {
-                sidebar.glassEffect(in: RoundedRectangle(cornerRadius: 16)).padding(8)
-            } else {
-                sidebar.background(Color(nsColor: .windowBackgroundColor))
-            }
-            #else
             sidebar.background(Color(nsColor: .windowBackgroundColor))
-            #endif
             VStack(spacing: 0) {
                 header
                 Divider()
@@ -65,6 +57,28 @@ struct MainView: View {
         .sheet(isPresented: $updates.showsInstalledReleaseNotes) {
             InstalledReleaseNotesView(version: updates.currentVersion, markdown: updates.installedReleaseNotes)
                 .onAppear { updates.markInstalledReleaseNotesShown() }
+        }
+        .alert(updates.status ?? "软件更新失败", isPresented: $updates.showsCheckResult) {
+            if updates.canInstall {
+                Button("稍后", role: .cancel) {}
+                Button("更新并重启", action: updates.installConfirmedUpdate)
+                    .keyboardShortcut(.defaultAction)
+            } else {
+                Button("好", role: .cancel) {}
+                if updates.error != nil {
+                    Button("查看发布页") {
+                        NSWorkspace.shared.open(updates.release?.pageURL ?? AppUpdateModel.releasesURL)
+                    }
+                }
+            }
+        } message: {
+            if let error = updates.error {
+                Text(error)
+            } else if updates.canInstall {
+                Text("当前版本 \(updates.currentVersion)。下载完成后将退出并重新打开 Codex Quota。")
+            } else {
+                Text("当前版本 \(updates.currentVersion)")
+            }
         }
         .alert("开启持久通知", isPresented: $model.showsPersistentNotificationGuide) {
             Button("前往设置…") { model.openNotificationSettings() }

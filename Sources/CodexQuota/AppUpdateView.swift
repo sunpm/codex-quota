@@ -4,7 +4,6 @@ import SwiftUI
 
 struct AppUpdateView: View {
     @ObservedObject var model: AppUpdateModel
-    @State private var showsCheckCompletion = false
     @State private var confirmsInstallation = false
 
     var body: some View {
@@ -27,10 +26,10 @@ struct AppUpdateView: View {
                 if model.checking, model.canCancel {
                     Button("取消检查", action: model.cancelDownloadOrCheck)
                 } else {
-                    Button(model.checking ? "正在检查…" : showsCheckCompletion ? "检查完成" : "检查更新") {
+                    Button(model.checking ? "正在检查…" : "检查更新") {
                         model.check()
                     }
-                        .disabled(!model.canCheckForUpdates || showsCheckCompletion)
+                        .disabled(!model.canCheckForUpdates)
                 }
             }
             if model.phase == .downloading {
@@ -78,13 +77,6 @@ struct AppUpdateView: View {
                     .keyboardShortcut(.defaultAction)
             } message: {
                 Text("下载完成后将退出并重新打开 Codex Quota。")
-            }
-            .onChange(of: model.completedManualChecks) { _ in showsCheckCompletion = true }
-            .task(id: showsCheckCompletion) {
-                guard showsCheckCompletion else { return }
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                guard !Task.isCancelled else { return }
-                showsCheckCompletion = false
             }
     }
 }
