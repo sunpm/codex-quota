@@ -4,6 +4,9 @@ export interface Settings {
   monitoringEnabled: boolean
   recoveryNotifications: boolean
   resetCreditReminders: boolean
+  resetCreditReminderMinutes: number[]
+  quotaResetReminders: boolean
+  quotaResetReminderMinutes: number[]
   announcementNotifications: boolean
   showTray: boolean
   launchAtLogin: boolean

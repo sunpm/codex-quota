@@ -1,7 +1,7 @@
 use quota_core::{
-    ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow, RateLimitResetCredits, RecoveryTracker,
-    RefreshSchedule, ResetAnnouncement, ResetAnnouncementFeed, ResetAnnouncementTracker,
-    UsageRecord, SWIFT_EPOCH_OFFSET,
+    DeadlineReminderTracker, ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow,
+    RateLimitResetCredits, RecoveryTracker, RefreshSchedule, ResetAnnouncement,
+    ResetAnnouncementFeed, ResetAnnouncementTracker, UsageRecord, SWIFT_EPOCH_OFFSET,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -20,6 +20,9 @@ pub struct Settings {
     pub monitoring_enabled: bool,
     pub recovery_notifications: bool,
     pub reset_credit_reminders: bool,
+    pub reset_credit_reminder_minutes: Vec<u32>,
+    pub quota_reset_reminders: bool,
+    pub quota_reset_reminder_minutes: Vec<u32>,
     pub announcement_notifications: bool,
     pub show_tray: bool,
     pub launch_at_login: bool,
@@ -33,6 +36,17 @@ pub struct Settings {
 impl Settings {
     pub fn from_preferences(p: &BTreeMap<String, Value>) -> Self {
         let flag = |key: &str, default| p.get(key).and_then(Value::as_bool).unwrap_or(default);
+        let reminder_minutes = |key: &str, default| {
+            p.get(key)
+                .and_then(|value| serde_json::from_value::<Vec<u32>>(value.clone()).ok())
+                .filter(|minutes| !minutes.is_empty() && minutes.iter().all(|value| *value > 0))
+                .map(|mut minutes| {
+                    minutes.sort_unstable_by(|a, b| b.cmp(a));
+                    minutes.dedup();
+                    minutes
+                })
+                .unwrap_or_else(|| vec![default])
+        };
         let today = p
             .get("usage.sidebarToday.v1")
             .and_then(Value::as_u64)
@@ -41,6 +55,9 @@ impl Settings {
             monitoring_enabled: flag("service.codex.enabled", true),
             recovery_notifications: flag("service.codex.notifications", true),
             reset_credit_reminders: flag("resetCredits.expirationReminders", false),
+            reset_credit_reminder_minutes: reminder_minutes("resetCredits.reminderMinutes", 1440),
+            quota_reset_reminders: flag("quota.resetReminders", false),
+            quota_reset_reminder_minutes: reminder_minutes("quota.resetReminderMinutes", 120),
             announcement_notifications: flag("resetAnnouncements.notifications", false),
             show_tray: flag(
                 "menuBar.codex.visible",
@@ -51,7 +68,7 @@ impl Settings {
             refresh_interval: p
                 .get("quota.refreshIntervalSeconds")
                 .and_then(Value::as_u64)
-                .unwrap_or(300)
+                .unwrap_or(60)
                 .max(30),
             automatic_updates: flag(
                 "SUEnableAutomaticChecks",
@@ -79,6 +96,18 @@ impl Settings {
         if self.refresh_interval < 30 || self.refresh_interval > i32::MAX as u64 {
             return Err("刷新间隔必须为 30 秒至 2147483647 秒。".into());
         }
+        for minutes in [
+            &self.reset_credit_reminder_minutes,
+            &self.quota_reset_reminder_minutes,
+        ] {
+            if minutes.is_empty() || minutes.contains(&0) {
+                return Err("请至少设置一个提醒时间，提前时间须为正整数分钟。".into());
+            }
+            let unique: std::collections::BTreeSet<_> = minutes.iter().collect();
+            if unique.len() != minutes.len() {
+                return Err("提醒时间不能重复。".into());
+            }
+        }
         if self
             .today_metrics
             .iter()
@@ -104,6 +133,7 @@ impl Settings {
                 "resetAnnouncements.notifications",
                 self.announcement_notifications,
             ),
+            ("quota.resetReminders", self.quota_reset_reminders),
             ("menuBar.codex.visible", self.show_tray),
             ("launchAtLogin", self.launch_at_login),
             ("appearance.animationsEnabled", self.animations),
@@ -112,6 +142,14 @@ impl Settings {
         ] {
             p.insert(key.into(), json!(value));
         }
+        p.insert(
+            "resetCredits.reminderMinutes".into(),
+            json!(self.reset_credit_reminder_minutes),
+        );
+        p.insert(
+            "quota.resetReminderMinutes".into(),
+            json!(self.quota_reset_reminder_minutes),
+        );
         p.insert(
             "quota.refreshIntervalSeconds".into(),
             json!(self.refresh_interval),
@@ -226,6 +264,7 @@ pub struct SavedState {
     pub quota_history: QuotaHistory,
     pub schedule: RefreshSchedule,
     pub reminded_credits: BTreeMap<String, f64>,
+    pub deadline_reminders: DeadlineReminderTracker,
     pub announcements: SavedAnnouncements,
     pub catalog: BTreeMap<String, ModelPricing>,
     pub overrides: BTreeMap<String, ModelPricing>,
@@ -242,6 +281,7 @@ impl Default for SavedState {
             quota_history: QuotaHistory::default(),
             schedule: RefreshSchedule::default(),
             reminded_credits: BTreeMap::new(),
+            deadline_reminders: DeadlineReminderTracker::default(),
             announcements: SavedAnnouncements::default(),
             catalog: quota_core::bundled_prices(),
             overrides: BTreeMap::new(),

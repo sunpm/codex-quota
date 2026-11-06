@@ -1,7 +1,7 @@
 import type { AppSnapshot, UsageRecord } from '@/types'
 export function emptySnapshot(): AppSnapshot {
   return {
-    settings: { monitoringEnabled: true, recoveryNotifications: true, resetCreditReminders: false, announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 300, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
+    settings: { monitoringEnabled: true, recoveryNotifications: true, resetCreditReminders: false, resetCreditReminderMinutes: [1440], quotaResetReminders: false, quotaResetReminderMinutes: [120], announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 60, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
     quota: { windows: [], resetCredits: null, history: {}, error: null, lastSuccess: null, refreshing: false },
     announcements: { events: [], error: null, sourceStatus: null },
     usage: { records: [], projectRoots: {}, warnings: [], scannedAt: null, fileCount: 0, refreshing: false, source: '' },

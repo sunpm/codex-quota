@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -179,6 +179,62 @@ impl RecoveryTracker {
                 .collect(),
         });
         recovered
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DeadlineReminderState {
+    deadline: f64,
+    observed_minutes: BTreeSet<u32>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct DeadlineReminderTracker {
+    entries: BTreeMap<String, DeadlineReminderState>,
+}
+
+impl DeadlineReminderTracker {
+    pub fn prune(&mut self, now: f64) {
+        self.entries.retain(|_, state| state.deadline > now);
+    }
+
+    /// Consume every elapsed stage, returning only the closest stage if it is new.
+    /// Call even with notifications disabled so enabling does not replay old stages.
+    pub fn observe(
+        &mut self,
+        key: String,
+        deadline: f64,
+        now: f64,
+        lead_minutes: &[u32],
+    ) -> Option<u32> {
+        if deadline <= now {
+            return None;
+        }
+        let state = self
+            .entries
+            .entry(key)
+            .or_insert_with(|| DeadlineReminderState {
+                deadline,
+                observed_minutes: BTreeSet::new(),
+            });
+        if state.deadline != deadline {
+            state.deadline = deadline;
+            state.observed_minutes.clear();
+        }
+        let due = lead_minutes
+            .iter()
+            .copied()
+            .filter(|minutes| deadline - now <= f64::from(*minutes) * 60.0)
+            .min()?;
+        let is_new = !state.observed_minutes.contains(&due);
+        state.observed_minutes.extend(
+            lead_minutes
+                .iter()
+                .copied()
+                .filter(|minutes| *minutes >= due),
+        );
+        is_new.then_some(due)
     }
 }
 
