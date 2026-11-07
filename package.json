@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.69.0",
+    "@pmun/utils": "0.17.0",
     "@tauri-apps/api": "^2",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",

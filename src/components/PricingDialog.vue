@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { deepClone } from '@pmun/utils'
 import { computed, ref } from 'vue'
 import { Plus, Search } from '@lucide/vue'
 import type { AppSnapshot, ModelPricing, TokenRates } from '@/types'
@@ -15,7 +16,7 @@ const error = ref<string | null>(null)
 const emptyRates = (): TokenRates => ({ input: null, output: null, cached: null, cacheWrite: null, cacheWriteLong: null })
 const fields = [{ key: 'input', label: '新增输入' }, { key: 'output', label: '输出' }, { key: 'cached', label: '缓存命中' }, { key: 'cacheWrite', label: '缓存写入（短期）' }, { key: 'cacheWriteLong', label: '缓存写入（长期）' }] as const
 const filtered = computed(() => props.state.prices.filter(price => price.model.toLowerCase().includes(search.value.toLowerCase())))
-function edit(price?: ModelPricing) { error.value = null; editing.value = price ? JSON.parse(JSON.stringify(price)) : { service: 'codex', model: '', rates: emptyRates(), contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null, custom: true } }
+function edit(price?: ModelPricing) { error.value = null; editing.value = price ? deepClone(price) : { service: 'codex', model: '', rates: emptyRates(), contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null, custom: true } }
 function setRate(rates: TokenRates, key: keyof TokenRates, event: Event) { const value = (event.target as HTMLInputElement).value; rates[key] = value === '' ? null : value }
 async function save() {
   if (!editing.value) return

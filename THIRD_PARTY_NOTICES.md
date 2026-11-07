@@ -8,6 +8,8 @@
 | --- | --- | --- |
 | [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、窗口状态、更新 | MIT OR Apache-2.0 |
 | [Vue](https://github.com/vuejs/core) | 界面与响应式状态 | MIT |
+| [@pmun/utils](https://github.com/sunpm/sunpm-utils) | 类型判断、本地日期运算、分组排序、金额尾零与草稿拷贝 | MIT |
+| [Day.js](https://github.com/iamkun/dayjs) | @pmun/utils 的日期处理依赖 | MIT |
 | [markdown-it](https://github.com/markdown-it/markdown-it) | 更新说明 Markdown 渲染 | MIT；Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin |
 | [DOMPurify](https://github.com/cure53/DOMPurify) | 更新说明 HTML 清理 | Apache-2.0 OR MPL-2.0；本应用选择 Apache-2.0 |
 | [TypeScript](https://github.com/microsoft/TypeScript) | 类型检查 | Apache-2.0 |
@@ -21,6 +23,8 @@
 | [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
 
 以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
+
+`@pmun/utils` 0.17.0 与 Day.js 的 MIT 许可于 2026-11-07 核对，随生成的依赖声明分发；工具方法的使用边界见 [开发说明](docs/development.md#通用工具方法)。
 
 更新说明采用 markdown-it 15.0.3 解析 Markdown 与 GitHub 注释、折叠说明，再由 DOMPurify 3.4.17 对完整渲染结果按标签、属性白名单清理；不加载图片，链接仅接受显式 HTTPS 并沿用应用的外部来源入口。两者许可分别保存在 `Resources/ThirdPartyNotices/markdown-it-LICENSE.txt` 与 `Resources/ThirdPartyNotices/DOMPurify-LICENSE.txt`，并随包分发。选择前比较了 marked、sanitize-html 与 DOMPurify；后者直接使用 WebView 的 DOM，无需额外 HTML 解析器。已核对 markdown-it 的协议相对链接问题 [#1076](https://github.com/markdown-it/markdown-it/issues/1076)、禁用 HTML 时的注释解析问题 [#1060](https://github.com/markdown-it/markdown-it/issues/1060)，以及 DOMPurify 对不完整 HTML 自动补齐的行为 [#838](https://github.com/cure53/DOMPurify/issues/838)，因此清理完整文档而非单独处理 HTML token。
 

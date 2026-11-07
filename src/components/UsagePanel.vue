@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { groupBy as groupRecords, sortBy } from '@pmun/utils'
 import { ArrowDown, ArrowDownUp, ChevronRight, CircleHelp, Search } from '@lucide/vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -55,15 +56,13 @@ function changeText(kind: Metric) {
 }
 const byHour = computed(() => period.value === 'today' || period.value === 'yesterday')
 const buckets = computed(() => {
-  const values = new Map<string, UsageRecord[]>()
-  for (const record of records.value) {
+  const values = groupRecords(records.value, record => {
     const date = new Date(record.date * 1000)
-    const key = byHour.value ? `${String(date.getHours()).padStart(2, '0')}:00` : dayKey(date)
-    const bucket = values.get(key) ?? []; bucket.push(record); values.set(key, bucket)
-  }
-  if (byHour.value) for (let hour = 0; hour < 24; hour++) { const key = `${String(hour).padStart(2, '0')}:00`; if (!values.has(key)) values.set(key, []) }
-  else if (period.value !== 'all' && range.value.days <= 366) for (let day = new Date(range.value.from * 1000); day.getTime() / 1000 < range.value.to; day = shiftDay(day, 1)) if (!values.has(dayKey(day))) values.set(dayKey(day), [])
-  return [...values].sort(([a], [b]) => a.localeCompare(b)).map(([key, records]) => ({ key, total: summarize(records) }))
+    return byHour.value ? `${String(date.getHours()).padStart(2, '0')}:00` : dayKey(date)
+  })
+  if (byHour.value) for (let hour = 0; hour < 24; hour++) values[`${String(hour).padStart(2, '0')}:00`] ??= []
+  else if (period.value !== 'all' && range.value.days <= 366) for (let day = new Date(range.value.from * 1000); day.getTime() / 1000 < range.value.to; day = shiftDay(day, 1)) values[dayKey(day)] ??= []
+  return Object.entries(values).sort(([a], [b]) => a.localeCompare(b)).map(([key, records]) => ({ key, total: summarize(records) }))
 })
 const trend = computed<EChartsCoreOption>(() => ({
   grid: { left: 54, right: 62, top: 30, bottom: 35 },
@@ -100,11 +99,10 @@ const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, grou
 const topSessions = computed(() => grouped('session').slice(0, 5))
 const heatmap = computed<EChartsCoreOption>(() => {
   const last = startOfDay(new Date(props.clock.now * 1000)), first = shiftDay(last, -370)
-  const days = new Map<string, UsageRecord[]>()
-  for (const record of availableRecords.value) { const key = dayKey(new Date(record.date * 1000)); const bucket = days.get(key) ?? []; bucket.push(record); days.set(key, bucket) }
+  const days = groupRecords(availableRecords.value, record => dayKey(new Date(record.date * 1000)))
   const data = Array.from({ length: 371 }, (_, index) => {
     const day = shiftDay(first, index)
-    const summary = summarize(days.get(dayKey(day)) ?? [])
+    const summary = summarize(days[dayKey(day)] ?? [])
     return { value: [dayKey(day), summary.tokens], summary }
   })
   return {
@@ -117,7 +115,7 @@ const heatmap = computed<EChartsCoreOption>(() => {
     series: [{ type: 'heatmap', coordinateSystem: 'calendar', data }],
   }
 })
-function showDetail(name: string, items: UsageRecord[]) { detail.value = { title: name, records: [...items].sort((a, b) => b.date - a.date) } }
+function showDetail(name: string, items: UsageRecord[]) { detail.value = { title: name, records: sortBy(items, 'date', 'desc') } }
 </script>
 
 <template>
