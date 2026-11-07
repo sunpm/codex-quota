@@ -17,27 +17,18 @@ jobs:
   notes:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     timeout-minutes: 5
     env:
       RELEASE_TAG: ${{ github.ref_name }}
-      GH_REPO: ${{ github.repository }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Generate shared release notes
-        run: |
-          mkdir -p work
-          options=()
-          previous_tag="$(gh release view --json tagName --jq .tagName 2>/dev/null || true)"
-          if [[ -n "$previous_tag" ]]; then
-            options+=(-f "previous_tag_name=$previous_tag")
-          fi
-          gh api --method POST "repos/$GH_REPO/releases/generate-notes" \
-            -f "tag_name=$RELEASE_TAG" "${options[@]}" --jq .body > work/release-changes.md
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+      - name: Read shared release notes from CHANGELOG
+        run: node scripts/release-notes.mjs
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: release-changes

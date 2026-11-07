@@ -25,7 +25,7 @@
 - 旧 Swift 应用、检查及打包脚本已移除，历史实现从 Git 历史查阅；`scripts/make-icon.swift` 仍用于当前应用图标生成。保留 Rust 中的 macOS 集成与旧数据迁移。
 - `Resources/`：随包许可。`dependencies-LICENSES.txt` 由 `scripts/collect-licenses.mjs` 从锁定依赖生成，不能手工修改；当前图标资源位于 `src-tauri/icons/`。
 - `scripts/test.sh`、`scripts/build.sh` / `scripts/build.mjs` 和 `scripts/package-dmg.sh`：验证、跨平台构建与 Mac 架构打包入口。前端产物在 `dist-web/`，用户安装包在 `dist/`，临时文件在 `work/`。
-- 打包、更新与发布说明统一维护在 `docs/updating.md`，Release 固定提示源为 `docs/release-notes.md`；旧版本的历史验收记录保存在 `docs/archive/`。
+- 打包、更新与发布说明统一维护在 `docs/updating.md`，Release 固定提示源为 `docs/release-notes.md`，版本变更源为 `CHANGELOG.md`；旧版本的历史验收记录保存在 `docs/archive/`。
 
 ## 实现与界面
 
@@ -56,7 +56,8 @@
 - 带凭据的真实服务验证需有相应授权；优先用不含隐私的响应夹具验证解析、去重、账号切换和开关行为。
 - 人工验收覆盖菜单栏、展开面板、Codex 空态/错误态、设置持久化、系统通知及退出清理。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
-- `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64。`release.yml` 手动运行只生成三平台安装包 artifacts；推送 `vX.Y.Z` 或预发布标签后生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在发布流程中预先重复编译。预发布不替换 latest，更新说明按 GitHub 原生 Release Notes 从最近正式版累计。推送版本标签即触发发布，仍需用户对应授权。
+- `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64，普通 PR 合并不发版。`pnpm release <版本>` 是手动发布入口：按最近正式版生成 GitHub 原生变更说明写入 CHANGELOG，同步 package/Cargo 版本与锁文件，经检查和终端确认后提交并推送标签。Tauri 配置与网页预览读取 `package.json` 版本，构建必须校验标签与源码一致，不用临时版本覆盖。
+- `release.yml` 手动运行只生成三平台安装包 artifacts；版本标签推送后从 CHANGELOG 提取说明并生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在 CI 发布流程中预先重复编译。预发布不替换 latest。推送版本标签即触发发布，仍需用户对应授权；实现发布脚本不等于授权执行发布。
 
 ## Git 提交规范
 

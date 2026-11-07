@@ -1,11 +1,12 @@
 import type { AppSnapshot, UsageRecord } from '@/types'
+import { version } from '../../package.json'
 export function emptySnapshot(): AppSnapshot {
   return {
     settings: { monitoringEnabled: true, recoveryNotifications: true, resetCreditReminders: false, resetCreditReminderMinutes: [1440], quotaResetReminders: false, quotaResetReminderMinutes: [120], announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 60, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
     quota: { windows: [], resetCredits: null, history: {}, error: null, lastSuccess: null, refreshing: false },
     announcements: { events: [], error: null, sourceStatus: null },
     usage: { records: [], projectRoots: {}, warnings: [], scannedAt: null, fileCount: 0, refreshing: false, source: '' },
-    prices: [], priceDate: '', version: '0.23.0', platform: 'preview', update: { status: 'idle', version: null, notes: null, error: null, progress: null, canInstall: false }, installedReleaseNotes: null, notificationGuideShown: false,
+    prices: [], priceDate: '', version, platform: 'preview', update: { status: 'idle', version: null, notes: null, error: null, progress: null, canInstall: false }, installedReleaseNotes: null, notificationGuideShown: false,
   }
 }
 export function previewSnapshot(): AppSnapshot {

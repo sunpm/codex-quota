@@ -4,7 +4,30 @@
 
 手动检查更新仅在发现新版本时弹窗；已是最新版本或检查失败时，在设置页更新区域显示结果。
 
-本文是当前打包入口、产物和发布流程的维护文档。Release 固定安装提示维护在 [release-notes.md](release-notes.md)，版本变更由 GitHub 原生 Release Notes 生成；脚本只负责组合，不另写一份说明。
+本文是当前打包入口、产物和发布流程的维护文档。应用版本以 `package.json` 为准；Release 固定安装提示维护在 [release-notes.md](release-notes.md)，版本变更统一保存在 [CHANGELOG.md](../CHANGELOG.md)。手动发布时由 GitHub 原生 Release Notes 生成变更，CI 直接使用已提交的版本段落。
+
+## 手动发布
+
+普通 PR 合并只触发 `Check` 编译检查，可以持续累计改动。准备发版时，由维护者在本机显式运行：
+
+```sh
+pnpm release 0.25.3
+```
+
+支持 `X.Y.Z`、`X.Y.Z-beta.N` 和 `X.Y.Z-rc.N`；用 `pnpm release --help` 查看用法。需要已安装锁定依赖、Node.js、pnpm、Rust、Git 和已登录的 GitHub CLI（`gh`），并具备仓库推送权限。命令要求当前为 `main`、工作区干净（包括未跟踪文件），拉取远端引用后本地提交与 `origin/main` 一致，目标版本高于源码版本及最近正式版，且标签未被使用。脚本不自动合并分支。
+
+`scripts/release.mjs` 按顺序执行：
+
+1. 从最近成功发布的正式版到当前远端提交，通过 GitHub 原生 API 生成一次变更说明，插入 CHANGELOG 顶部；旧版本保持原样。预发布同样从最近正式版累计。
+2. 更新 `package.json` 和 `src-tauri/Cargo.toml`，通过 `cargo tree --offline` 更新 `Cargo.lock`。Tauri 配置引用 `../package.json`，网页预览直接导入该版本，不另存版本号。
+3. 运行 `pnpm build`、`cargo check --locked` 和 `git diff --check`，展示版本、锁文件与日志差异。
+4. 在终端确认后，提交这四个文件、创建对应标签，并用一次 `git push --atomic` 推送 `main` 与该标签。标签推送触发下面的 CI 发布；脚本随后结束，不等待构建。
+
+确认前不会提交、创建标签或推送。取消或检查失败时，保留本地改动供审阅，不自动回滚；再次运行需先将本次准备的改动处理干净。推送失败时保留本地提交和标签，排除原因后可重试同一条 `git push --atomic origin main refs/tags/<版本标签>`；不重复创建标签，也不强制覆盖远端。若仓库要求所有变更经 PR 合并，可将准备好的四个文件走 PR，再在合并提交上手动打同版本标签。
+
+首次接入已将源码版本对齐现有 `v0.25.2` 标签，并按 GitHub 原生生成结果补齐 `0.25.1`、`0.25.2` 日志；没有重写既有标签。旧版本的人工整理条目保留。
+
+流程参考 [Vue 3 手动发布脚本](https://github.com/vuejs/core/blob/main/scripts/release.js)，使用 Node.js 标准库和仓库现有工具自行实现，未复制外部代码或增加依赖。版本来源依据 [Tauri version 配置](https://v2.tauri.app/reference/config/#version)，并核对了上游关于多处版本同步的 [issue #15264](https://github.com/tauri-apps/tauri/issues/15264)。
 
 ## 本地打包
 
@@ -31,7 +54,7 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 构建顺序为：生成依赖许可 → Tauri `beforeBuildCommand` 执行一次 `pnpm build` → Cargo 使用 `--locked` 编译 → Tauri 打包 → 核验并复制产物。前端和 Rust 编译失败都会终止打包，不需要先手动再构建一次前端。依赖许可由 `collect-licenses.mjs` 从已安装 pnpm 依赖和 Cargo metadata 生成，写入随包的 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`；不要手工修改。
 
-普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。`RELEASE_TAG` 未设置或为空时使用 `package.json` 的版本号；非空时必须是合法版本标签，并提供更新签名密钥及 `CODEX_QUOTA_RELEASE_NOTES_FILE` 指向的本版本 Markdown 变更说明。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
+普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。构建始终使用 `package.json` 的版本号，并校验 Cargo 版本一致。`RELEASE_TAG` 非空时必须等于 `v` 加源码版本，同时提供更新签名密钥及 `CODEX_QUOTA_RELEASE_NOTES_FILE` 指向的本版本 Markdown 变更说明；不再以标签静默覆盖源码版本。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
 
 本地可选设置 `CODEX_QUOTA_RELEASE_NOTES_FILE`（相对于构建命令的工作目录或绝对路径），构建脚本会将 UTF-8 Markdown 嵌入安装包。该版本首次打开时展示，关闭后沿用 `updates.lastShownReleaseNotesVersion` 记录已读；未提供说明时不弹窗。说明使用标题、列表、代码、链接与 `details` / `summary` 折叠排版；HTML 注释正常隐藏，代码示例中的注释保持原文。Markdown 渲染后统一清理 HTML，仅保留排版标签与必要属性，不加载图片或执行脚本，链接沿用应用的外部来源限制。此文件应为对应版本的实际变更，不使用 `docs/release-notes.md` 中的通用安装提示代替。
 
@@ -41,15 +64,16 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 | 入口 | 结果 |
 | --- | --- |
+| 普通 PR 合并 / 分支推送 | 仅运行 `Check` 编译检查，不发版 |
 | Actions → Release → Run workflow | 打包所选分支或标签，安装包保存在 `release-<target>` artifacts 中，保留 7 天；不生成更新签名，不创建或发布 Release |
-| 推送 `vX.Y.Z` 或预发布标签 | 使用更新签名密钥生成三平台安装包和更新包，全部成功后汇总并发布 |
+| `pnpm release <版本>` 确认后推送版本标签 | 校验版本与 CHANGELOG，使用更新签名密钥生成三平台安装包和更新包，全部成功后汇总并发布 |
 
 手动入口需要工作流文件已进入仓库默认分支，待构建代码也需先提交、推送到所选分支。已有运行记录的工作流也可通过 `gh workflow run release.yml --ref <分支>` 指定分支，详见 [GitHub 手动运行说明](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)。它使用源码中的版本号，适合验证 macOS / Windows 安装包；下载 workflow artifact 后解压即可取得对应安装器。
 
 标签发布依次执行：
 
-1. 由 GitHub 原生 Release Notes 按最近正式版本累计 PR，生成一次版本变更说明并保存为 artifact。
-2. 三平台安装锁定依赖，下载同一份说明，注入公钥、标签版本及说明路径，运行统一构建入口；安装产物上传为 workflow artifact。
+1. `release-notes.mjs` 校验标签等于源码版本，从 CHANGELOG 提取该版本段落并保存为 artifact；缺少对应段落或内容为空时停止。不在 CI 重新生成说明。
+2. 三平台安装锁定依赖，下载同一份说明，注入公钥及说明路径，校验标签与源码版本一致后运行统一构建入口；安装产物上传为 workflow artifact。
 3. `prepare-release.mjs` 检查三套产物、版本与签名附件，生成 `latest.json` 和 `SHA256SUMS.txt`；读取 `docs/release-notes.md` 并附上本次变更，生成 `dist/release-notes.md`。应用内更新清单只包含本次变更，不重复安装提示。
 4. 安装包、签名、完整清单和校验值上传 draft Release，全部成功后才公开。预发布不替换 latest。
 
@@ -97,7 +121,7 @@ GitHub Actions 配置：
 | Repository secret | `TAURI_SIGNING_PRIVATE_KEY` | 私钥内容 |
 | Repository secret | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 私钥密码；无密码时为空 |
 
-`scripts/build.mjs` 把公钥和发布版本写入临时 Tauri 配置，构建后清理；私钥仅由官方 CLI 从环境读取，不写入该配置。带 `RELEASE_TAG` 的发行构建缺少公钥或私钥时直接失败。普通本地构建无需密钥，不生成签名更新包；未配置公钥时应用提供发布页入口。
+`scripts/build.mjs` 把公钥和更新产物开关写入临时 Tauri 配置，构建后清理；版本由基础 Tauri 配置读取 `package.json`，私钥仅由官方 CLI 从环境读取，不写入该配置。带 `RELEASE_TAG` 的发行构建缺少公钥或私钥时直接失败。普通本地构建无需密钥，不生成签名更新包；未配置公钥时应用提供发布页入口。
 
 更新签名与 Apple Developer ID 签名 / 公证、Windows Authenticode 签名不同。macOS 默认由 Tauri 对完整应用包执行 ad-hoc 签名，构建入口通过 `codesign --verify --deep --strict` 核验后才复制到 `dist/`。当前流水线未配置平台证书，不声称通过平台公证。不要复用或替换旧 Sparkle 密钥来绕过新配置。
 
