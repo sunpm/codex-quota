@@ -2,6 +2,18 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.25.3](https://github.com/sunpm/codex-quota/releases/tag/v0.25.3)
+
+<!-- Release notes generated using configuration in .github/release.yml at 8f63c9f87ccce4db1a53dda1f23c77999be7d96a -->
+
+### What's Changed
+#### 更新内容
+* fix(ui): 完善用量筛选与未定价展示 by @sunpm in https://github.com/sunpm/codex-quota/pull/40
+* feat(release): 接入手动发布并统一版本与变更日志 by @sunpm in https://github.com/sunpm/codex-quota/pull/41
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.25.1...v0.25.3
+
 ## [0.25.2](https://github.com/sunpm/codex-quota/releases/tag/v0.25.2)
 
 <!-- Release notes generated using configuration in .github/release.yml at v0.25.2 -->
