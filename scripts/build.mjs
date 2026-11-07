@@ -8,6 +8,11 @@ import { parseArgs } from 'node:util'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 process.chdir(root)
 const { values } = parseArgs({ options: { target: { type: 'string' }, bundles: { type: 'string' } } })
+const version = JSON.parse(readFileSync('package.json', 'utf8')).version
+const tag = process.env.RELEASE_TAG || undefined
+if (tag && tag !== `v${version}`) throw new Error('RELEASE_TAG 必须与 package.json 的版本一致，请先运行 pnpm release。')
+const cargoVersion = readFileSync('src-tauri/Cargo.toml', 'utf8').match(/^version = "([^"]+)"$/m)?.[1]
+if (cargoVersion !== version) throw new Error('Cargo.toml 与 package.json 的版本不一致，请先同步版本。')
 const host = spawnSync('rustc', ['-vV'], { encoding: 'utf8' })
 if (host.status !== 0) throw new Error('无法运行 rustc，请安装 Rust stable。')
 const target = values.target ?? host.stdout.match(/^host: (.+)$/m)?.[1]
@@ -20,11 +25,6 @@ const platform = platforms[target]
 if (!platform || platform.os !== process.platform) throw new Error('请在 macOS 构建 Mac 包，在 Windows 构建 Windows x64 包。')
 const bundles = (values.bundles ?? platform.bundles).split(',')
 if (bundles.some(bundle => !platform.bundles.split(',').includes(bundle))) throw new Error('当前平台不支持指定的安装包格式。')
-const tag = process.env.RELEASE_TAG || undefined
-if (tag && !/^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$/.test(tag)) {
-  throw new Error('RELEASE_TAG 必须是 vX.Y.Z 或带 beta / rc 后缀的版本标签。')
-}
-const version = tag?.slice(1) ?? JSON.parse(readFileSync('package.json', 'utf8')).version
 const notesFile = process.env.CODEX_QUOTA_RELEASE_NOTES_FILE
 if (tag && !notesFile) throw new Error('发布构建必须提供 CODEX_QUOTA_RELEASE_NOTES_FILE。')
 if (notesFile) {
@@ -36,7 +36,6 @@ const signing = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
 if (tag && (!publicKey || !signing)) throw new Error('发布构建必须配置 TAURI_UPDATER_PUBLIC_KEY 和 TAURI_SIGNING_PRIVATE_KEY。')
 if (signing && !publicKey) throw new Error('签名构建必须同时配置对应的 TAURI_UPDATER_PUBLIC_KEY。')
 const config = {
-  version,
   bundle: { createUpdaterArtifacts: signing },
   ...(publicKey ? { plugins: { updater: { pubkey: publicKey } } } : {}),
 }

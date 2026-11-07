@@ -2,6 +2,28 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.25.2](https://github.com/sunpm/codex-quota/releases/tag/v0.25.2)
+
+<!-- Release notes generated using configuration in .github/release.yml at v0.25.2 -->
+
+### What's Changed
+#### 更新内容
+* fix(ui): 完善用量筛选与未定价展示 by @sunpm in https://github.com/sunpm/codex-quota/pull/40
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.25.1...v0.25.2
+
+## [0.25.1](https://github.com/sunpm/codex-quota/releases/tag/v0.25.1)
+
+<!-- Release notes generated using configuration in .github/release.yml at v0.25.1 -->
+
+### What's Changed
+#### 更新内容
+* fix(desktop): 完善用量展示并清理旧 Swift 实现 by @sunpm in https://github.com/sunpm/codex-quota/pull/39
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.25.0...v0.25.1
+
 ## [0.25.0](https://github.com/sunpm/codex-quota/releases/tag/v0.25.0)
 
 - 合并对话和项目为“明细”页，共用筛选条件，并在重新打开应用后恢复视图与筛选状态。
