@@ -56,6 +56,29 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
         #[cfg(target_os = "macos")]
         {
             let _ = tray.set_title(Some(title));
+            let _ = tray.with_inner_tray_icon(|tray| {
+                use objc2::MainThreadMarker;
+                use objc2_app_kit::{NSFont, NSFontWeightRegular};
+                use objc2_foundation::{NSPoint, NSRect, NSSize};
+
+                let mtm = MainThreadMarker::new().expect("Tray updates run on the main thread");
+                if let Some(button) = tray.ns_status_item().and_then(|item| item.button(mtm)) {
+                    let font = NSFont::monospacedDigitSystemFontOfSize_weight(
+                        NSFont::menuBarFontOfSize(0.0).pointSize(),
+                        unsafe { NSFontWeightRegular },
+                    );
+                    button.setFont(Some(&font));
+                    button.setImageHugsTitle(true);
+                    if let Some(image) = button.image() {
+                        let size = image.size();
+                        // Align the icon's visual center with the digit cap height, not the PNG canvas baseline.
+                        image.setAlignmentRect(NSRect::new(
+                            NSPoint::new(0.0, (size.height - font.capHeight()) / 2.0),
+                            NSSize::new(size.width, font.capHeight()),
+                        ));
+                    }
+                }
+            });
             let hidden = app
                 .get_webview_window("main")
                 .is_some_and(|w| !w.is_visible().unwrap_or(true));
