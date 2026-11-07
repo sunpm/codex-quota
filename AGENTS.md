@@ -22,10 +22,10 @@
 - `src/`：Vue 3、TypeScript 与 shadcn-vue 界面，Vite 构建，Apache ECharts 按需加载图表。
 - `src-tauri/`：Rust 桌面入口、Codex 子进程、监测调度、系统集成、设置迁移与 Tauri updater。
 - `crates/quota-core/`：额度、日志解析、增量扫描、历史、Decimal 定价与通知判定；保持与桌面运行时分离。
-- `Sources/`、`Tests/` 和 `Package.swift`：保留的 Swift 实现与已有检查，供迁移规则对照；不参与 Tauri 生产构建。`Sources/CZstd/` 为旧版静态解码源码，勿手改生成文件。
-- `Resources/`：品牌资源和随包许可。`dependencies-LICENSES.txt` 由 `scripts/collect-licenses.mjs` 从锁定依赖生成，不能手工修改。
+- 旧 Swift 应用、检查及打包脚本已移除，历史实现从 Git 历史查阅；`scripts/make-icon.swift` 仍用于当前应用图标生成。保留 Rust 中的 macOS 集成与旧数据迁移。
+- `Resources/`：随包许可。`dependencies-LICENSES.txt` 由 `scripts/collect-licenses.mjs` 从锁定依赖生成，不能手工修改；当前图标资源位于 `src-tauri/icons/`。
 - `scripts/test.sh`、`scripts/build.sh` / `scripts/build.mjs` 和 `scripts/package-dmg.sh`：验证、跨平台构建与 Mac 架构打包入口。前端产物在 `dist-web/`，用户安装包在 `dist/`，临时文件在 `work/`。
-- 打包、更新与发布说明统一维护在 `docs/updating.md`，Release 固定提示源为 `docs/release-notes.md`；旧打包工具与说明分别归档到 `scripts/legacy/`、`docs/archive/`，旧产物写入 `dist/legacy/`。
+- 打包、更新与发布说明统一维护在 `docs/updating.md`，Release 固定提示源为 `docs/release-notes.md`；旧版本的历史验收记录保存在 `docs/archive/`。
 
 ## 实现与界面
 
@@ -51,7 +51,7 @@
 ## 验证与打包
 
 - 按风险选择必要验证；纯文案无需跑完整构建，跨模块或服务接入应做离线解析/状态测试及编译验证。
-- 验证入口：`bash scripts/test.sh`；其中 `pnpm build` 执行 TypeScript 检查与前端构建，`cargo check --locked --manifest-path src-tauri/Cargo.toml` 检查桌面实现。macOS 另执行 `scripts/check-legacy.sh` 中未修改的 Swift 检查；旧检查不能当成 Rust 实现已通过测试。
+- 验证入口：`bash scripts/test.sh`；其中 `pnpm build` 执行 TypeScript 检查与前端构建，`cargo check --locked --manifest-path src-tauri/Cargo.toml` 检查桌面实现。编译检查不等于运行时行为测试。
 - 本地打包使用 `bash scripts/build.sh`（PowerShell 用 `node scripts/build.mjs`），由锁定的 Tauri CLI 打包，不另拼签名 / 导出流程。Mac 包在 macOS 构建，Windows 包在 Windows 构建；构建成功不等于真实服务连接或系统交互已验收。
 - 带凭据的真实服务验证需有相应授权；优先用不含隐私的响应夹具验证解析、去重、账号切换和开关行为。
 - 人工验收覆盖菜单栏、展开面板、Codex 空态/错误态、设置持久化、系统通知及退出清理。

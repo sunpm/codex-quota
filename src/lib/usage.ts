@@ -1,11 +1,12 @@
+import { addDays, formatDate, startOf, trimDecimalZeros } from '@pmun/utils'
 import type { UsageRecord, Metric } from '@/types'
 
 export const tokenCount = (record: UsageRecord) => record.tokens.input + record.tokens.output + record.tokens.cached + record.tokens.cacheWrite
 export const shortTokens = (value: number) => value < 10000 ? value.toLocaleString('zh-CN') : new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 3 }).format(value)
 export const dateText = (seconds: number | null | undefined, full = false) => seconds == null ? '—' : new Date(seconds * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', ...(full ? { year: 'numeric', second: '2-digit' } : {}) })
-export const dayKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-export const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate())
-export const shiftDay = (date: Date, days: number) => { const result = new Date(date); result.setDate(result.getDate() + days); return result }
+export const dayKey = (date: Date) => formatDate(date, 'YYYY-MM-DD')
+export const startOfDay = (date: Date) => startOf(date, 'day')
+export const shiftDay = (date: Date, days: number) => addDays(date, days)
 export const basename = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) || '未知项目'
 
 // Rust Decimal has at most 28 fractional digits; aggregation keeps that precision until display.
@@ -33,7 +34,7 @@ export function summarize(records: UsageRecord[]): Summary {
 export const costLabel = (summary: Summary) => summary.unpriced && summary.priced ? '已定价费用' : '估算费用'
 export function money(amount: string | null) { return amount == null ? '未定价' : `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: Number(amount) > 0 && Number(amount) < 0.01 ? 6 : 2 })}` }
 export const summaryMoney = (summary: Summary) => summary.count && !summary.priced ? '未定价' : money(summary.amount)
-export const exactMoney = (amount: string | null) => amount == null ? '未定价' : `$${amount.includes('.') ? amount.replace(/\.?0+$/, '') : amount}`
+export const exactMoney = (amount: string | null) => amount == null ? '未定价' : `$${trimDecimalZeros(amount)}`
 export const costTooltip = (summary: Summary) => `${summary.count && !summary.priced ? '未定价' : exactMoney(summary.amount)}${summary.unpriced ? `\n${summary.unpriced} 条未定价` : ''}`
 export function billingTier(record: UsageRecord) {
   switch (record.serviceTier.toLowerCase()) {

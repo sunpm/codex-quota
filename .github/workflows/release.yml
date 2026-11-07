@@ -84,11 +84,6 @@ jobs:
           name: release-changes
           path: work
       - run: pnpm install --frozen-lockfile
-      - name: Run preserved Swift checks
-        if: matrix.runner == 'macos-15-intel'
-        env:
-          DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-        run: bash scripts/check-legacy.sh
       - name: Build installer
         env:
           CODEX_QUOTA_RELEASE_NOTES_FILE: ${{ github.event_name == 'push' && format('{0}/work/release-changes.md', github.workspace) || '' }}

@@ -70,8 +70,8 @@ desktop
 - [AGENTS.md](AGENTS.md)：原生界面、数据真实性、凭据及生命周期约束。
 - `src/`、`src-tauri/` 与 `crates/quota-core/`：跨平台界面、服务集成和统计实现；当前工作区不等同于已发布版本，发行功能以对应更新记录为准。
 - `docs/images/quota.png`、`docs/images/settings.png`：使用示例数据的界面预览，不是真实用户、账号或线上用量证据。
-- `Resources/codex.svg`、`scripts/make-icon.swift` 与 `THIRD_PARTY_NOTICES.md`：现有视觉资产、应用图标生成方式及来源许可。
-- `Sources/`、`Tests/QuotaCoreTests/`、`Tests/AppChecks/`：保留的 Swift 迁移基线；旧检查不直接验证新 Rust 实现，也不能据此宣称真实服务连接已验证。
+- `src-tauri/icons/`、`scripts/make-icon.swift` 与 `THIRD_PARTY_NOTICES.md`：现有视觉资产、应用图标生成方式及来源许可。
+- [Swift / Sparkle 归档](docs/archive/updating-sparkle.md)：旧实现的历史源码入口及验收记录，不作为当前 Rust 实现或真实服务连接已验证的证据。
 
 尚无已确认的用户研究、量化成功指标或对外性能基准，不编造用户评价、客户背书或节省费用的承诺。
 

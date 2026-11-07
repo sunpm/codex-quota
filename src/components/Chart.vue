@@ -2,12 +2,12 @@
 import { onBeforeUnmount, onMounted, watch, useTemplateRef } from 'vue'
 import { init, use, type EChartsCoreOption } from 'echarts/core'
 import { BarChart, LineChart, HeatmapChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, AriaComponent } from 'echarts/components'
+import { GridComponent, TooltipComponent, LegendComponent, CalendarComponent, VisualMapComponent, AriaComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import type { EChartsType } from 'echarts/core'
 import type { ChartTimeHover } from '@/types'
 
-use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, AriaComponent, CanvasRenderer])
+use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, LegendComponent, CalendarComponent, VisualMapComponent, AriaComponent, CanvasRenderer])
 const props = defineProps<{ option: EChartsCoreOption; label: string; height?: number; animations?: boolean; timeHover?: boolean }>()
 const emit = defineEmits<{ timeHover: [value: ChartTimeHover | null] }>()
 const element = useTemplateRef('chartElement')

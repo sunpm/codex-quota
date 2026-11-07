@@ -47,9 +47,26 @@ macOS 与 Windows 共用 `node scripts/build.mjs`，安装包输出到 `dist/`�
 bash scripts/test.sh
 ```
 
-`scripts/test.sh` 已包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行。在 macOS 还会运行保留的 Swift 核心与应用检查；这些检查验证旧实现，是迁移规则的基线，不能当成新 Rust 实现的自动化测试。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
+`scripts/test.sh` 包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行；该入口执行编译检查，不代表已覆盖运行时行为。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
 
-生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`；`Sources/`、`Tests/` 和 `Package.swift` 暂留作旧版行为参考与检查，不参与 Tauri 应用构建。旧打包工具归档到 `scripts/legacy/`，说明与验收记录见 [Swift / Sparkle 历史流程](archive/updating-sparkle.md)。
+生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
+
+## 通用工具方法
+
+前端按需从 `@pmun/utils` 主入口导入，固定为 0.17.0；该版本仅导出主入口，不使用 `/is`、`/date` 等子路径。2026-11-07 已核对[上游](https://github.com/sunpm/sunpm-utils)维护状态、issue、类型声明及发布包源码，8 类方法的适用范围如下。
+
+| 类别 | 当前使用与取舍 |
+| --- | --- |
+| `is` | `isPlainObject`、`isString` 用于本地筛选偏好的读取入口；字段校验后向内传递 `UsageFilters`。`isNumber` 不排除 Infinity，不能替换价格校验的 `Number.isFinite`。 |
+| `date` | `formatDate`、`startOf`、`addDays` 实现本地日期键、日界线和自然日移动。统一传入 `Date`，避开库按数字位数推断秒 / 毫秒及将 0 视为无效时间的规则。保留现有 Intl 展示、受扫描时钟控制的筛选范围，以及区分未知时间和等待重置的倒计时。 |
+| `array` | `groupBy` 用于程序生成的日期 / 小时键，`sortBy` 用于逐条明细的日期降序。该版本 `groupBy` 用普通对象存储分组，模型 / 项目等外部字符串键继续使用 `Map`。`unique`、`first`、`last`、`flatten` 等与现有原生写法相近，暂不替换；树、集合和随机方法暂无对应需求。 |
+| `number` | `trimDecimalZeros` 清理精确金额字符串的尾零，不经过浮点数。`formatCurrency` 仍转换为 Number，不能用于精确费用聚合；保留 BigInt 聚合和当前小额显示精度。`clamp` 可用于未来的双向限值，现有简单范围表达式保留。 |
+| `object` | `deepClone` 替换价格编辑草稿的 JSON 往返拷贝，适用于当前无环的普通对象。`pick`、`omit`、`mapValues`、合并工具暂无重复业务可替换；`mergeWithDefaultModel` 不代替入口字段校验。 |
+| `string` | 大小写、模板、截断和数字串解析暂无需要；`parseJsonStr` 的回退值语义不同，保留 VueUse 管理的 JSON 读取。`escapeHtml` 不能代替更新说明的 DOMPurify 清理，`isValidUrl` 也不代替 HTTPS 来源限制。 |
+| `url` | 当前只读取 `preview` 查询标记，原生 `URLSearchParams.has` 已足够；暂不接入查询对象、参数追加和斜杠处理方法。 |
+| `promise` | `delay`、`timeout`、`retry`、`debounce`、`throttle`、`parallel`、`sequential` 暂无前端替换点。服务轮询及 Retry-After 冷却由 Rust 管理，通用重试不参与该流程。 |
+
+库的主入口会初始化 Day.js 中文 locale 和日期插件，新增依赖的许可随现有 `scripts/collect-licenses.mjs` 生成并打包。
 
 ## 图标再生成
 

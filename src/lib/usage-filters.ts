@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { toRefs, useLocalStorage } from '@vueuse/core'
+import { isPlainObject, isString } from '@pmun/utils'
 import type { Metric, Page } from '@/types'
 import { dayKey, shiftDay } from './usage'
 
@@ -16,21 +17,21 @@ interface UsageFilters {
 }
 
 function storedDate(value: unknown, fallback: string) {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && dayKey(new Date(`${value}T00:00:00`)) === value ? value : fallback
+  return isString(value) && /^\d{4}-\d{2}-\d{2}$/.test(value) && dayKey(new Date(`${value}T00:00:00`)) === value ? value : fallback
 }
 
 function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
   const parsed: unknown = JSON.parse(raw)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...defaults }
-  const saved = parsed as Record<string, unknown>
+  if (!isPlainObject(parsed)) return { ...defaults }
+  const saved: Record<string, unknown> = parsed
   const start = storedDate(saved.start, defaults.start)
   const end = storedDate(saved.end, defaults.end)
   return {
     view: saved.view === 'project' ? 'project' : 'session',
     period: usageRanges.find(range => range.value === saved.period)?.value ?? defaults.period,
     metric: saved.metric === 'cost' ? 'cost' : 'tokens',
-    model: typeof saved.model === 'string' && saved.model ? saved.model : defaults.model,
-    search: typeof saved.search === 'string' ? saved.search : defaults.search,
+    model: isString(saved.model) && saved.model ? saved.model : defaults.model,
+    search: isString(saved.search) ? saved.search : defaults.search,
     start: start <= end ? start : defaults.start,
     end: start <= end ? end : defaults.end,
   }
