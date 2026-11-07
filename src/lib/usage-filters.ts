@@ -37,12 +37,22 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
   }
 }
 
+function defaultFilters(): UsageFilters {
+  return { view: 'session', period: '7', metric: 'tokens', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
+}
+
+const initialDefaults = defaultFilters()
+const options = { writeDefaults: false, serializer: { read: (raw: string) => readFilters(raw, defaultFilters()), write: JSON.stringify } }
+// Retain the original session preferences as the shared detail filters.
+const details = useLocalStorage('usage.filters.sessions.v1', { ...initialDefaults }, options)
+const overview = ref<UsageFilters>({ ...initialDefaults })
+export const overviewGroupBy = ref<'model' | 'project'>('model')
+
+export function syncOverviewToDetails(view: 'session' | 'project' = 'session') {
+  details.value = { ...overview.value, view, search: '' }
+}
+
 export function useUsageFilters(page: () => Page) {
-  const defaults: UsageFilters = { view: 'session', period: '7', metric: 'tokens', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
-  const options = { writeDefaults: false, serializer: { read: (raw: string) => readFilters(raw, defaults), write: JSON.stringify } }
-  // Retain the original session preferences as the shared detail filters.
-  const details = useLocalStorage('usage.filters.sessions.v1', { ...defaults }, options)
-  const overview = ref({ ...defaults })
   const current = computed({
     get: () => page() === 'details' ? details.value : overview.value,
     set: (value: UsageFilters) => {
