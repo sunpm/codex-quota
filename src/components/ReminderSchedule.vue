@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { nextTick, ref, useTemplateRef, watch } from 'vue'
 import { Plus, X } from '@lucide/vue'
 import { actionError, changeSettings } from '@/lib/app'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 
 const props = defineProps<{
   id: string
+  labelledby: string
   minutes: number[]
   setting: 'resetCreditReminderMinutes' | 'quotaResetReminderMinutes'
   disabled: boolean
@@ -19,7 +20,9 @@ const unit = ref(60)
 const error = ref('')
 const saving = ref(false)
 const focusTarget = ref<HTMLButtonElement | null>(null)
+const savedMinutes = ref<number | null>(null)
 const interactedOutside = ref(false)
+const listElement = useTemplateRef<HTMLUListElement>('listElement')
 const units = [{ value: 1440, label: '天' }, { value: 60, label: '小时' }, { value: 1, label: '分钟' }]
 
 function timeText(minutes: number) {
@@ -28,6 +31,7 @@ function timeText(minutes: number) {
 }
 function edit(minutes: number | null, event: MouseEvent) {
   focusTarget.value = event.currentTarget as HTMLButtonElement
+  savedMinutes.value = null
   interactedOutside.value = false
   editing.value = minutes
   const value = minutes ?? [1440, 300, 120, 60, 30, 10, 5, 1].find(value => !props.minutes.includes(value)) ?? 1
@@ -40,7 +44,8 @@ async function restoreFocus(event: Event) {
   event.preventDefault()
   await nextTick()
   if (props.disabled || interactedOutside.value) return
-  const target = focusTarget.value?.isConnected ? focusTarget.value : document.getElementById(`${props.id}-add`)
+  const editedButton = savedMinutes.value != null ? listElement.value?.querySelector<HTMLButtonElement>(`[data-edit-minutes="${savedMinutes.value}"]`) : null
+  const target = editedButton ?? (focusTarget.value?.isConnected ? focusTarget.value : document.getElementById(`${props.id}-add`))
   target?.focus()
 }
 async function save() {
@@ -57,12 +62,22 @@ async function save() {
   saving.value = true
   await changeSettings({ [props.setting]: [...values, minutes].sort((a, b) => b - a) })
   saving.value = false
-  if (!actionError.value) open.value = false
+  if (!actionError.value) {
+    savedMinutes.value = minutes
+    open.value = false
+  }
 }
 async function remove(minutes: number) {
+  const index = props.minutes.indexOf(minutes)
   saving.value = true
   await changeSettings({ [props.setting]: props.minutes.filter(value => value !== minutes) })
   saving.value = false
+  await nextTick()
+  if (props.disabled) return
+  const nextMinutes = props.minutes[Math.min(Math.max(0, index), props.minutes.length - 1)]
+  const selector = props.minutes.length > 1 ? `[data-remove-minutes="${nextMinutes}"]` : `[data-edit-minutes="${nextMinutes}"]`
+  const nextButton = nextMinutes != null ? listElement.value?.querySelector<HTMLButtonElement>(selector) : null
+  ;(nextButton ?? document.getElementById(`${props.id}-add`))?.focus()
 }
 watch(() => props.disabled, disabled => { if (disabled) open.value = false })
 </script>
@@ -71,10 +86,10 @@ watch(() => props.disabled, disabled => { if (disabled) open.value = false })
   <Popover v-model:open="open">
     <PopoverAnchor as-child>
       <div class="reminder-schedule">
-        <ul class="reminder-times" aria-label="提醒时间">
+        <ul ref="listElement" class="reminder-times" :aria-labelledby="labelledby">
           <li v-for="minutes in minutes" :key="minutes" class="reminder-time">
-            <Button type="button" variant="ghost" size="sm" :disabled="disabled || saving" :aria-label="`修改提前 ${timeText(minutes)} 的提醒`" @click="edit(minutes, $event)">提前 {{ timeText(minutes) }}</Button>
-            <Button type="button" variant="ghost" size="icon-xs" :disabled="disabled || saving || props.minutes.length === 1" :aria-label="`删除提前 ${timeText(minutes)} 的提醒`" @click="remove(minutes)"><X :size="12" /></Button>
+            <Button type="button" variant="ghost" size="sm" :data-edit-minutes="minutes" :disabled="disabled || saving" :aria-label="`修改提前 ${timeText(minutes)} 的提醒`" @click="edit(minutes, $event)">提前 {{ timeText(minutes) }}</Button>
+            <Button type="button" variant="ghost" size="icon-xs" :data-remove-minutes="minutes" :disabled="disabled || saving || props.minutes.length === 1" :aria-label="`删除提前 ${timeText(minutes)} 的提醒`" @click="remove(minutes)"><X :size="12" /></Button>
           </li>
         </ul>
         <Button :id="`${id}-add`" type="button" variant="ghost" size="sm" :disabled="disabled || saving" @click="edit(null, $event)"><Plus :size="14" />添加提醒</Button>
@@ -98,7 +113,9 @@ watch(() => props.disabled, disabled => { if (disabled) open.value = false })
 .reminder-schedule, .reminder-times, .reminder-time { display: flex; align-items: center; }
 .reminder-schedule { flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
 .reminder-times { flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.reminder-time { border: 1px solid var(--border); border-radius: 6px; padding-right: 3px; font-variant-numeric: tabular-nums; }
+.reminder-time { height: 28px; border: 1px solid var(--border); border-radius: 6px; padding-right: 2px; gap: 1px; font-variant-numeric: tabular-nums; }
+.reminder-time > :deep([data-slot=button][data-size=sm]) { height: 26px; padding: 2px 7px 2px 9px; border-radius: 5px 3px 3px 5px; }
+.reminder-time > :deep([data-slot=button][data-size=icon-xs]) { width: 22px; height: 22px; border-radius: 4px; }
 .reminder-popover { width: 260px; }
 .reminder-inputs { display: flex; gap: 8px; margin-top: 8px; }
 .reminder-inputs input { width: 100%; min-width: 0; font-variant-numeric: tabular-nums; }

@@ -32,10 +32,19 @@ export function summarize(records: UsageRecord[]): Summary {
   return result
 }
 export const costLabel = (summary: Summary) => summary.unpriced && summary.priced ? '已定价费用' : '估算费用'
+export const costColumnLabel = (summary: Summary) => summary.unpriced ? (summary.priced ? '已定价费用' : '估算费用（未定价）') : '估算费用'
 export function money(amount: string | null) { return amount == null ? '未定价' : `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: Number(amount) > 0 && Number(amount) < 0.01 ? 6 : 2 })}` }
 export const summaryMoney = (summary: Summary) => summary.count && !summary.priced ? '未定价' : money(summary.amount)
 export const exactMoney = (amount: string | null) => amount == null ? '未定价' : `$${trimDecimalZeros(amount)}`
 export const costTooltip = (summary: Summary) => `${summary.count && !summary.priced ? '未定价' : exactMoney(summary.amount)}${summary.unpriced ? `\n${summary.unpriced} 条未定价` : ''}`
+export const costCardTitle = (summary: Summary) => `API 等价估算，非订阅账单。${summary.unpriced ? `${summary.unpriced.toLocaleString('zh-CN')} 条记录未定价。` : ''}`
+export function compareSummaries(a: Summary, b: Summary, metric: Metric) {
+  if (metric === 'tokens') return b.tokens - a.tokens
+  const aCost = Number(a.amount), bCost = Number(b.amount)
+  if (aCost !== bCost) return bCost - aCost
+  if ((a.unpriced > 0) !== (b.unpriced > 0)) return a.unpriced > 0 ? -1 : 1
+  return b.tokens - a.tokens
+}
 export function billingTier(record: UsageRecord) {
   switch (record.serviceTier.toLowerCase()) {
     case 'standard': case 'default': case 'auto': return 'Standard'
