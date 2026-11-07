@@ -34,7 +34,7 @@ Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-swit
 
 应用的缺口 Q 图标由本项目 `scripts/make-icon.swift` 绘制，1024 像素源 PNG 经官方 `pnpm tauri icon` 生成 `src-tauri/icons/` 内的平台图标。单色托盘图标以 `src-tauri/icons/tray.svg` 为源，通过 `pnpm tauri icon --png 32` 生成 `tray.png`。生成命令见 README，二进制图标不手工修改。
 
-以下记录保留原实现的历史来源；其中 SwiftUI / AppKit / Swift Charts / Sparkle 的实现描述属于仍保留在 `Sources/` 的旧版，不表示 Tauri 应用继续链接这些框架。旧版相关许可继续保留，避免丢失历史归属。
+以下记录保留原实现的历史来源；其中 SwiftUI / Swift Charts / Sparkle 的实现描述属于已移除的旧版。当前 Rust 沿用的设计与逻辑继续保留对应来源和许可；仅供旧应用使用的依赖许可随旧源码保存在 Git 历史中。当前 macOS 集成仍通过 Rust 调用 AppKit 等系统框架。
 
 ## AIHOT 重置动态数据
 
@@ -44,7 +44,7 @@ AIHOT 数据服务并非 OpenAI 官方服务，数据使用遵循 [AIHOT 使用�
 
 ## 界面与服务实现
 
-本项目的菜单栏模板图像、紧凑额度面板、部分尺寸与颜色以及 Codex SVG 图标，改编自 [nanvon/cc-bar](https://github.com/nanvon/cc-bar)，参考版本 `6d990a2c3c50e8d404ea4d9982c651ce3c544baa`。
+旧版菜单栏模板图像、紧凑额度面板、部分尺寸与颜色以及 Codex SVG 图标，改编自 [nanvon/cc-bar](https://github.com/nanvon/cc-bar)，参考版本 `6d990a2c3c50e8d404ea4d9982c651ce3c544baa`。
 
 参考文件：
 
@@ -91,24 +91,10 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
-旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，现归档于 `scripts/legacy/build.sh`。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
+旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，相关脚本现仅保存在 Git 历史中。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
 
-## Sparkle 应用内更新（旧版归档）
+## 已移除的旧版依赖
 
-旧 Swift 实现通过 Swift Package Manager 固定接入 [sparkle-project/Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1)，提交 `ab7d71291238df6e0492143b120c9b696a35f603`。使用官方预编译 framework、安装助手及发布签名工具，不修改上游二进制代码；当前 Tauri 产物不链接这些框架。历史流程见 [归档说明](docs/archive/updating-sparkle.md)。
+旧 Swift 应用曾使用 [Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1) 和 [Zstandard v1.5.7](https://github.com/facebook/zstd/tree/v1.5.7) 单文件解码器。Sparkle 主体采用 MIT，并包含 BSD、zlib 等组件；Zstandard 当时选择 BSD 许可。两者的旧源码、锁定版本及完整许可保存在 [迁移前版本](https://github.com/sunpm/codex-quota/tree/752a5f9b430a39a1b42d873c08151eb845acf690)，历史升级验收见 [归档说明](docs/archive/updating-sparkle.md)。
 
-Sparkle 主体采用 MIT License，并包含 BSD、zlib 等组件许可；完整上游 `LICENSE` 保存在 `Resources/ThirdPartyNotices/Sparkle-LICENSE.txt`，随应用分发。依赖版本与制品 checksum 由 `Package.swift`、`Package.resolved` 及上游 package manifest 固定。
-
-## Zstandard 压缩日志
-
-`Sources/CZstd/` 来自 [facebook/zstd v1.5.7](https://github.com/facebook/zstd/tree/v1.5.7)，固定提交 `f8745da6ff1ad1e7bab384bd1f9d742439278e99`。Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved. 项目提供 BSD / GPLv2 双许可证，本应用选择 BSD；完整原文保存在 `Resources/ThirdPartyNotices/zstd-LICENSE.txt`，随应用包分发。
-
-仅静态编译官方单文件解码器 `zstddeclib.c`，保留上游生成内容和原始 `lib/zstd.h`、`lib/zstd_errors.h`，不链接 Homebrew 动态库。单文件生成默认关闭 legacy 格式和汇编，不包含压缩器或命令行工具。Swift 的按块解码循环改编自同版本 `examples/streaming_decompression.c`；同时参考 cc-bar 的块读取思路，沿用其现有 MIT 声明。
-
-重新生成时，在该版本源码的 `build/single_file_libs/` 目录执行上游命令，将生成文件复制到 `Sources/CZstd/`，两个头文件复制到其 `include/`，并同步许可：
-
-```sh
-python3 combine.py -r ../../lib -x legacy/zstd_legacy.h -o zstddeclib.c zstddeclib-in.c
-```
-
-来源归档 `https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz` 的 SHA-256 为 `37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3`；生成的 `zstddeclib.c` 为 `5eb38abe0a7eea13674b312a006df72002d4192f0f0b4d09e6f03fb927a1f3d0`。升级时重新核对上游 release、解码相关 issue 和许可，不直接编辑生成文件。
+当前应用使用 Tauri updater 与 Rust `zstd` 依赖，不再分发 Sparkle 或旧 CZstd 源码；当前压缩依赖及其底层库的版本、来源和完整许可由 `scripts/collect-licenses.mjs` 从锁定的 Cargo 依赖生成并随包分发。

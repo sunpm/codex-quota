@@ -47,9 +47,9 @@ macOS 与 Windows 共用 `node scripts/build.mjs`，安装包输出到 `dist/`�
 bash scripts/test.sh
 ```
 
-`scripts/test.sh` 已包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行。在 macOS 还会运行保留的 Swift 核心与应用检查；这些检查验证旧实现，是迁移规则的基线，不能当成新 Rust 实现的自动化测试。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
+`scripts/test.sh` 包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行；该入口执行编译检查，不代表已覆盖运行时行为。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
 
-生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`；`Sources/`、`Tests/` 和 `Package.swift` 暂留作旧版行为参考与检查，不参与 Tauri 应用构建。旧打包工具归档到 `scripts/legacy/`，说明与验收记录见 [Swift / Sparkle 历史流程](archive/updating-sparkle.md)。
+生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
 
 ## 通用工具方法
 

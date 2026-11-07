@@ -37,7 +37,7 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 ## CI 打包与发布
 
-现有 `Release` workflow 共用三平台矩阵：Apple Silicon Mac、Intel Mac、Windows x64，均调用 `node scripts/build.mjs --target <目标>`。前端检查与 Rust 编译由统一构建入口完成，Intel Mac 继续执行未修改的 Swift 迁移基线检查。
+现有 `Release` workflow 共用三平台矩阵：Apple Silicon Mac、Intel Mac、Windows x64，均调用 `node scripts/build.mjs --target <目标>`。前端检查与 Rust 编译由统一构建入口完成，不再编译旧 Swift 应用或执行其测试。
 
 | 入口 | 结果 |
 | --- | --- |
@@ -63,7 +63,7 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 保留 Bundle ID `local.codexquotadock.app`、`CodexQuotaDock` 数据目录及旧偏好键。首次启动从 macOS 原偏好域导入设置、定价、额度趋势与通知基线，旧偏好域和原始 Codex 登录态不被改写。已采集用量继续使用原历史文件。
 
-历史 Release 中的 Sparkle 包和 appcast 保留；新 Release 不生成 Sparkle appcast。旧客户端因最新 Release 不含旧清单而无法自动更新时，应从发布页手动安装。后续 Tauri 版本通过 `latest.json` 更新。旧版签名配置与 2026-10-29 的实际验收记录归档在 [Swift / Sparkle 历史流程](archive/updating-sparkle.md)，不适用于新更新器。旧打包工具仅保存在 `scripts/legacy/`，默认输出到 `dist/legacy/`，当前 CI 不调用。
+历史 Release 中的 Sparkle 包和 appcast 保留；新 Release 不生成 Sparkle appcast。旧客户端因最新 Release 不含旧清单而无法自动更新时，应从发布页手动安装。后续 Tauri 版本通过 `latest.json` 更新。旧版源码、签名配置与 2026-10-29 的实际验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)，不适用于新更新器；当前仓库已移除旧构建与 appcast 工具。
 
 ## 更新清单与安装包
 
@@ -103,14 +103,14 @@ GitHub Actions 配置：
 
 ## 验证
 
-macOS 或 Windows Git Bash 使用 `bash scripts/test.sh`，它依次运行前端类型检查与构建、Rust 编译检查，macOS 另运行保留的 Swift 检查。Windows PowerShell 的同等编译检查为：
+macOS 或 Windows Git Bash 使用 `bash scripts/test.sh`，它依次运行前端类型检查与构建、Rust 编译检查。Windows PowerShell 的同等编译检查为：
 
 ```powershell
 pnpm build
 cargo check --locked --manifest-path src-tauri/Cargo.toml
 ```
 
-日常提交 / PR 的 `Check` workflow 编译三平台，不生成安装器；需要验证安装包时使用 `Release` workflow 的手动入口。归档的 Swift 检查只覆盖旧实现，不作为 Rust 自动化测试证据。
+日常提交 / PR 的 `Check` workflow 编译三平台，不生成安装器；需要验证安装包时使用 `Release` workflow 的手动入口。编译检查不替代运行时行为与升级验收。
 
 ### 升级验收边界
 
