@@ -18,6 +18,9 @@ pub fn now() -> f64 {
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub monitoring_enabled: bool,
+    pub antigravity_enabled: bool,
+    pub antigravity_announcement_notifications: bool,
+    pub antigravity_show_tray: bool,
     pub recovery_notifications: bool,
     pub reset_credit_reminders: bool,
     pub reset_credit_reminder_minutes: Vec<u32>,
@@ -53,6 +56,9 @@ impl Settings {
             .unwrap_or(1);
         Self {
             monitoring_enabled: flag("service.codex.enabled", true),
+            antigravity_enabled: flag("antigravity.cli.enabled", false),
+            antigravity_announcement_notifications: flag("antigravity.cli.announcementNotifications", false),
+            antigravity_show_tray: flag("antigravity.cli.showTray", true),
             recovery_notifications: flag("service.codex.notifications", true),
             reset_credit_reminders: flag("resetCredits.expirationReminders", false),
             reset_credit_reminder_minutes: reminder_minutes("resetCredits.reminderMinutes", 1440),
@@ -124,6 +130,9 @@ impl Settings {
     pub fn save_into(&self, p: &mut BTreeMap<String, Value>) {
         for (key, value) in [
             ("service.codex.enabled", self.monitoring_enabled),
+            ("antigravity.cli.enabled", self.antigravity_enabled),
+            ("antigravity.cli.announcementNotifications", self.antigravity_announcement_notifications),
+            ("antigravity.cli.showTray", self.antigravity_show_tray),
             ("service.codex.notifications", self.recovery_notifications),
             (
                 "resetCredits.expirationReminders",
@@ -186,6 +195,18 @@ pub struct AnnouncementSnapshot {
     pub events: Vec<ResetAnnouncement>,
     pub error: Option<String>,
     pub source_status: Option<String>,
+    pub refreshing: bool,
+    pub last_success: Option<f64>,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AntigravitySnapshot {
+    pub groups: Vec<quota_core::AntigravityGroup>,
+    pub error: Option<String>,
+    pub last_success: Option<f64>,
+    pub refreshing: bool,
+    pub requires_action: bool,
 }
 
 #[derive(Clone, Default, Serialize)]
@@ -236,6 +257,8 @@ pub struct AppSnapshot {
     pub settings: Settings,
     pub quota: QuotaSnapshot,
     pub announcements: AnnouncementSnapshot,
+    pub antigravity: AntigravitySnapshot,
+    pub antigravity_announcements: AnnouncementSnapshot,
     pub usage: UsageSnapshot,
     pub prices: Vec<DisplayPrice>,
     pub price_date: String,
@@ -267,6 +290,8 @@ pub struct SavedState {
     pub reminded_credits: BTreeMap<String, f64>,
     pub deadline_reminders: DeadlineReminderTracker,
     pub announcements: SavedAnnouncements,
+    pub antigravity_schedule: RefreshSchedule,
+    pub antigravity_announcements: SavedAnnouncements,
     pub catalog: BTreeMap<String, ModelPricing>,
     pub overrides: BTreeMap<String, ModelPricing>,
     pub price_date: String,
@@ -284,6 +309,8 @@ impl Default for SavedState {
             reminded_credits: BTreeMap::new(),
             deadline_reminders: DeadlineReminderTracker::default(),
             announcements: SavedAnnouncements::default(),
+            antigravity_schedule: RefreshSchedule::default(),
+            antigravity_announcements: SavedAnnouncements::default(),
             catalog: quota_core::bundled_prices(),
             overrides: BTreeMap::new(),
             price_date: quota_core::BUNDLED_PRICE_DATE.into(),
@@ -440,7 +467,6 @@ pub struct Store {
     pub path: PathBuf,
     pub writable: bool,
     pub continuous: bool,
-    pub announcements_refreshing: bool,
     pub updating_prices: bool,
 }
 

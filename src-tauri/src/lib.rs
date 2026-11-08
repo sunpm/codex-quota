@@ -1,3 +1,4 @@
+mod antigravity;
 mod client;
 mod monitor;
 #[cfg(target_os = "macos")]
@@ -22,8 +23,16 @@ fn get_snapshot(app: AppHandle) -> AppSnapshot {
 async fn refresh_quota(app: AppHandle) -> AppSnapshot {
     tokio::join!(
         monitor::refresh_quota(&app, true),
-        monitor::refresh_announcements(&app)
+        monitor::refresh_announcements(&app),
+        monitor::refresh_antigravity(&app, false),
+        monitor::refresh_antigravity_announcements(&app)
     );
+    get_snapshot(app)
+}
+
+#[tauri::command]
+async fn refresh_antigravity(app: AppHandle) -> AppSnapshot {
+    monitor::refresh_antigravity(&app, true).await;
     get_snapshot(app)
 }
 
@@ -52,6 +61,13 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
                 saved.schedule.next_attempt = 0.0;
             }
         }
+        if settings.antigravity_enabled != previous.antigravity_enabled {
+            saved.antigravity_announcements.tracker.has_baseline = false;
+            if settings.antigravity_enabled { saved.antigravity_schedule.next_attempt = 0.0; }
+        }
+        if settings.refresh_interval != previous.refresh_interval && saved.antigravity_schedule.failures == 0 {
+            saved.antigravity_schedule.next_attempt = state::now() + settings.refresh_interval as f64;
+        }
         if settings.refresh_interval != previous.refresh_interval && saved.schedule.failures == 0 {
             saved.schedule.next_attempt = state::now() + settings.refresh_interval as f64;
         }
@@ -70,6 +86,10 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
     {
         let mut store = state.store.lock().unwrap();
         store.snapshot.settings = settings.clone();
+        if settings.antigravity_enabled != previous.antigravity_enabled {
+            store.snapshot.antigravity.requires_action = false;
+            if !settings.antigravity_enabled { store.snapshot.antigravity.refreshing = false; store.snapshot.antigravity_announcements.refreshing = false; }
+        }
         if settings.monitoring_enabled != previous.monitoring_enabled {
             store.continuous = false;
         }
@@ -81,6 +101,13 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
     }
     if !active {
         state.client.lock().await.stop().await;
+    }
+    let antigravity_active = settings.antigravity_enabled && !state.paused.load(Ordering::Relaxed) && !state.preview;
+    if *state.antigravity_active.borrow() != antigravity_active { state.antigravity_active.send_replace(antigravity_active); }
+    if !antigravity_active { state.antigravity_client.lock().await.stop().await; }
+    if settings.antigravity_enabled && !previous.antigravity_enabled {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move { tokio::join!(monitor::refresh_antigravity(&handle, true), monitor::refresh_antigravity_announcements(&handle)); });
     }
     if !settings.automatic_updates {
         updates::cancel_check(&app);
@@ -225,11 +252,12 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
         .snapshot
         .settings
         .clone();
-    if !settings.monitoring_enabled
-        || !(settings.recovery_notifications
+    if !(settings.monitoring_enabled
+        && (settings.recovery_notifications
             || settings.reset_credit_reminders
             || settings.quota_reset_reminders
             || settings.announcement_notifications)
+        || settings.antigravity_enabled && settings.antigravity_announcement_notifications)
     {
         return Err("请先开启额度监测和至少一种通知。".into());
     }
@@ -298,6 +326,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
             refresh_quota,
+            refresh_antigravity,
             scan_usage,
             save_settings,
             save_prices,
@@ -371,7 +400,8 @@ pub fn run() {
                 api.prevent_close();
                 let app = window.app_handle();
                 let snapshot = controller(app).store.lock().unwrap().snapshot.clone();
-                let has_tray = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled;
+                let has_tray = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled
+                    || snapshot.settings.antigravity_show_tray && snapshot.settings.antigravity_enabled;
                 #[cfg(windows)]
                 if !has_tray {
                     let _ = window.minimize();
@@ -395,12 +425,13 @@ pub fn run() {
                 platform::power::cleanup();
                 let state = controller(app);
                 state.active.send_replace(false);
+                state.antigravity_active.send_replace(false);
                 updates::cancel_check(app);
                 if let Some(task) = state.updates.lock().unwrap().downloading.take() {
                     task.abort();
                 }
                 tauri::async_runtime::block_on(async {
-                    state.client.lock().await.stop().await;
+                    tokio::join!(async { state.client.lock().await.stop().await }, async { state.antigravity_client.lock().await.stop().await });
                 });
             }
             _ => {}

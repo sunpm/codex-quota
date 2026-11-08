@@ -1,11 +1,14 @@
 AIHOT reset announcement data
 
-Source: https://aihot.news/codex-reset
+Codex source: https://aihot.news/codex-reset
+Antigravity source: https://aihot.news/antigravity-reset
+Codex API: https://aihot.news/api/v1/codex-resets/recent
+Antigravity API: https://aihot.news/api/v1/antigravity-resets/recent
 API contract: https://aihot.news/openapi-v1.json
 Data usage terms: https://aihot.news/terms
 
 Codex Quota reads the public reset announcement API and preserves source
-links. AIHOT is an independent service, not an official OpenAI service.
+links. AIHOT is an independent service, not an official OpenAI or Google service.
 Announcements and estimates do not establish the quota of an individual account.
 
 No AIHOT implementation code is included. The MIT license of the AIHOT framework

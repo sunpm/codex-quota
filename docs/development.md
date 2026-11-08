@@ -33,7 +33,7 @@ pnpm tauri dev
 pnpm dev
 ```
 
-浏览器不能访问桌面进程与本机数据。显式加 `?preview` 可查看标注为离线预览的匿名示例，不会连接真实 Codex。
+浏览器不能访问桌面进程与本机数据。显式加 `?preview` 可查看标注为离线预览的匿名示例，不会连接真实 Codex 或 Antigravity。
 
 应用版本以 `package.json` 为准，Tauri 配置与网页预览直接读取该字段。正式发版使用 `pnpm release <版本>` 同步 Cargo 版本、锁文件和 CHANGELOG；普通 PR 无需递增版本，也不会触发发布。操作步骤见 [手动发布](updating.md#手动发布)。
 
@@ -56,6 +56,37 @@ bash scripts/test.sh
 `scripts/test.sh` 包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行；该入口执行编译检查，不代表已覆盖运行时行为。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
 
 生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
+
+## Antigravity CLI 接入边界
+
+首版只使用官方 CLI 的 `agy -p /usage --output-format json`，不启动模型任务、不解析 TUI、不接入本地接口或自行获取 Google 凭据。执行前校验正式版版本：macOS 至少 1.1.11，Windows 至少 1.4.10；后者用于限定已核对的 headless 认证行为。通过 `CODEX_QUOTA_AGY`、`PATH`、用户安装目录查找原生可执行文件，Windows 只执行 `.exe`，不通过 shell、`.cmd` 或 WSL。
+
+解析入口要求 `status=SUCCESS`、`command.name=usage`，读取 `command.data.groups` 的名称及 `buckets` 的 `id`、`name`、`window`、`remaining_fraction`、`reset_time` 和 `disabled`。分组不按模型写死；未知扩展字段可忽略，缺失或越界的比例保持未知，不能通过 clamp 伪造 0% / 100%。只有 `window=5h/weekly` 才标注具体窗口，不从名称、桶 ID 或重置日期推断。报告不提供可靠身份，因此个人额度不落盘、不参与历史和恢复提醒。
+
+查询沿用 Rust / Tokio 子进程，每次使用私有临时工作目录，标准输入关闭，版本检查限 3 秒、额度读取限 90 秒，输出流分别限 1 MiB。所有应用启动的 `agy` 子进程收到 `AGY_CLI_DISABLE_AUTO_UPDATE=true`、`AGY_CLI_NONINTERACTIVE_HEADLESS=true`、`AGY_CLI_INTERACTIVE_HEADLESS=false`；不改写全局配置或登录存储。原始 stdout/stderr 不写日志或错误界面，stderr 只用于固定错误分类；不读取 CLI 日志文件。
+
+macOS 使用独立进程会话，在本次临时目录中提供失败的 `open` / `xdg-open`，并设置 `BROWSER` 阻止自动浏览器登录。Windows 以 `DETACHED_PROCESS | CREATE_SUSPENDED` 创建进程，恢复执行前加入仅允许一个活动进程的 Job；不能成功建立限制时不执行查询。此限制同时禁止浏览器、MCP 与其他辅助子进程，配置了此类功能的 CLI 可能无法查询。结束、取消、休眠或退出时清理本应用拥有的进程和临时目录。
+
+个人额度使用独立监测开关、调度、刷新状态和错误状态，共用设置中的刷新间隔。`requires_action` 错误停止自动重试，用户在终端处理后手动刷新；可识别的网络与限流失败按冷却重试。失败保留本次运行中的成功快照及时间。公开动态使用独立的 AIHOT feed、ETag、十分钟调度与通知基线，不参与个人额度恢复判定。
+
+CLI 未在 stderr 中提供认证原因时，只能显示无法确认原因的查询失败或超时，不据此断言登录失效。CLI 没有输出 `Retry-After` 时，已识别的限流按至少 300 秒冷却。macOS 清理范围为本应用创建的进程组，不能保证清理自行脱离该进程组的辅助进程。
+
+参考源码、许可证及已知问题见[第三方来源](../THIRD_PARTY_NOTICES.md#antigravity-额度接入)。
+
+### 本轮验收（2026-11-08）
+
+本轮按用户要求只做离线实现，未查询真实账号，本机未找到官方 `agy`。在 macOS 15.7.9 x86_64 上，`pnpm build` 的 TypeScript 检查与 Vite 构建，以及 `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml` 均通过。未新增或修改自动化测试，也未使用临时脚本编写测试。
+
+Chrome 专门代理完成一次离线关键流程验收：默认额度、未知额度、保留旧数据与成功时间的过期错误、刷新中和空态均显示正确；两项服务开关经 Space、Tab、失焦操作检查，关闭 Antigravity 只禁用自身公开动态通知，关闭 Codex 后共用刷新间隔仍可操作。验收发现 Antigravity 百分比缺少“剩余”标识，修复后已复核。该结果只证明离线界面行为，不证明服务连接、认证或系统集成。
+
+| 环境 / 范围 | 本轮结果 |
+| --- | --- |
+| macOS 15.7.9 x86_64 | 前端与 Rust 编译检查通过，Chrome 离线关键流程通过 |
+| macOS Apple Silicon、其他 macOS 版本 | 未编译、未验收 |
+| Windows x64 | 未编译、未验收 |
+| 两平台真实额度与官方界面对照、登录失效的静默行为、原生菜单栏 / 托盘 | 未验收 |
+
+界面沿用现有 `surface`、原生选择器、Switch、Button 与主题，无新增设计系统，因此不改写 `DESIGN.md` 或 `.impeccable/design.json`。工具报告的 `DESIGN.md` 比 sidecar 更新属于既有文档差异，本轮保留。Chrome 截图 API 没有文档化的落盘方式，本轮未保存截图文件。
 
 ## 通用工具方法
 

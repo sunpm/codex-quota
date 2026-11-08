@@ -53,6 +53,14 @@ pub struct AnnouncementMonitor {
 
 impl ResetAnnouncementFeed {
     pub fn decode(data: &[u8]) -> Result<Self, String> {
+        Self::decode_from_author(data, "thsottiaux")
+    }
+
+    pub fn decode_antigravity(data: &[u8]) -> Result<Self, String> {
+        Self::decode_from_author(data, "_mohansolo")
+    }
+
+    fn decode_from_author(data: &[u8], author: &str) -> Result<Self, String> {
         let feed: Self = serde_json::from_slice(data).map_err(|_| "AIHOT 数据格式暂不兼容。")?;
         let ids: BTreeSet<_> = feed.events.iter().map(|event| &event.id).collect();
         if feed.schema_version != 1
@@ -60,7 +68,8 @@ impl ResetAnnouncementFeed {
             || feed.events.iter().any(|event| {
                 event.id.is_empty()
                     || event.posts.iter().any(|post| {
-                        ResetAnnouncementPost::source_url(&post.id).as_ref() != Some(&post.url)
+                        ResetAnnouncementPost::source_url_for_author(&post.id, author).as_ref()
+                            != Some(&post.url)
                     })
             })
         {
@@ -200,15 +209,21 @@ impl ResetAnnouncement {
         }
     }
     pub fn notification_title(&self) -> String {
+        self.notification_title_from("Tibo")
+    }
+    pub fn antigravity_notification_title(&self) -> String {
+        format!("Antigravity · {}", self.notification_title_from("Varun"))
+    }
+    fn notification_title_from(&self, author: &str) -> String {
         let action = if self.kind == AnnouncementKind::ResetCredit {
             "发放重置卡"
         } else {
             "重置"
         };
         if self.status == AnnouncementPhase::Announced {
-            format!("Tibo 预告{action}")
+            format!("{author} 预告{action}")
         } else if self.confirmation_basis.as_deref() == Some("source_post") {
-            format!("Tibo 已确认{action}")
+            format!("{author} 已确认{action}")
         } else {
             format!("AIHOT 已核实{action}公告")
         }
@@ -227,8 +242,12 @@ pub struct ResetAnnouncementPost {
 
 impl ResetAnnouncementPost {
     pub fn source_url(id: &str) -> Option<String> {
+        Self::source_url_for_author(id, "thsottiaux")
+    }
+
+    fn source_url_for_author(id: &str, author: &str) -> Option<String> {
         (!id.is_empty() && id.bytes().all(|c| c.is_ascii_digit()))
-            .then(|| format!("https://x.com/thsottiaux/status/{id}"))
+            .then(|| format!("https://x.com/{author}/status/{id}"))
     }
 }
 

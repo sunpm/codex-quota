@@ -7,6 +7,9 @@ export interface NotificationStatus {
 }
 export interface Settings {
   monitoringEnabled: boolean
+  antigravityEnabled: boolean
+  antigravityAnnouncementNotifications: boolean
+  antigravityShowTray: boolean
   recoveryNotifications: boolean
   resetCreditReminders: boolean
   resetCreditReminderMinutes: number[]
@@ -42,6 +45,9 @@ export interface Announcement {
   schedule: { through: number; label: string } | null; estimate: { through: number; label: string } | null
   updatedAt: number; posts: { id: string; publishedAt: number; text: string; url: string }[]
 }
+export interface AntigravityBucket { id: string; name: string; window: string | null; remainingPercent: number | null; resetsAt: number | null; disabled: boolean }
+export interface AntigravityGroup { name: string; buckets: AntigravityBucket[] }
+export interface AnnouncementSnapshot { events: Announcement[]; error: string | null; sourceStatus: string | null; refreshing: boolean; lastSuccess: number | null }
 export interface UpdateState {
   status: 'idle' | 'checking' | 'available' | 'current' | 'downloading' | 'installing' | 'error'
   version: string | null; notes: string | null; error: string | null; progress: number | null; canInstall: boolean
@@ -50,7 +56,9 @@ export interface AppSnapshot {
   error?: string | null
   settings: Settings
   quota: { windows: QuotaWindow[]; resetCredits: { availableCount: number; credits: ResetCredit[] | null } | null; history: Record<string, QuotaSeries>; error: string | null; lastSuccess: number | null; refreshing: boolean }
-  announcements: { events: Announcement[]; error: string | null; sourceStatus: string | null }
+  announcements: AnnouncementSnapshot
+  antigravity: { groups: AntigravityGroup[]; error: string | null; lastSuccess: number | null; refreshing: boolean; requiresAction: boolean }
+  antigravityAnnouncements: AnnouncementSnapshot
   usage: { records: UsageRecord[]; projectRoots: Record<string, string>; warnings: string[]; scannedAt: number | null; fileCount: number; refreshing: boolean; source: string }
   prices: ModelPricing[]
   priceDate: string
