@@ -60,7 +60,7 @@ function changeText(kind: Metric) {
   const direction = delta > 0 ? 'increase' : 'decrease'
   if (!before) return { text: `+${amount}`, title, direction }
   const sign = delta > 0 ? '+' : '−'
-  return { text: `${sign}${(Math.abs(delta) / before * 100).toFixed(1)}% · ${sign}${amount}`, title, direction }
+  return { text: `${sign}${amount}（${(Math.abs(delta) / before * 100).toFixed(1)}%）`, title, direction }
 }
 const byHour = computed(() => period.value === 'today' || period.value === 'yesterday')
 const buckets = computed(() => {
