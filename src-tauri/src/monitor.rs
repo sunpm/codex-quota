@@ -17,8 +17,10 @@ pub struct Controller {
     pub store: Mutex<Store>,
     pub reader: Arc<Mutex<LocalUsageReader>>,
     pub client: AsyncMutex<CodexClient>,
+    pub antigravity_client: AsyncMutex<crate::antigravity::AntigravityClient>,
     pub http: reqwest::Client,
     pub active: watch::Sender<bool>,
+    pub antigravity_active: watch::Sender<bool>,
     pub paused: AtomicBool,
     pub preview: bool,
     pub updates: Mutex<crate::updates::UpdateRuntime>,
@@ -48,13 +50,23 @@ impl Controller {
         let mut settings = Settings::from_preferences(&saved.preferences);
         if preview || error.is_some() {
             settings.monitoring_enabled = false;
+            settings.antigravity_enabled = false;
             settings.automatic_updates = false;
         }
         if !settings.monitoring_enabled {
             saved.recovery.state = None;
             saved.announcements.tracker.has_baseline = false;
         }
+        if !settings.antigravity_enabled {
+            saved.antigravity_announcements.tracker.has_baseline = false;
+        }
         let snapshot = AppSnapshot {
+            antigravity: AntigravitySnapshot::default(),
+            antigravity_announcements: AnnouncementSnapshot {
+                events: saved.antigravity_announcements.feed.as_ref().map(|feed| feed.events.clone()).unwrap_or_default(),
+                source_status: saved.antigravity_announcements.feed.as_ref().and_then(|feed| feed.source_status(now())),
+                ..Default::default()
+            },
             quota: QuotaSnapshot {
                 history: saved.quota_history.series.clone(),
                 ..Default::default()
@@ -71,7 +83,7 @@ impl Controller {
                     .feed
                     .as_ref()
                     .and_then(|v| v.source_status(now())),
-                error: None,
+                ..Default::default()
             },
             usage: UsageSnapshot {
                 source: codex_home.to_string_lossy().into_owned(),
@@ -97,11 +109,11 @@ impl Controller {
             path,
             writable: error.is_none(),
             continuous: false,
-            announcements_refreshing: false,
             updating_prices: false,
         };
         store.reprice();
         let (active, _) = watch::channel(settings.monitoring_enabled && !preview);
+        let (antigravity_active, _) = watch::channel(settings.antigravity_enabled && !preview);
         Ok(Self {
             store: Mutex::new(store),
             reader: Arc::new(Mutex::new(LocalUsageReader::new(
@@ -109,12 +121,14 @@ impl Controller {
                 data_dir.join("usage-history.json"),
             ))),
             client: AsyncMutex::new(CodexClient::default()),
+            antigravity_client: AsyncMutex::new(crate::antigravity::AntigravityClient::default()),
             http: reqwest::Client::builder()
                 .timeout(Duration::from_secs(25))
                 .user_agent("CodexQuota")
                 .build()
                 .map_err(|_| "无法初始化网络客户端")?,
             active,
+            antigravity_active,
             paused: AtomicBool::new(false),
             preview,
             updates: Mutex::new(Default::default()),
@@ -133,21 +147,23 @@ impl Controller {
         store.continuous = false;
         if !paused {
             store.saved.schedule.next_attempt = 0.0;
+            store.saved.antigravity_schedule.next_attempt = 0.0;
         }
         self.active
             .send_replace(!paused && store.snapshot.settings.monitoring_enabled && !self.preview);
+        self.antigravity_active.send_replace(!paused && store.snapshot.settings.antigravity_enabled && !self.preview);
         drop(store);
         if paused {
             crate::updates::cancel_check(app);
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
-                controller(&app).client.lock().await.stop().await;
+                let state = controller(&app);
+                tokio::join!(async { state.client.lock().await.stop().await }, async { state.antigravity_client.lock().await.stop().await });
             });
         } else {
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
-                refresh_quota(&app, true).await;
-                refresh_announcements(&app).await;
+                tokio::join!(refresh_quota(&app, true), refresh_antigravity(&app, false), refresh_announcements(&app), refresh_antigravity_announcements(&app));
             });
         }
     }
@@ -356,6 +372,58 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
     state.emit(app);
 }
 
+pub async fn refresh_antigravity(app: &AppHandle, force: bool) {
+    let state = controller(app);
+    let mut activity = state.antigravity_active.subscribe();
+    {
+        let mut store = state.store.lock().unwrap();
+        if !*activity.borrow()
+            || store.snapshot.antigravity.refreshing
+            || (!force && store.snapshot.antigravity.requires_action)
+            || !store.saved.antigravity_schedule.can_refresh(force, now())
+        {
+            return;
+        }
+        store.snapshot.antigravity.refreshing = true;
+    }
+    state.emit(app);
+    let mut client = state.antigravity_client.lock().await;
+    let result = tokio::select! {
+        result = client.sample() => Some(result),
+        _ = activity.changed() => { client.stop().await; None },
+    };
+    drop(client);
+    {
+        let mut store = state.store.lock().unwrap();
+        store.snapshot.antigravity.refreshing = false;
+        if *activity.borrow() {
+            match result {
+                Some(Ok(groups)) => {
+                    store.saved.antigravity_schedule.succeeded();
+                    store.saved.antigravity_schedule.next_attempt = now() + store.snapshot.settings.refresh_interval as f64;
+                    store.snapshot.antigravity = AntigravitySnapshot {
+                        groups,
+                        last_success: Some(now()),
+                        ..Default::default()
+                    };
+                }
+                Some(Err(error)) => {
+                    let delay = store.saved.antigravity_schedule.failed(error.retry_after, now());
+                    store.snapshot.antigravity.requires_action = error.requires_action;
+                    store.snapshot.antigravity.error = Some(if error.requires_action {
+                        error.message
+                    } else {
+                        format!("{} {} 秒后重试。", error.message, delay.ceil() as u64)
+                    });
+                }
+                None => {}
+            }
+            let _ = store.persist();
+        }
+    }
+    state.emit(app);
+}
+
 pub async fn scan_usage(app: &AppHandle, rescan: bool) {
     let state = controller(app);
     {
@@ -403,29 +471,36 @@ pub async fn scan_usage(app: &AppHandle, rescan: bool) {
 }
 
 pub async fn refresh_announcements(app: &AppHandle) {
+    refresh_announcement_feed(app, false).await;
+}
+
+pub async fn refresh_antigravity_announcements(app: &AppHandle) {
+    refresh_announcement_feed(app, true).await;
+}
+
+async fn refresh_announcement_feed(app: &AppHandle, antigravity: bool) {
     let state = controller(app);
-    let mut activity = state.active.subscribe();
+    let mut activity = if antigravity { state.antigravity_active.subscribe() } else { state.active.subscribe() };
     let etag = {
         let mut store = state.store.lock().unwrap();
-        if !*activity.borrow()
-            || store.announcements_refreshing
-            || now() < store.saved.announcements.next_request
-        {
-            return;
-        }
-        store.announcements_refreshing = true;
-        store.saved.announcements.next_request = now() + 600.0;
-        let _ = store.persist();
-        if store.saved.announcements.feed.is_some() {
-            store.saved.announcements.etag.clone()
+        let Store { saved, snapshot, .. } = &mut *store;
+        let (saved, snapshot) = if antigravity {
+            (&mut saved.antigravity_announcements, &mut snapshot.antigravity_announcements)
         } else {
-            None
-        }
+            (&mut saved.announcements, &mut snapshot.announcements)
+        };
+        if !*activity.borrow() || snapshot.refreshing || now() < saved.next_request { return; }
+        snapshot.refreshing = true;
+        saved.next_request = now() + 600.0;
+        let etag = saved.feed.as_ref().and(saved.etag.clone());
+        let _ = store.persist();
+        etag
     };
+    state.emit(app);
     let request = async {
         let mut request = state
             .http
-            .get("https://aihot.news/api/v1/codex-resets/recent")
+            .get(if antigravity { "https://aihot.news/api/v1/antigravity-resets/recent" } else { "https://aihot.news/api/v1/codex-resets/recent" })
             .header("Accept", "application/json");
         if let Some(etag) = etag {
             request = request.header("If-None-Match", etag);
@@ -473,49 +548,42 @@ pub async fn refresh_announcements(app: &AppHandle) {
             .bytes()
             .await
             .map_err(|_| ("无法读取 AIHOT 动态。".to_string(), None))?;
-        let feed = ResetAnnouncementFeed::decode(&bytes).map_err(|error| (error, None))?;
+        let feed = if antigravity { ResetAnnouncementFeed::decode_antigravity(&bytes) } else { ResetAnnouncementFeed::decode(&bytes) }.map_err(|error| (error, None))?;
         Ok(Some((feed, etag)))
     };
     let response = tokio::select! { result=request => Some(result), _=activity.changed() => None };
     let mut notifications = Vec::new();
     {
         let mut store = state.store.lock().unwrap();
-        store.announcements_refreshing = false;
-        if !*activity.borrow() {
-            return;
-        }
+        let Store { saved, snapshot, .. } = &mut *store;
+        let enabled = if antigravity { snapshot.settings.antigravity_announcement_notifications } else { snapshot.settings.announcement_notifications };
+        let (saved, snapshot) = if antigravity {
+            (&mut saved.antigravity_announcements, &mut snapshot.antigravity_announcements)
+        } else {
+            (&mut saved.announcements, &mut snapshot.announcements)
+        };
+        snapshot.refreshing = false;
+        if !*activity.borrow() { return; }
         match response {
             Some(Ok(updated)) => {
                 if let Some((feed, etag)) = updated {
-                    store.saved.announcements.feed = Some(feed);
-                    store.saved.announcements.etag = etag;
+                    saved.feed = Some(feed);
+                    saved.etag = etag;
                 }
-                if let Some(feed) = store.saved.announcements.feed.clone() {
-                    let enabled = store.snapshot.settings.announcement_notifications;
-                    notifications =
-                        store
-                            .saved
-                            .announcements
-                            .tracker
-                            .observe(&feed.events, enabled, now());
-                    store.snapshot.announcements.events = feed.events.clone();
-                    store.snapshot.announcements.source_status = feed.source_status(now());
-                    store.snapshot.announcements.error = None;
+                if let Some(feed) = &saved.feed {
+                    notifications = saved.tracker.observe(&feed.events, enabled, now());
+                    snapshot.events = feed.events.clone();
+                    snapshot.source_status = feed.source_status(now());
+                    snapshot.error = None;
+                    snapshot.last_success = Some(now());
                 } else {
-                    store.snapshot.announcements.error = Some("AIHOT 未返回首次快照。".into());
+                    snapshot.error = Some("AIHOT 未返回首次快照。".into());
                 }
             }
             Some(Err((error, retry))) => {
-                if let Some(retry) = retry {
-                    store.saved.announcements.next_request = now() + retry;
-                }
-                store.snapshot.announcements.error = Some(error);
-                store.snapshot.announcements.source_status = store
-                    .saved
-                    .announcements
-                    .feed
-                    .as_ref()
-                    .and_then(|v| v.source_status(now()));
+                if let Some(retry) = retry { saved.next_request = now() + retry; }
+                snapshot.error = Some(error);
+                snapshot.source_status = saved.feed.as_ref().and_then(|feed| feed.source_status(now()));
             }
             None => {}
         }
@@ -527,7 +595,7 @@ pub async fn refresh_announcements(app: &AppHandle) {
         if let Some(post) = event.latest_post() {
             notify(
                 app,
-                &event.notification_title(),
+                &if antigravity { event.antigravity_notification_title() } else { event.notification_title() },
                 &post.text,
                 Some(&post.url),
             )
@@ -550,7 +618,7 @@ pub fn start(app: AppHandle) {
             if state.paused.load(Ordering::Relaxed) {
                 continue;
             }
-            let (quota, announcements, usage, update) = {
+            let (quota, announcements, antigravity, antigravity_announcements, usage, update) = {
                 let store = state.store.lock().unwrap();
                 let visible = app.get_webview_window("main").is_some_and(|w| {
                     w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false)
@@ -560,6 +628,11 @@ pub fn start(app: AppHandle) {
                         && store.saved.schedule.can_refresh(false, now()),
                     store.snapshot.settings.monitoring_enabled
                         && now() >= store.saved.announcements.next_request,
+                    store.snapshot.settings.antigravity_enabled
+                        && !store.snapshot.antigravity.requires_action
+                        && store.saved.antigravity_schedule.can_refresh(false, now()),
+                    store.snapshot.settings.antigravity_enabled
+                        && now() >= store.saved.antigravity_announcements.next_request,
                     visible
                         && store
                             .snapshot
@@ -581,6 +654,14 @@ pub fn start(app: AppHandle) {
                 tauri::async_runtime::spawn(async move {
                     refresh_announcements(&app).await;
                 });
+            }
+            if antigravity {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { refresh_antigravity(&app, false).await; });
+            }
+            if antigravity_announcements {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { refresh_antigravity_announcements(&app).await; });
             }
             if usage {
                 let app = app.clone();

@@ -1,0 +1,51 @@
+Antigravity CLI quota integration
+
+Reference date: 2026-11-08
+Reference: https://github.com/steipete/CodexBar/tree/c727c08a291681fc76dd5e22dd34e2b9614990b9
+Provider notes: docs/antigravity.md
+License: MIT; Copyright (c) 2026 Peter Steinberger
+The full license is included in CodexBar-LICENSE.txt.
+
+Codex Quota uses its Rust, Tokio and Serde implementation to read the official
+agy CLI structured usage report. The implementation draws on CodexBar's report
+format, identity separation, per-child update suppression and browser-launch
+guard design. It does not use CodexBar's OAuth or multi-account implementation.
+
+Windows background probing design reference:
+https://github.com/hemsoft-dev/codexbar/pull/290
+https://github.com/hemsoft-dev/codexbar/blob/66764b6f65964d1422e63aa5c575333b5bafb0e0/crates/codexbar-providers/src/gemini_coding.rs
+The headless environment and single-process Windows Job design were consulted;
+the Win32 calls and Tokio process management are independently implemented.
+No source was copied and no dependency was added. Its MIT license follows below.
+
+Comparison only, with no source copied or dependency added:
+https://github.com/n2ns/antigravity-panel/tree/d5e54df789fb1dc022c334d1f351ec2a188839ce
+Apache-2.0; Copyright 2024-2025 Datafrog LLC
+https://github.com/deviffyy/OpenQuota/tree/0b21b354e1a0a3f65d78900ec244c43f581542e2
+MIT; Copyright (c) 2026 deviffyy
+
+The official agy CLI is installed separately by the user and is not distributed
+with Codex Quota. Authentication is handled by the CLI; this application does not
+extract, copy or store Google credentials.
+
+MIT License
+
+Copyright (c) 2026 HemSoft
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

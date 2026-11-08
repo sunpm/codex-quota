@@ -14,7 +14,9 @@ pub fn open_window(app: &AppHandle) {
 
 pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
     if let Some(tray) = app.tray_by_id("quota") {
-        let visible = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled;
+        let codex_visible = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled;
+        let antigravity_visible = snapshot.settings.antigravity_show_tray && snapshot.settings.antigravity_enabled;
+        let visible = codex_visible || antigravity_visible;
         let _ = tray.set_visible(visible);
         let has_codex = snapshot.quota.windows.iter().any(|window| window.bucket == "codex");
         let mut windows = snapshot.quota.windows.iter()
@@ -52,6 +54,48 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
         if let Some(error) = &snapshot.quota.error {
             description.push(format!("额度可能已过期：{error}"));
         }
+        if codex_visible {
+            description.insert(0, "Codex".into());
+            if antigravity_visible { title = format!("C {title}"); }
+        } else {
+            description.clear();
+            title.clear();
+        }
+        if antigravity_visible {
+            let quota = &snapshot.antigravity;
+            let buckets: Vec<_> = quota.groups.iter().flat_map(|group| &group.buckets).filter(|bucket| !bucket.disabled).collect();
+            let minimum = buckets.iter().filter_map(|bucket| bucket.remaining_percent).reduce(f64::min);
+            let value = minimum.map(|value| format!("{}%", value.floor() as u64)).unwrap_or_else(|| "--".into());
+            let status = if quota.error.is_some() { " !" } else if quota.refreshing { " …" } else if buckets.iter().any(|bucket| bucket.remaining_percent.is_none()) { " ?" } else { "" };
+            if !title.is_empty() { title.push_str(" | "); }
+            title.push_str(&format!("AG {value}{status}"));
+            description.push(format!("Antigravity · 最低已知剩余 {value}{status}"));
+            for group in &quota.groups {
+                for bucket in &group.buckets {
+                    let window = match bucket.window.as_deref() { Some("5h") => "五小时额度", Some("weekly") => "周额度", _ => "额度" };
+                    let remaining = if bucket.disabled { "未启用".into() } else { bucket.remaining_percent.map(|value| format!("剩余 {}%", value.floor() as u64)).unwrap_or_else(|| "剩余额度未知".into()) };
+                    let reset = bucket.resets_at.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
+                        .map(|date| format!("{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
+                        .unwrap_or_else(|| "重置时间未知".into());
+                    description.push(format!("{} · {window} · {} [{}]：{remaining}，{reset}", group.name, bucket.name, bucket.id));
+                }
+            }
+            if let Some(error) = &quota.error { description.push(format!("Antigravity：{error}")); }
+            if let Some(time) = quota.last_success.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0)) {
+                description.push(format!("Antigravity 上次读取{}：{}", if quota.error.is_some() { "（已过期）" } else { "" }, time.with_timezone(&chrono::Local).format("%m-%d %H:%M")));
+            }
+        }
+        // Windows tooltips are length-limited; the menu retains every returned bucket.
+        let menu = (|| -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+            use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+            let menu = Menu::new(app)?;
+            for line in &description { menu.append(&MenuItem::new(app, line, false, None::<&str>)?)?; }
+            menu.append(&PredefinedMenuItem::separator(app)?)?;
+            menu.append(&MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?)?;
+            menu.append(&MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?)?;
+            Ok(menu)
+        })();
+        if let Ok(menu) = menu { let _ = tray.set_menu(Some(menu)); }
         let _ = tray.set_tooltip(Some(format!("Codex Quota\n{}", description.join("\n"))));
         #[cfg(target_os = "macos")]
         {
@@ -204,10 +248,10 @@ pub fn open_external(app: &AppHandle, value: &str) -> Result<(), String> {
             || url.host_str() == Some("x.com")
                 && url
                     .path()
-                    .strip_prefix("/thsottiaux/status/")
+                    .strip_prefix("/thsottiaux/status/").or_else(|| url.path().strip_prefix("/_mohansolo/status/"))
                     .is_some_and(|v| !v.is_empty() && v.bytes().all(|c| c.is_ascii_digit()))
             || url.host_str() == Some("aihot.news")
-                && ["/codex-reset", "/terms"].contains(&url.path()));
+                && ["/codex-reset", "/antigravity-reset", "/terms"].contains(&url.path()));
     if !allowed {
         return Err("此链接不属于应用的数据来源。".into());
     }

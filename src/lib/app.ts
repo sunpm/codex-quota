@@ -18,7 +18,7 @@ export async function initialize() {
   const unlisten = await listen<AppSnapshot>('app-state', event => { snapshot.value = event.payload; connected.value = true })
   await execute('get_snapshot')
   const preferences = snapshot.value.settings
-  if (preferences.monitoringEnabled && (preferences.recoveryNotifications || preferences.resetCreditReminders || preferences.quotaResetReminders || preferences.announcementNotifications)) {
+  if (preferences.monitoringEnabled && (preferences.recoveryNotifications || preferences.resetCreditReminders || preferences.quotaResetReminders || preferences.announcementNotifications) || preferences.antigravityEnabled && preferences.antigravityAnnouncementNotifications) {
     await requestNotificationsIfNeeded()
   }
   return unlisten

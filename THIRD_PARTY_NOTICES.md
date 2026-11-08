@@ -38,9 +38,21 @@ Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-swit
 
 ## AIHOT 重置动态数据
 
-Codex 重置动态通过 [AIHOT Public API](https://aihot.news/openapi-v1.json) 的 `/api/v1/codex-resets/recent` 获取公开公告、中文摘录与原帖链接，接口核对日期为 2026-10-28。客户端根据公开契约自行实现，未复制 AIHOT 或其他监测项目的代码，未引入依赖。已参考 [Issue #276](https://github.com/KKKKhazix/AIHOT/issues/276) 区分过期预告和确认事件。
+Codex 与 Antigravity 重置动态通过 [AIHOT Public API](https://aihot.news/openapi-v1.json) 的 `/api/v1/codex-resets/recent` 与 `/api/v1/antigravity-resets/recent` 获取公开公告、中文摘录与原帖链接，Antigravity 接口及现行契约核对日期为 2026-11-08。两接口使用相同版本的数据结构，分别维护来源校验、缓存和通知基线。客户端根据公开契约自行实现，未复制 AIHOT 或其他监测项目的代码，未引入依赖。已参考 [Issue #276](https://github.com/KKKKhazix/AIHOT/issues/276) 区分过期预告和确认事件。
 
-AIHOT 数据服务并非 OpenAI 官方服务，数据使用遵循 [AIHOT 使用条款](https://aihot.news/terms)，不能用其框架代码的 MIT 许可代替数据授权。来源与条款链接保存在 `Resources/ThirdPartyNotices/AIHOT-NOTICE.txt`，随应用分发；动态卡片保留 AIHOT 和原帖入口。
+AIHOT 数据服务并非 OpenAI 或 Google 官方服务，数据使用遵循 [AIHOT 使用条款](https://aihot.news/terms)，不能用其框架代码的 MIT 许可代替数据授权。来源与条款链接保存在 `Resources/ThirdPartyNotices/AIHOT-NOTICE.txt`，随应用分发；动态卡片保留 AIHOT 和原帖入口。
+
+## Antigravity 额度接入
+
+2026-11-08 复核 [steipete/CodexBar](https://github.com/steipete/CodexBar/tree/c727c08a291681fc76dd5e22dd34e2b9614990b9) 的 `docs/antigravity.md`、CLI JSON 解析及子进程行为，借鉴结构化报告、无身份数据隔离、禁用子进程自动更新和阻止后台浏览器登录的设计。本项目使用现有 Rust / Tokio / Serde 实现，仅接入官方 CLI 报告，不引入其本地接口、OAuth 凭据或多账号管理。CodexBar 为 MIT License，Copyright (c) 2026 Peter Steinberger；沿用 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt` 随包分发。
+
+已核对 CodexBar 的 [CLI 后台更新流量问题 #4739](https://github.com/steipete/CodexBar/issues/4739)、[CLI 与桌面登录状态差异 #3146](https://github.com/steipete/CodexBar/issues/3146)，以及官方 CLI 的[自动更新开关问题 #942](https://github.com/google-antigravity/antigravity-cli/issues/942)、[macOS print 模式问题 #1046](https://github.com/google-antigravity/antigravity-cli/issues/1046)。`AGY_CLI_DISABLE_AUTO_UPDATE` 使用小写字符串 `true`，只设置在本应用启动的子进程中。
+
+Windows headless 环境变量与单进程 Job 设计参考 [hemsoft-dev/codexbar PR #290](https://github.com/hemsoft-dev/codexbar/pull/290) 及 [`gemini_coding.rs`](https://github.com/hemsoft-dev/codexbar/blob/66764b6f65964d1422e63aa5c575333b5bafb0e0/crates/codexbar-providers/src/gemini_coding.rs) 对官方 CLI 1.4.10 的验证。本项目独立实现 Win32 调用与 Tokio 子进程管理，未复制代码或引入依赖；该项目采用 MIT License，Copyright (c) 2026 HemSoft，来源说明及许可原文保存在 `Resources/ThirdPartyNotices/antigravity-cli-NOTICE.txt`。
+
+同时比较 [n2ns/antigravity-panel](https://github.com/n2ns/antigravity-panel/tree/d5e54df789fb1dc022c334d1f351ec2a188839ce)（Apache-2.0；Copyright 2024-2025 Datafrog LLC）的额度分组、双平台进程发现与版本兼容，以及 [deviffyy/OpenQuota](https://github.com/deviffyy/OpenQuota/tree/0b21b354e1a0a3f65d78900ec244c43f581542e2)（MIT；Copyright (c) 2026 deviffyy）的 Tauri / Rust 实现。复核了 antigravity-panel 的[周额度误作五小时额度问题 #222](https://github.com/n2ns/antigravity-panel/issues/222)；本项目依据 CLI 明确返回的窗口类型展示，不采用固定四桶映射。这两项仅作实现比较，不复制代码或引入依赖。
+
+官方 CLI 由用户单独安装，本应用不分发 `agy`，不自行提取、复制或保存 Google 凭据。CLI 报告不提供可靠账号身份，首版只显示当前额度；真实账号、后台失效登录与各平台系统集成的验收限制见[开发说明](docs/development.md#antigravity-cli-接入边界)。
 
 ## 界面与服务实现
 
@@ -57,7 +69,7 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 
 `AGENTS.md` 吸收了 cc-bar 中适用于本项目的协作规则，未引入其自动发版约定。
 
-旧版 Claude Code、Cursor 和 Antigravity 接入曾参考 cc-bar 与 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的凭据、额度和用量实现；这些接入现已移除。为保留历史来源，继续附带 CodexBar 的 MIT 声明（Copyright (c) 2026 Peter Steinberger），完整原文位于 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`。
+旧版 Claude Code、Cursor 和 Antigravity 接入曾参考 cc-bar 与 [steipete/CodexBar](https://github.com/steipete/CodexBar) 的凭据、额度和用量实现；这些旧接入已移除，当前 Antigravity CLI 接入的范围见上节。为保留历史及当前设计来源，继续附带 CodexBar 的 MIT 声明（Copyright (c) 2026 Peter Steinberger），完整原文位于 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt`。
 
 额度趋势的悬停交互核对了 CodexBar 的悬停选错日期问题 [#3062](https://github.com/steipete/CodexBar/issues/3062)（2026-10-30）。使用本项目原生 Charts 与实测点吸附逻辑实现，空白时段明确显示“无采样”，未复制上游组件或增加依赖；沿用随包分发的 CodexBar MIT 声明。
 

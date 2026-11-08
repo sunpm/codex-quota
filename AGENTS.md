@@ -18,9 +18,9 @@
 
 ## 项目结构
 
-- Codex 专用的桌面额度与用量应用，支持 macOS 13+（Apple Silicon / Intel）与 Windows x64；主窗口为主体，菜单栏 / 托盘可选。
+- Codex 与 Antigravity 的桌面额度应用，保留 Codex 用量分析，支持 macOS 13+（Apple Silicon / Intel）与 Windows x64；主窗口为主体，菜单栏 / 托盘可选。
 - `src/`：Vue 3、TypeScript 与 shadcn-vue 界面，Vite 构建，Apache ECharts 按需加载图表。
-- `src-tauri/`：Rust 桌面入口、Codex 子进程、监测调度、系统集成、设置迁移与 Tauri updater。
+- `src-tauri/`：Rust 桌面入口、Codex / Antigravity 子进程、监测调度、系统集成、设置迁移与 Tauri updater。
 - `crates/quota-core/`：额度、日志解析、增量扫描、历史、Decimal 定价与通知判定；保持与桌面运行时分离。
 - 旧 Swift 应用、检查及打包脚本已移除，历史实现从 Git 历史查阅；`scripts/make-icon.swift` 仍用于当前应用图标生成。保留 Rust 中的 macOS 集成与旧数据迁移。
 - `Resources/`：随包许可。`dependencies-LICENSES.txt` 由 `scripts/collect-licenses.mjs` 从锁定依赖生成，不能手工修改；当前图标资源位于 `src-tauri/icons/`。
@@ -35,10 +35,13 @@
 - 聚焦使用边框变色和内侧 ring / 描边，保留清晰的键盘焦点，不增加控件外轮廓或改变高度。检查默认、聚焦、失焦及键盘操作，并与相邻控件对照；不要把焦点外扩当作布局错位来修正。
 - 设置中的多选入口直接展示已选项目名称，不仅显示数量；空选时明确显示“不显示”。
 - 百分比和倒计时使用等宽数字。额度状态色统一使用 `quotaColor`；品牌识别与额度状态分开。
-- 仅接入和展示 Codex，保留额度监测与用量分析；不恢复其他服务的接入、解析或选择器。旧服务标识仅用于兼容已有持久化数据，不参与新采集与展示。
+- 额度接入范围为 Codex + Antigravity；Token、项目与费用分析仍只包含 Codex。不接入其他服务，不实现多账号管理或自动切换。旧服务历史保留存储，不参与新统计。
+- Antigravity 首版仅通过官方 `agy -p /usage --output-format json` 取数，由 CLI 处理登录；不提取、复制或保存 Google 凭据，不并行实现本地接口或其他取数路线。默认关闭，使用独立的 `antigravity.cli.*` 设置，不恢复旧版接入或凭据。
+- Antigravity 按服务返回的分组名称和桶 ID / 名称展示，不固定模型分组；仅明确的 `window` 字段区分五小时与周额度，缺失或未知时显示“额度”。CLI 未提供可靠身份时只保留内存中的当前快照，不积累历史或触发个人额度恢复提醒。
+- Antigravity 子进程单独禁用自动更新、禁止后台交互登录并限制运行时间；登录或兼容性问题需用户处理时停止自动重试。平台实现及最低 CLI 版本见 `docs/development.md`，不得将编译通过写成静默查询实机验收通过。
 - 启动显示主窗口和 Dock 图标；关闭窗口继续后台监测，有菜单栏额度入口时隐藏 Dock 图标，否则保留 Dock 入口。重新打开复用同一窗口并恢复 Dock 图标；`⌘Q` 或菜单栏退出项彻底退出。菜单栏显示偏好与额度监测开关独立。
 - 以接口实际返回值为准，缺失或无效额度不得补成 0% 使用量 / 100% 剩余。
-- 网络失败保留上次成功快照和时间，并标明过期；额度监测与公开重置动态分别维护刷新和通知状态。
+- 网络失败保留上次成功快照和时间，并标明过期；两项服务分别维护监测、刷新、错误与菜单栏 / 托盘显示偏好，个人额度与 AIHOT 公开重置动态分别维护刷新和通知状态。
 - 429 遵守限流及 `Retry-After`，手动刷新也不绕过服务端冷却时间。
 - 倒计时本地计算，不靠每秒网络请求；后台刷新避免重入，睡眠暂停、唤醒恢复，退出清理本应用拥有的资源。
 - 恢复通知依据真实观测值，不能由显示舍入或倒计时归零触发；维持按 Codex 账号、窗口去重及跨重启行为。
@@ -54,7 +57,7 @@
 - 验证入口：`bash scripts/test.sh`；其中 `pnpm build` 执行 TypeScript 检查与前端构建，`cargo check --locked --manifest-path src-tauri/Cargo.toml` 检查桌面实现。编译检查不等于运行时行为测试。
 - 本地打包使用 `bash scripts/build.sh`（PowerShell 用 `node scripts/build.mjs`），由锁定的 Tauri CLI 打包，不另拼签名 / 导出流程。Mac 包在 macOS 构建，Windows 包在 Windows 构建；构建成功不等于真实服务连接或系统交互已验收。
 - 带凭据的真实服务验证需有相应授权；优先用不含隐私的响应夹具验证解析、去重、账号切换和开关行为。
-- 人工验收覆盖菜单栏、展开面板、Codex 空态/错误态、设置持久化、系统通知及退出清理。
+- 人工验收按本次改动覆盖菜单栏 / 托盘、额度空态 / 错误态、设置持久化、系统通知及退出清理；没有环境或真实账号授权的平台、系统版本和架构明确列为未验收。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
 - `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64，普通 PR 合并不发版。`pnpm release <版本>` 是手动发布入口：按最近正式版生成 GitHub 原生变更说明写入 CHANGELOG，同步 package/Cargo 版本与锁文件，经检查和终端确认后提交并推送标签。Tauri 配置与网页预览读取 `package.json` 版本，构建必须校验标签与源码一致，不用临时版本覆盖。
 - `release.yml` 手动运行只生成三平台安装包 artifacts；版本标签推送后从 CHANGELOG 提取说明并生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在 CI 发布流程中预先重复编译。预发布不替换 latest。推送版本标签即触发发布，仍需用户对应授权；实现发布脚本不等于授权执行发布。
