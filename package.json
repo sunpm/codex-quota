@@ -3,7 +3,9 @@
   "version": "0.25.3",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "pnpm": ">=12.11.2 <13"
+  },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "vue-tsc --noEmit",
@@ -14,14 +16,14 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.69.0",
-    "@pmun/utils": "0.17.0",
+    "@pmun/utils": "~0.17.0",
     "@tauri-apps/api": "^2",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
-    "dompurify": "3.4.17",
+    "dompurify": "~3.4.17",
     "echarts": "^6",
-    "markdown-it": "15.0.3",
+    "markdown-it": "~15.0.3",
     "reka-ui": "^2.11.0",
     "vue": "^3.5"
   },

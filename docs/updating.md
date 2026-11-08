@@ -31,7 +31,7 @@ pnpm release 0.25.3
 
 ## 本地打包
 
-需要 Node.js 22.12+、`package.json` 指定的 pnpm、Rust stable（至少 1.90），以及 [Tauri 平台依赖](https://v2.tauri.app/start/prerequisites/)。macOS 安装 Xcode Command Line Tools；Windows 安装 Visual Studio C++ Build Tools 与 Windows SDK。
+需要 Node.js 22.12+、满足 `package.json` 中 `engines.pnpm` 范围的 pnpm、Rust stable（至少 1.90），以及 [Tauri 平台依赖](https://v2.tauri.app/start/prerequisites/)。macOS 安装 Xcode Command Line Tools；Windows 安装 Visual Studio C++ Build Tools 与 Windows SDK。CI 从该字段读取 pnpm 版本范围，依赖仍通过锁文件和 `--frozen-lockfile` 固定。
 
 在仓库根目录安装锁定依赖后，构建当前平台：
 
