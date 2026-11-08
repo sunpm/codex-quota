@@ -9,12 +9,16 @@
 | 项目 | 要求 |
 | --- | --- |
 | Node.js | 22.12+ |
-| pnpm | `package.json` 中 `packageManager` 指定的版本 |
+| pnpm | `package.json` 中 `engines.pnpm` 指定的范围：`>=12.11.2 <13` |
 | Rust | stable，至少 1.90 |
 | macOS | Xcode Command Line Tools |
 | Windows | Visual Studio C++ Build Tools、Windows SDK；执行 `.sh` 入口时需要 Git Bash |
 
 平台依赖安装方法见 [Tauri 官方说明](https://v2.tauri.app/start/prerequisites/)。以下命令均在仓库根目录执行。
+
+pnpm 使用兼容版本范围，不自动切换到某个补丁版本；`Check` 和 `Release` 从同一个 `engines.pnpm` 字段读取安装范围。普通稳定依赖沿用 `^`，允许兼容的次版本和补丁更新；`@pmun/utils`、DOMPurify 与 Markdown 解析器采用 `~`，只允许当前次版本内的补丁更新。Rust 依赖继续沿用现有兼容范围。
+
+`pnpm-lock.yaml` 和 `Cargo.lock` 继续记录实际解析版本，日常安装和 CI 保留 `--frozen-lockfile` / `--locked`。范围放宽不会让每次构建自动升级依赖；有意升级时使用包管理器更新锁文件，审阅差异并通过现有检查后一起提交。
 
 ## 启动开发环境
 
@@ -55,7 +59,7 @@ bash scripts/test.sh
 
 ## 通用工具方法
 
-前端按需从 `@pmun/utils` 主入口导入，固定为 0.17.0；该版本仅导出主入口，不使用 `/is`、`/date` 等子路径。2026-11-07 已核对[上游](https://github.com/sunpm/sunpm-utils)维护状态、issue、类型声明及发布包源码，8 类方法的适用范围如下。
+前端按需从 `@pmun/utils` 主入口导入，版本范围为 `~0.17.0`，当前锁文件解析为 0.17.0；该版本仅导出主入口，不使用 `/is`、`/date` 等子路径。2026-11-07 已核对[上游](https://github.com/sunpm/sunpm-utils)维护状态、issue、类型声明及发布包源码，8 类方法的适用范围如下。
 
 | 类别 | 当前使用与取舍 |
 | --- | --- |
