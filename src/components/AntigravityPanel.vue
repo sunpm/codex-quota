@@ -26,7 +26,7 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
         <div v-for="bucket in group.buckets" :key="bucket.id" class="quota-window" :class="tone(bucket.remainingPercent)" :title="`额度桶：${bucket.id}`">
           <div class="quota-label-row"><div><h4>{{ windowLabel(bucket.window) }}</h4><small>{{ bucket.name }}</small></div><strong>{{ bucket.disabled ? '未启用' : bucket.remainingPercent === null ? '未知' : `${Math.floor(bucket.remainingPercent)}%` }}</strong></div>
           <div v-if="bucket.remainingPercent !== null" class="quota-track" aria-hidden="true"><div :style="{ width: `${bucket.remainingPercent}%` }" /></div>
-          <div class="quota-time-row"><span class="deadline-countdown">{{ bucket.resetsAt === null ? '重置时间未知' : countdown(bucket.resetsAt, now) }}</span><span v-if="bucket.resetsAt !== null" class="muted">重置 · {{ dateText(bucket.resetsAt) }}</span></div>
+          <div class="quota-time-row"><span v-if="countdown(bucket.resetsAt, now)" class="deadline-countdown">{{ countdown(bucket.resetsAt, now) }}</span><span v-if="bucket.resetsAt !== null" class="muted">重置 · {{ dateText(bucket.resetsAt) }}</span></div>
         </div>
       </div>
     </div>

@@ -345,13 +345,6 @@ impl LocalUsageReader {
             }
             records.insert(record.id.clone(), record);
         }
-        let legacy = self.history.records.iter().filter(|(id, value)| {
-            value.get("service").and_then(Value::as_str) == Some("antigravity")
-                && !id.starts_with("antigravity:v2:")
-        }).count();
-        if legacy > 0 {
-            result.warnings.push(format!("Antigravity：保留 {legacy} 条旧版历史，口径未经确认，未纳入统计；可读取源数据会按新口径重新导入。"));
-        }
         let projects: BTreeSet<_> = records
             .values()
             .map(|record| record.project.clone())

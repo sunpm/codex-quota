@@ -65,7 +65,6 @@ impl AntigravityUsageReader {
         let mut candidates = Vec::new();
         let mut alive = BTreeSet::new();
         let mut unreadable = 0;
-        let mut unsupported = 0;
         for root in &self.roots {
             let mut sessions = BTreeSet::new();
             for directory in [root.join("brain"), root.join("conversations"), root.clone()] {
@@ -102,8 +101,6 @@ impl AntigravityUsageReader {
                         {
                             sessions.insert(id.into());
                         }
-                    } else if kind.is_file() && path.extension().is_some_and(|ext| ext == "pb") {
-                        unsupported += 1;
                     }
                 }
             }
@@ -190,11 +187,6 @@ impl AntigravityUsageReader {
             records.remove(id);
         }
         result.records = records.into_values().collect();
-        if unsupported > 0 {
-            result.warnings.push(format!(
-                "Antigravity：{unsupported} 份旧 .pb 未覆盖，不计作零用量。"
-            ));
-        }
         if unreadable > 0 {
             result.warnings.push(format!(
                 "Antigravity：{unreadable} 处数据无法读取，统计不完整。"

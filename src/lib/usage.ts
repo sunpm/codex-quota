@@ -35,13 +35,13 @@ export function summarize(records: UsageRecord[]): Summary {
   result.hitRate = incoming && !result.incomplete ? result.cached / incoming : null
   return result
 }
-export const costLabel = (summary: Summary) => summary.unpriced && summary.priced ? '已定价费用' : '估算费用'
-export const costColumnLabel = (summary: Summary) => summary.unpriced ? (summary.priced ? '已定价费用' : '估算费用（未定价）') : '估算费用'
+export const costLabel = (_summary?: Summary) => '估算费用'
+export const costColumnLabel = (_summary?: Summary) => '估算费用'
 export function money(amount: string | null) { return amount == null ? '未定价' : `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: Number(amount) > 0 && Number(amount) < 0.01 ? 6 : 2 })}` }
 export const summaryMoney = (summary: Summary) => summary.count && !summary.priced ? '未定价' : money(summary.amount)
 export const exactMoney = (amount: string | null) => amount == null ? '未定价' : `$${trimDecimalZeros(amount)}`
-export const costTooltip = (summary: Summary) => `${summary.count && !summary.priced ? '未定价' : exactMoney(summary.amount)}${summary.unpriced ? `\n${summary.unpriced} 条未定价` : ''}`
-export const costCardTitle = (summary: Summary) => `API 等价估算，非订阅账单。${summary.unpriced ? `${summary.unpriced.toLocaleString('zh-CN')} 条记录未定价。` : ''}`
+export const costTooltip = (summary: Summary) => summary.count && !summary.priced ? '未定价' : exactMoney(summary.amount)
+export const costCardTitle = (_summary?: Summary) => 'API 等价估算，非订阅账单。'
 export function compareSummaries(a: Summary, b: Summary, metric: Metric) {
   if (metric === 'tokens') return b.tokens - a.tokens
   const aCost = Number(a.amount), bCost = Number(b.amount)
@@ -64,9 +64,26 @@ export function countdown(resetsAt: number | null, now: number) {
   if (resetsAt == null) return '重置时间未知'
   const remaining = Math.max(0, Math.ceil(resetsAt - now))
   if (!remaining) return '等待实际重置'
+  if (remaining > 7 * 86400) return ''
   const days = Math.floor(remaining / 86400)
   const hours = Math.floor(remaining % 86400 / 3600)
   const minutes = Math.floor(remaining % 3600 / 60)
-  return `${days ? `${days} 天 ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`
+  const seconds = remaining % 60
+  if (remaining > 86400) return `${days} 天 ${hours} 小时`
+  if (remaining > 3600) return `${hours} 小时 ${String(minutes).padStart(2, '0')} 分`
+  return `${minutes ? `${minutes} 分 ` : ''}${String(seconds).padStart(2, '0')} 秒`
+}
+export function countdownTickMs(deadlines: (number | null | undefined)[], now: number) {
+  let delay = Infinity
+  for (const deadline of deadlines) {
+    if (deadline == null) continue
+    const remaining = Math.ceil(deadline - now)
+    if (remaining <= 0) continue
+    if (remaining <= 3600) return 1000
+    if (remaining <= 86400) delay = Math.min(delay, Math.min(60, remaining - 3600, remaining % 60 || 60) * 1000)
+    else if (remaining <= 7 * 86400) delay = Math.min(delay, Math.min(3600, remaining - 86400, remaining % 3600 || 3600) * 1000)
+    else delay = Math.min(delay, Math.min(86400, remaining - 7 * 86400) * 1000)
+  }
+  return Number.isFinite(delay) ? Math.max(1000, delay) : null
 }
 export const quotaLabel = (minutes: number | null, label: string | null) => label ?? (minutes ? minutes % 1440 === 0 ? `${minutes / 1440} 天额度` : minutes % 60 === 0 ? `${minutes / 60} 小时额度` : `${minutes} 分钟额度` : '额度')
