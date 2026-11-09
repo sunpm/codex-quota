@@ -32,7 +32,7 @@
 
 Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-switch 等既有来源及版权声明。此前调研的 OpenTokenUsage 和 Sessions Viewer 用于比较跨平台路线，未直接复制其实现或引入依赖。
 
-应用的缺口 Q 图标由本项目 `scripts/make-icon.swift` 绘制，1024 像素源 PNG 经官方 `pnpm tauri icon` 生成 `src-tauri/icons/` 内的平台图标。单色托盘图标以 `src-tauri/icons/tray.svg` 为源，通过 `pnpm tauri icon --png 32` 生成 `tray.png`。生成命令见 README，二进制图标不手工修改。
+应用的缺口 Q 图标由本项目 `scripts/make-icon.swift` 绘制，1024 像素源 PNG 经官方 `pnpm tauri icon` 生成 `src-tauri/icons/` 内的平台图标。托盘图标以 `src-tauri/icons/tray-codex.svg`、`tray-antigravity.svg` 为源，通过 `pnpm tauri icon --png 32` 生成同名 PNG。生成命令见 `docs/development.md`，二进制图标不手工修改。
 
 以下记录保留原实现的历史来源；其中 SwiftUI / Swift Charts / Sparkle 的实现描述属于已移除的旧版。当前 Rust 沿用的设计与逻辑继续保留对应来源和许可；仅供旧应用使用的依赖许可随旧源码保存在 Git 历史中。当前 macOS 集成仍通过 Rust 调用 AppKit 等系统框架。
 
@@ -66,7 +66,7 @@ Windows headless 环境变量与单进程 Job 设计参考 [hemsoft-dev/codexbar
 
 用量页的图标服务筛选、相对刷新时间、横排指标和分组表格参考 CC Switch `5a3d7f92ab696b9d35c08ac9bc81e4067de6f9bc` 的 `UsageDashboard.tsx`、`UsageHero.tsx`（2026-11-09），复用现有 Vue 组件与 Apache ECharts，未引入 React 或新增运行时依赖。先核对其 [#6302](https://github.com/farion1231/cc-switch/issues/6302) 跨年图表定位问题，保留完整日期作为桶键。
 
-服务筛选的 OpenAI 与 Antigravity SVG 原样取自该固定版本的 `src/icons/extracted/`，源于 [LobeHub Icons](https://github.com/lobehub/lobe-icons)，MIT License，Copyright (c) 2023 LobeHub。来源记录与完整许可分别保存在 `Resources/ThirdPartyNotices/usage-ui-NOTICE.txt`、`lobe-icons-LICENSE.txt`，沿用随包 CC Switch 许可；品牌标记仅用于服务识别。
+服务筛选的 OpenAI 与 Antigravity SVG 原样取自该固定版本的 `src/icons/extracted/`，源于 [LobeHub Icons](https://github.com/lobehub/lobe-icons)，MIT License，Copyright (c) 2023 LobeHub。来源记录与完整许可分别保存在 `Resources/ThirdPartyNotices/usage-ui-NOTICE.txt`、`lobe-icons-LICENSE.txt`，沿用随包 CC Switch 许可；菜单栏 / 托盘图标取同一 OpenAI 路径与 Antigravity 轮廓蒙版改为单色模板图像；品牌标记仅用于服务识别。
 
 旧版菜单栏模板图像、紧凑额度面板、部分尺寸与颜色以及 Codex SVG 图标，改编自 [nanvon/cc-bar](https://github.com/nanvon/cc-bar)，参考版本 `6d990a2c3c50e8d404ea4d9982c651ce3c544baa`。
 

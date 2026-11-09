@@ -169,19 +169,21 @@ Antigravity 输入不含缓存、输出已包含思考；这与 Codex 输入拆�
 
 ## 图标再生成
 
-应用图标的源为 `scripts/make-icon.swift`。在 macOS 先生成 1024 像素 PNG，再由项目锁定的 Tauri CLI 转为平台图标；托盘源为 `src-tauri/icons/tray.svg`，同样通过官方 CLI 生成 PNG。只修改这些源文件，不手工编辑 PNG、ICNS 或 ICO。
+应用图标的源为 `scripts/make-icon.swift`。在 macOS 先生成 1024 像素 PNG，再由项目锁定的 Tauri CLI 转为平台图标；托盘按服务各用一个状态项，源为 `src-tauri/icons/tray-codex.svg` 与 `tray-antigravity.svg`（单色化自已登记的 LobeHub 品牌图标），同样通过官方 CLI 生成 PNG。只修改这些源文件，不手工编辑 PNG、ICNS 或 ICO。
 
 ```sh
 swift scripts/make-icon.swift work/app-icon.iconset
 pnpm tauri icon work/app-icon.iconset/icon_512x512@2x.png --output work/app-icons
 cp work/app-icons/32x32.png work/app-icons/128x128.png work/app-icons/128x128@2x.png work/app-icons/icon.icns work/app-icons/icon.ico src-tauri/icons/
-pnpm tauri icon src-tauri/icons/tray.svg --png 32 --output work/tray-icons
-cp work/tray-icons/32x32.png src-tauri/icons/tray.png
+pnpm tauri icon src-tauri/icons/tray-codex.svg --png 32 --output work/tray-codex
+cp work/tray-codex/32x32.png src-tauri/icons/tray-codex.png
+pnpm tauri icon src-tauri/icons/tray-antigravity.svg --png 32 --output work/tray-antigravity
+cp work/tray-antigravity/32x32.png src-tauri/icons/tray-antigravity.png
 swift scripts/make-icon.swift work/dark-app-icon.iconset dark
 cp work/dark-app-icon.iconset/icon_512x512@2x.png src-tauri/icons/dock-dark.png
 ```
 
-生成后清理 `work/app-icon.iconset`、`work/app-icons`、`work/tray-icons` 和 `work/dark-app-icon.iconset`。托盘使用独立的单色图形，不从带背景的应用图标裁切。
+生成后清理 `work/app-icon.iconset`、`work/app-icons`、`work/tray-codex`、`work/tray-antigravity` 和 `work/dark-app-icon.iconset`。托盘使用独立的单色图形，不从带背景的应用图标裁切。macOS 菜单栏中 Codex 与 Antigravity 为两个独立状态项，图标区分服务、标题只显示额度，各自跟随显示开关；Windows 托盘不支持标题，以图标和提示区分；托盘图标不支持模板着色，运行时读取 `SystemUsesLightTheme` 判断任务栏颜色，深色（或读取失败）时把同一单色图标转为白色，在窗口主题事件与每次托盘更新时复查。
 
 发布流程与签名配置统一见 [打包、更新与发布](updating.md)。第三方来源与许可见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
 

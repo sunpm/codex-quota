@@ -4,7 +4,7 @@ import { ChartNoAxesCombined, List, ChartPie, Settings as SettingsIcon, RefreshC
 import { listen } from '@tauri-apps/api/event'
 import type { Page } from './types'
 import { actionError, connected, execute, initialize, isDesktop, isPreview, snapshot } from './lib/app'
-import { dateText, percent, serviceName, shortTokens, startOfDay, summarize, summaryMoney } from './lib/usage'
+import { countdownTickMs, dateText, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from './lib/usage'
 import { usageService } from './lib/usage-filters'
 import { Button } from './components/ui/button'
 import UsagePanel from './components/UsagePanel.vue'
@@ -41,15 +41,14 @@ const usageClock = computed(() => ({
   calendar: calendarKey.value,
 }))
 const serviceRecords = computed(() => snapshot.value.usage.records.filter(record => usageService.value === 'all' || record.service === usageService.value))
-const serviceWarnings = computed(() => snapshot.value.usage.warnings.filter(warning => usageService.value === 'all' || !warning.startsWith(usageService.value === 'codex' ? 'Antigravity：' : 'Codex：')))
-const todayAvailable = computed(() => snapshot.value.usage.scannedAt !== null && (serviceRecords.value.length > 0 || serviceWarnings.value.length === 0))
+const todayAvailable = computed(() => snapshot.value.usage.scannedAt !== null)
 const today = computed(() => {
   const from = startOfDay(new Date(usageClock.value.now * 1000)).getTime() / 1000
   return summarize(serviceRecords.value.filter(record => record.date >= from && record.date <= usageClock.value.now))
 })
 const todayItems = computed(() => [
-  { key: 'tokens', label: serviceWarnings.value.length || today.value.incomplete ? '已知 Token' : 'Token', value: shortTokens(today.value.tokens), title: today.value.tokens.toLocaleString('zh-CN') },
-  { key: 'cost', label: today.value.unpriced && today.value.priced ? '已定价费用' : '估算费用', value: summaryMoney(today.value), title: 'API 等价估算，非订阅账单' },
+  { key: 'tokens', label: 'Token', value: shortTokens(today.value.tokens), title: today.value.tokens.toLocaleString('zh-CN') },
+  { key: 'cost', label: '估算费用', value: summaryMoney(today.value), title: 'API 等价估算，非订阅账单' },
   { key: 'records', label: '用量记录数', value: `${shortTokens(today.value.count)} 条`, title: '已解析的用量事件数，不代表全部网络请求数' },
   { key: 'hitRate', label: '缓存命中率', value: percent(today.value.hitRate), title: '缓存命中 ÷ 全部输入' },
 ].filter(item => snapshot.value.settings.todayMetrics.includes(item.key)))
@@ -57,9 +56,35 @@ const sidebarWidth = ref(168)
 const darkQuery = matchMedia('(prefers-color-scheme: dark)')
 let unlisten: (() => void) | undefined
 const menuListeners: (() => void)[] = []
-let clock: ReturnType<typeof setInterval>
+let clock: ReturnType<typeof setTimeout> | undefined
+function nextTickDelay(current: number) {
+  const tomorrow = shiftDay(startOfDay(new Date(current * 1000)), 1).getTime() - current * 1000
+  let delay = Math.max(1000, tomorrow)
+  if (page.value === 'quota') {
+    const deadlines = [
+      ...snapshot.value.quota.windows.map(window => window.resetsAt),
+      ...(snapshot.value.quota.resetCredits?.credits ?? []).filter(credit => credit.status === 'available' && credit.resetType === 'codexRateLimits').map(credit => credit.expiresAt),
+      ...snapshot.value.antigravity.groups.flatMap(group => group.buckets.map(bucket => bucket.resetsAt)),
+    ]
+    const tick = countdownTickMs(deadlines, current)
+    if (tick !== null) delay = Math.min(delay, tick)
+    if (Object.keys(snapshot.value.quota.history).length) delay = Math.min(delay, 60_000)
+  } else if (isUsage.value && snapshot.value.usage.scannedAt !== null) {
+    const elapsed = Math.max(0, current - snapshot.value.usage.scannedAt)
+    if (elapsed < 3600) delay = Math.min(delay, 60_000)
+    else if (elapsed < 86400) delay = Math.min(delay, 3_600_000)
+  }
+  return delay
+}
+function scheduleClock() {
+  clearTimeout(clock)
+  const current = Date.now() / 1000
+  now.value = current
+  clock = setTimeout(scheduleClock, nextTickDelay(current))
+}
 watch(() => snapshot.value.settings.animations, enabled => document.documentElement.classList.toggle('no-animation', !enabled), { immediate: true })
-watch(page, () => pageContent.value?.scrollTo(0, 0), { flush: 'post' })
+watch(page, () => { pageContent.value?.scrollTo(0, 0); scheduleClock() }, { flush: 'post' })
+watch(snapshot, scheduleClock)
 function updateTheme() { document.documentElement.classList.toggle('dark', darkQuery.matches) }
 function navigate(value: Page) { if (page.value === value) return; page.value = value; if (value === 'quota') void execute('refresh_quota') }
 function keydown(event: KeyboardEvent) {
@@ -76,14 +101,14 @@ function resizeSidebar(event: PointerEvent) {
 }
 onMounted(async () => {
   updateTheme(); darkQuery.addEventListener('change', updateTheme); window.addEventListener('keydown', keydown)
-  clock = setInterval(() => { now.value = Date.now() / 1000 }, 1000)
+  scheduleClock()
   unlisten = await initialize().catch(error => { actionError.value = String(error); return undefined })
   if (isDesktop) {
     menuListeners.push(await listen<Page>('navigate', event => navigate(event.payload)))
     menuListeners.push(await listen('refresh-usage', () => { if (isUsage.value) void execute('scan_usage', { rescan: false }) }))
   }
 })
-onBeforeUnmount(() => { clearInterval(clock); unlisten?.(); menuListeners.forEach(unsubscribe => unsubscribe()); darkQuery.removeEventListener('change', updateTheme); window.removeEventListener('keydown', keydown) })
+onBeforeUnmount(() => { clearTimeout(clock); unlisten?.(); menuListeners.forEach(unsubscribe => unsubscribe()); darkQuery.removeEventListener('change', updateTheme); window.removeEventListener('keydown', keydown) })
 </script>
 <template>
   <div class="app-shell" :class="{ 'no-animation': !snapshot.settings.animations }" :style="{ '--sidebar-width': `${sidebarWidth}px` }">

@@ -407,6 +407,10 @@ pub fn run() {
             if let tauri::WindowEvent::ThemeChanged(theme) = event {
                 platform::update_app_icon(window.app_handle(), *theme);
             }
+            #[cfg(windows)]
+            if let tauri::WindowEvent::ThemeChanged(_) = event {
+                platform::taskbar_theme::sync(window.app_handle());
+            }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let app = window.app_handle();

@@ -12,120 +12,209 @@ pub fn open_window(app: &AppHandle) {
     }
 }
 
-pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
-    if let Some(tray) = app.tray_by_id("quota") {
-        let codex_visible = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled;
-        let antigravity_visible = snapshot.settings.antigravity_show_tray && snapshot.settings.antigravity_enabled;
-        let visible = codex_visible || antigravity_visible;
-        let _ = tray.set_visible(visible);
-        let has_codex = snapshot.quota.windows.iter().any(|window| window.bucket == "codex");
-        let mut windows = snapshot.quota.windows.iter()
-            .filter(|window| !has_codex || window.bucket == "codex")
-            .collect::<Vec<_>>();
-        windows.sort_by_key(|window| window.duration_minutes.unwrap_or(i64::MAX));
-        let mut title = if windows.is_empty() {
-            "--".into()
-        } else {
-            windows
-                .iter()
-                .take(2)
-                .map(|window| format!("{}%", window.remaining().floor() as u64))
-                .collect::<Vec<_>>()
-                .join(" ")
-        };
-        if snapshot.quota.error.is_some() {
-            title.push_str(" !");
-        }
-        let mut description = snapshot.quota.windows.iter().map(|window| {
-            let name = if window.bucket == "codex" {
-                window.display_label()
-            } else {
-                format!("{} · {}", window.name, window.display_label())
-            };
-            let reset = window.resets_at
-                .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
-                .map(|date| format!("，{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
-                .unwrap_or_default();
-            format!("{name}：剩余 {}%{reset}", window.remaining().floor() as u64)
-        }).collect::<Vec<_>>();
-        if description.is_empty() {
-            description.push("等待额度数据".into());
-        }
-        if let Some(error) = &snapshot.quota.error {
-            description.push(format!("额度可能已过期：{error}"));
-        }
-        if codex_visible {
-            description.insert(0, "Codex".into());
-            if antigravity_visible { title = format!("C {title}"); }
-        } else {
-            description.clear();
-            title.clear();
-        }
-        if antigravity_visible {
-            let quota = &snapshot.antigravity;
-            let buckets: Vec<_> = quota.groups.iter().flat_map(|group| &group.buckets).filter(|bucket| !bucket.disabled).collect();
-            let minimum = buckets.iter().filter_map(|bucket| bucket.remaining_percent).reduce(f64::min);
-            let value = minimum.map(|value| format!("{}%", value.floor() as u64)).unwrap_or_else(|| "--".into());
-            let status = if quota.error.is_some() { " !" } else if quota.refreshing { " …" } else if buckets.iter().any(|bucket| bucket.remaining_percent.is_none()) { " ?" } else { "" };
-            if !title.is_empty() { title.push_str(" | "); }
-            title.push_str(&format!("AG {value}{status}"));
-            description.push(format!("Antigravity · 最低已知剩余 {value}{status}"));
-            for group in &quota.groups {
-                for bucket in &group.buckets {
-                    let window = match bucket.window.as_deref() { Some("5h") => "五小时额度", Some("weekly") => "周额度", _ => "额度" };
-                    let remaining = if bucket.disabled { "未启用".into() } else { bucket.remaining_percent.map(|value| format!("剩余 {}%", value.floor() as u64)).unwrap_or_else(|| "剩余额度未知".into()) };
-                    let reset = bucket.resets_at.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
-                        .map(|date| format!("{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
-                        .unwrap_or_else(|| "重置时间未知".into());
-                    description.push(format!("{} · {window} · {} [{}]：{remaining}，{reset}", group.name, bucket.name, bucket.id));
-                }
-            }
-            if let Some(error) = &quota.error { description.push(format!("Antigravity：{error}")); }
-            if let Some(time) = quota.last_success.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0)) {
-                description.push(format!("Antigravity 上次读取{}：{}", if quota.error.is_some() { "（已过期）" } else { "" }, time.with_timezone(&chrono::Local).format("%m-%d %H:%M")));
-            }
-        }
-        // Windows tooltips are length-limited; the menu retains every returned bucket.
-        let menu = (|| -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-            use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
-            let menu = Menu::new(app)?;
-            for line in &description { menu.append(&MenuItem::new(app, line, false, None::<&str>)?)?; }
-            menu.append(&PredefinedMenuItem::separator(app)?)?;
-            menu.append(&MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?)?;
-            menu.append(&MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?)?;
-            Ok(menu)
-        })();
-        if let Ok(menu) = menu { let _ = tray.set_menu(Some(menu)); }
-        let _ = tray.set_tooltip(Some(format!("Codex Quota\n{}", description.join("\n"))));
-        #[cfg(target_os = "macos")]
-        {
-            let _ = tray.set_title(Some(title));
-            let _ = tray.with_inner_tray_icon(|tray| {
-                use objc2::MainThreadMarker;
-                use objc2_app_kit::{NSFont, NSFontWeightRegular};
+/// Codex 与 Antigravity 各占一个独立状态项，以品牌图标区分服务，标题只显示额度。
+const CODEX_TRAY: &str = "codex";
+const ANTIGRAVITY_TRAY: &str = "antigravity";
+const TRAY_ICONS: [(&str, &[u8]); 2] = [
+    (ANTIGRAVITY_TRAY, include_bytes!("../icons/tray-antigravity.png")),
+    (CODEX_TRAY, include_bytes!("../icons/tray-codex.png")),
+];
 
-                let mtm = MainThreadMarker::new().expect("Tray updates run on the main thread");
-                if let Some(button) = tray.ns_status_item().and_then(|item| item.button(mtm)) {
-                    let font = NSFont::monospacedDigitSystemFontOfSize_weight(
-                        NSFont::menuBarFontOfSize(0.0).pointSize(),
-                        unsafe { NSFontWeightRegular },
-                    );
-                    button.setFont(Some(&font));
-                    button.setImageHugsTitle(true);
-                }
-            });
-            let hidden = app
-                .get_webview_window("main")
-                .is_some_and(|w| !w.is_visible().unwrap_or(true));
-            if hidden {
-                let _ = app.set_activation_policy(if visible {
-                    tauri::ActivationPolicy::Accessory
-                } else {
-                    tauri::ActivationPolicy::Regular
-                });
+/// 解码单色托盘图标；`white` 为真时保留透明度、把像素改为白色，供深色任务栏使用。
+fn tray_icon(bytes: &[u8], white: bool) -> tauri::Result<tauri::image::Image<'static>> {
+    let image = tauri::image::Image::from_bytes(bytes)?;
+    if !white {
+        return Ok(image.to_owned());
+    }
+    let mut rgba = image.rgba().to_vec();
+    for pixel in rgba.chunks_exact_mut(4) {
+        pixel[..3].fill(255);
+    }
+    Ok(tauri::image::Image::new_owned(rgba, image.width(), image.height()))
+}
+
+/// Windows 托盘图标不支持模板着色，按任务栏（系统）主题切换黑 / 白图标。
+#[cfg(windows)]
+pub mod taskbar_theme {
+    use super::*;
+    use std::sync::atomic::{AtomicU8, Ordering};
+
+    /// 已应用的图标状态：0 未应用，1 黑色（浅色任务栏），2 白色（深色任务栏）。
+    static APPLIED: AtomicU8 = AtomicU8::new(0);
+
+    /// 任务栏颜色跟随 `SystemUsesLightTheme`，而非应用主题；读取失败或缺失时按深色处理（旧版 Windows 10 默认深色任务栏）。
+    fn taskbar_is_dark() -> bool {
+        use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
+        let key: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\0".encode_utf16().collect();
+        let name: Vec<u16> = "SystemUsesLightTheme\0".encode_utf16().collect();
+        let mut value: u32 = 0;
+        let mut size = std::mem::size_of::<u32>() as u32;
+        let status = unsafe {
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                key.as_ptr(),
+                name.as_ptr(),
+                RRF_RT_REG_DWORD,
+                std::ptr::null_mut(),
+                (&mut value as *mut u32).cast(),
+                &mut size,
+            )
+        };
+        status != 0 || value == 0
+    }
+
+    /// 读取任务栏主题，仅在变化时替换两个托盘图标。
+    pub fn sync(app: &AppHandle) {
+        let dark = taskbar_is_dark();
+        let state = if dark { 2 } else { 1 };
+        if APPLIED.swap(state, Ordering::Relaxed) == state {
+            return;
+        }
+        for (id, bytes) in TRAY_ICONS {
+            if let (Some(tray), Ok(icon)) = (app.tray_by_id(id), tray_icon(bytes, dark)) {
+                let _ = tray.set_icon(Some(icon));
             }
         }
     }
+}
+
+pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
+    let codex_visible = snapshot.settings.show_tray && snapshot.settings.monitoring_enabled;
+    let antigravity_visible = snapshot.settings.antigravity_show_tray && snapshot.settings.antigravity_enabled;
+    // 系统主题切换不一定触发窗口主题事件，随每次托盘更新复查任务栏颜色。
+    #[cfg(windows)]
+    taskbar_theme::sync(app);
+    if let Some(tray) = app.tray_by_id(CODEX_TRAY) {
+        let _ = tray.set_visible(codex_visible);
+        if codex_visible {
+            let (title, description) = codex_tray_content(snapshot);
+            apply_tray_content(app, &tray, "Codex", title, &description);
+        }
+    }
+    if let Some(tray) = app.tray_by_id(ANTIGRAVITY_TRAY) {
+        let _ = tray.set_visible(antigravity_visible);
+        if antigravity_visible {
+            let (title, description) = antigravity_tray_content(snapshot);
+            apply_tray_content(app, &tray, "Antigravity", title, &description);
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // 窗口隐藏时，有任一菜单栏入口才隐藏 Dock 图标。
+        let hidden = app
+            .get_webview_window("main")
+            .is_some_and(|w| !w.is_visible().unwrap_or(true));
+        if hidden {
+            let _ = app.set_activation_policy(if codex_visible || antigravity_visible {
+                tauri::ActivationPolicy::Accessory
+            } else {
+                tauri::ActivationPolicy::Regular
+            });
+        }
+    }
+}
+
+fn codex_tray_content(snapshot: &AppSnapshot) -> (String, Vec<String>) {
+    let has_codex = snapshot.quota.windows.iter().any(|window| window.bucket == "codex");
+    let mut windows = snapshot.quota.windows.iter()
+        .filter(|window| !has_codex || window.bucket == "codex")
+        .collect::<Vec<_>>();
+    windows.sort_by_key(|window| window.duration_minutes.unwrap_or(i64::MAX));
+    let mut title = if windows.is_empty() {
+        "--".into()
+    } else {
+        windows
+            .iter()
+            .take(2)
+            .map(|window| format!("{}%", window.remaining().floor() as u64))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    if snapshot.quota.error.is_some() {
+        title.push_str(" !");
+    }
+    let mut description = snapshot.quota.windows.iter().map(|window| {
+        let name = if window.bucket == "codex" {
+            window.display_label()
+        } else {
+            format!("{} · {}", window.name, window.display_label())
+        };
+        let reset = window.resets_at
+            .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
+            .map(|date| format!("，{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
+            .unwrap_or_default();
+        format!("{name}：剩余 {}%{reset}", window.remaining().floor() as u64)
+    }).collect::<Vec<_>>();
+    if description.is_empty() {
+        description.push("等待额度数据".into());
+    }
+    if let Some(error) = &snapshot.quota.error {
+        description.push(format!("额度可能已过期：{error}"));
+    }
+    (title, description)
+}
+
+fn antigravity_tray_content(snapshot: &AppSnapshot) -> (String, Vec<String>) {
+    let mut description = Vec::new();
+    let quota = &snapshot.antigravity;
+    let buckets: Vec<_> = quota.groups.iter().flat_map(|group| &group.buckets).filter(|bucket| !bucket.disabled).collect();
+    let minimum = buckets.iter().filter_map(|bucket| bucket.remaining_percent).reduce(f64::min);
+    let value = minimum.map(|value| format!("{}%", value.floor() as u64)).unwrap_or_else(|| "--".into());
+    let status = if quota.error.is_some() { " !" } else if quota.refreshing { " …" } else if buckets.iter().any(|bucket| bucket.remaining_percent.is_none()) { " ?" } else { "" };
+    let title = format!("{value}{status}");
+    description.push(format!("最低已知剩余 {value}{status}"));
+    for group in &quota.groups {
+        for bucket in &group.buckets {
+            let window = match bucket.window.as_deref() { Some("5h") => "五小时额度", Some("weekly") => "周额度", _ => "额度" };
+            let remaining = if bucket.disabled { "未启用".into() } else { bucket.remaining_percent.map(|value| format!("剩余 {}%", value.floor() as u64)).unwrap_or_else(|| "剩余额度未知".into()) };
+            let reset = bucket.resets_at.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
+                .map(|date| format!("{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
+                .unwrap_or_else(|| "重置时间未知".into());
+            description.push(format!("{} · {window} · {} [{}]：{remaining}，{reset}", group.name, bucket.name, bucket.id));
+        }
+    }
+    if let Some(error) = &quota.error { description.push(format!("Antigravity：{error}")); }
+    if let Some(time) = quota.last_success.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0)) {
+        description.push(format!("Antigravity 上次读取{}：{}", if quota.error.is_some() { "（已过期）" } else { "" }, time.with_timezone(&chrono::Local).format("%m-%d %H:%M")));
+    }
+    (title, description)
+}
+
+/// 写入单个状态项的菜单、提示与标题；Windows 托盘不支持标题，仅使用图标与提示。
+fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &str, title: String, description: &[String]) {
+    // Windows tooltips are length-limited; the menu retains every returned bucket.
+    let menu = (|| -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+        use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+        let menu = Menu::new(app)?;
+        menu.append(&MenuItem::new(app, service, false, None::<&str>)?)?;
+        for line in description { menu.append(&MenuItem::new(app, line, false, None::<&str>)?)?; }
+        menu.append(&PredefinedMenuItem::separator(app)?)?;
+        menu.append(&MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?)?;
+        menu.append(&MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?)?;
+        Ok(menu)
+    })();
+    if let Ok(menu) = menu { let _ = tray.set_menu(Some(menu)); }
+    let _ = tray.set_tooltip(Some(format!("Codex Quota · {service}\n{}", description.join("\n"))));
+    #[cfg(target_os = "macos")]
+    {
+        let _ = tray.set_title(Some(title));
+        let _ = tray.with_inner_tray_icon(|tray| {
+            use objc2::MainThreadMarker;
+            use objc2_app_kit::{NSFont, NSFontWeightRegular};
+
+            let mtm = MainThreadMarker::new().expect("Tray updates run on the main thread");
+            if let Some(button) = tray.ns_status_item().and_then(|item| item.button(mtm)) {
+                let font = NSFont::monospacedDigitSystemFontOfSize_weight(
+                    NSFont::menuBarFontOfSize(0.0).pointSize(),
+                    unsafe { NSFontWeightRegular },
+                );
+                button.setFont(Some(&font));
+                button.setImageHugsTitle(true);
+            }
+        });
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = title;
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -133,19 +222,17 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?;
     let quit = MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
-    tauri::tray::TrayIconBuilder::with_id("quota")
-        .icon(tauri::image::Image::from_bytes(include_bytes!(
-            "../icons/tray.png"
-        ))?)
-        .icon_as_template(cfg!(target_os = "macos"))
-        .menu(&menu)
-        .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "open" => open_window(app),
-            "quit" => app.exit(0),
-            _ => {}
-        })
-        .build(app)?;
+    // macOS 后创建的状态项排在左侧：先建 Antigravity，使 Codex 默认位于其左边。
+    for (id, bytes) in TRAY_ICONS {
+        tauri::tray::TrayIconBuilder::with_id(id)
+            .icon(tray_icon(bytes, false)?)
+            .icon_as_template(cfg!(target_os = "macos"))
+            .menu(&menu)
+            .show_menu_on_left_click(true)
+            .build(app)?;
+    }
+    #[cfg(windows)]
+    taskbar_theme::sync(app);
     let settings = MenuItem::with_id(app, "settings", "设置…", true, Some("CmdOrCtrl+,"))?;
     let refresh = MenuItem::with_id(app, "refresh", "刷新用量", true, Some("CmdOrCtrl+R"))?;
     let main = Submenu::with_items(
@@ -210,6 +297,8 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             let _ = app.emit("refresh-usage", ());
         }
         "open" => open_window(app),
+        // 两个状态项菜单共用全局事件，避免各自注册导致重复处理。
+        "quit" => app.exit(0),
         _ => {}
     });
     power::install(app);
