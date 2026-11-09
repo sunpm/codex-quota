@@ -50,7 +50,7 @@ export const usageService = useLocalStorage<UsageService | 'all'>('usage.service
   serializer: { read: value => value === 'codex' || value === 'antigravity' ? value : 'all', write: value => value },
 })
 watch(usageService, () => { details.value.model = 'all'; overview.value.model = 'all' })
-export const overviewGroupBy = ref<'model' | 'project'>('model')
+export const overviewGroupBy = ref<'model' | 'project' | 'session'>('model')
 
 export function syncOverviewToDetails(view: 'session' | 'project' = 'session') {
   details.value = { ...overview.value, view, search: '' }

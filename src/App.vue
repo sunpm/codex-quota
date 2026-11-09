@@ -4,7 +4,7 @@ import { ChartNoAxesCombined, List, ChartPie, Settings as SettingsIcon, RefreshC
 import { listen } from '@tauri-apps/api/event'
 import type { Page } from './types'
 import { actionError, connected, execute, initialize, isDesktop, isPreview, snapshot } from './lib/app'
-import { percent, serviceName, shortTokens, startOfDay, summarize, summaryMoney } from './lib/usage'
+import { dateText, percent, serviceName, shortTokens, startOfDay, summarize, summaryMoney } from './lib/usage'
 import { usageService } from './lib/usage-filters'
 import { Button } from './components/ui/button'
 import UsagePanel from './components/UsagePanel.vue'
@@ -21,6 +21,15 @@ const now = ref(Date.now() / 1000)
 const startedAt = now.value
 const navigation = [{ id: 'overview', label: '用量', icon: ChartNoAxesCombined }, { id: 'details', label: '明细', icon: List }, { id: 'quota', label: '额度', icon: ChartPie }, { id: 'settings', label: '设置', icon: SettingsIcon }] as const
 const isUsage = computed(() => ['overview', 'details'].includes(page.value))
+const usageRefreshLabel = computed(() => {
+  if (snapshot.value.usage.refreshing) return '刷新中…'
+  if (snapshot.value.usage.scannedAt === null) return '刷新'
+  const minutes = Math.max(0, Math.floor((now.value - snapshot.value.usage.scannedAt) / 60))
+  if (minutes < 1) return '刚刚刷新'
+  if (minutes < 60) return `${minutes} 分钟前刷新`
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} 小时前刷新`
+  return `${Math.floor(minutes / 1440)} 天前刷新`
+})
 const title = computed(() => navigation.find(item => item.id === page.value)!.label)
 // Keep analysis stable between scans; calendar changes also invalidate local-day grouping.
 const calendarKey = computed(() => {
@@ -79,7 +88,7 @@ onBeforeUnmount(() => { clearInterval(clock); unlisten?.(); menuListeners.forEac
 <template>
   <div class="app-shell" :class="{ 'no-animation': !snapshot.settings.animations }" :style="{ '--sidebar-width': `${sidebarWidth}px` }">
     <aside class="sidebar"><SlidingSelection v-slot="{ highlight }" as="nav" :selection="page" aria-label="主导航"><component :is="highlight ? 'span' : 'button'" v-for="item in navigation" :key="item.id" class="nav-item" :class="{ selected: page === item.id, 'settings-nav': item.id === 'settings' }" :data-selected="page === item.id" :aria-current="!highlight && page === item.id ? 'page' : undefined" @click="navigate(item.id)"><component :is="item.icon" :size="17" :stroke-width="1.6" /><span>{{ item.label }}</span><Download v-if="item.id === 'settings' && snapshot.update.version" :size="13" class="update-dot" aria-label="有新版本" /></component></SlidingSelection><div class="sidebar-bottom"><div v-if="todayItems.length" class="today-summary"><h2 :title="serviceName(usageService)">今日 · {{ usageService === 'all' ? '全部' : serviceName(usageService) }}</h2><div v-for="item in todayItems" :key="item.key" :title="snapshot.usage.scannedAt === null ? '尚未读取本机日志' : item.title"><span>{{ item.label }}</span><strong>{{ todayAvailable ? item.value : '—' }}</strong></div></div><span v-if="isPreview" class="preview-label">离线预览 · 示例数据</span></div><div class="sidebar-resize" role="separator" aria-label="调整侧栏宽度" aria-orientation="vertical" tabindex="0" :aria-valuenow="sidebarWidth" :aria-valuemin="168" :aria-valuemax="300" @pointerdown="resizeSidebar" @keydown.left.prevent="sidebarWidth = Math.max(168, sidebarWidth - 8)" @keydown.right.prevent="sidebarWidth = Math.min(300, sidebarWidth + 8)" /></aside>
-    <main class="main-panel"><header class="page-header"><h1>{{ title }}</h1><Button v-if="isUsage" variant="outline" size="sm" :disabled="snapshot.usage.refreshing || !isDesktop && !isPreview" @click="execute('scan_usage', { rescan: false })"><RefreshCw :size="14" :class="{ spinning: snapshot.usage.refreshing }" />{{ snapshot.usage.refreshing ? '读取中…' : '刷新' }}</Button></header><div v-if="!isDesktop && !isPreview" class="notice browser-notice">浏览器无法访问本机用量。请启动桌面应用，或使用 <a href="?preview">离线预览</a> 查看示例界面。</div><div v-if="snapshot.error" class="notice warning app-notice" role="alert">{{ snapshot.error }}</div><div v-if="actionError" class="notice warning app-notice" role="alert"><span>{{ actionError }}</span><button aria-label="关闭提示" @click="actionError = null"><X :size="14" /></button></div><div ref="pageContent" class="page-content" :class="{ 'table-content': page === 'details' }" :aria-busy="isDesktop && !connected"><UsagePanel v-if="isUsage" :state="snapshot" :page="page" :clock="usageClock" @navigate="navigate" /><QuotaPanel v-else-if="page === 'quota'" :state="snapshot" :now="now" /><SettingsPanel v-else :state="snapshot" /></div></main>
+    <main class="main-panel"><header class="page-header"><h1>{{ title }}</h1><Button v-if="isUsage" variant="outline" size="sm" aria-label="刷新本机用量" :title="snapshot.usage.scannedAt === null ? undefined : `上次扫描：${dateText(snapshot.usage.scannedAt, true)}`" :disabled="snapshot.usage.refreshing || !isDesktop && !isPreview" @click="execute('scan_usage', { rescan: false })"><RefreshCw :size="14" :class="{ spinning: snapshot.usage.refreshing }" />{{ usageRefreshLabel }}</Button></header><div v-if="!isDesktop && !isPreview" class="notice browser-notice">浏览器无法访问本机用量。请启动桌面应用，或使用 <a href="?preview">离线预览</a> 查看示例界面。</div><div v-if="snapshot.error" class="notice warning app-notice" role="alert">{{ snapshot.error }}</div><div v-if="actionError" class="notice warning app-notice" role="alert"><span>{{ actionError }}</span><button aria-label="关闭提示" @click="actionError = null"><X :size="14" /></button></div><div ref="pageContent" class="page-content" :class="{ 'table-content': page === 'details' }" :aria-busy="isDesktop && !connected"><UsagePanel v-if="isUsage" :state="snapshot" :page="page" :clock="usageClock" @navigate="navigate" /><QuotaPanel v-else-if="page === 'quota'" :state="snapshot" :now="now" /><SettingsPanel v-else :state="snapshot" /></div></main>
     <UpdateResultDialog />
     <InstalledReleaseNotesDialog />
     <NotificationGuide />
