@@ -1,6 +1,6 @@
 [package]
 name = "codex-quota"
-version = "0.25.6"
+version = "0.25.7"
 description = "Codex and Antigravity quota and local usage monitor"
 edition = "2021"
 rust-version = "1.90"
