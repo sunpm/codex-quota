@@ -55,7 +55,14 @@ export function previewSnapshot(): AppSnapshot {
     state.antigravity.error = 'Antigravity 网络连接失败，请检查网络。60 秒后重试。'
     state.antigravity.lastSuccess = now - 600
   } else if (antigravityScene === 'refreshing') state.antigravity.refreshing = true
-  else if (antigravityScene === 'empty') state.antigravity.groups = []
+  else if (['empty', 'disabled', 'missing-cli', 'initial-loading'].includes(antigravityScene ?? '')) {
+    state.settings.antigravityEnabled = antigravityScene !== 'disabled'
+    state.antigravity = {
+      groups: [], lastSuccess: null,
+      error: antigravityScene === 'missing-cli' ? '未找到 Antigravity CLI。请先安装并登录 agy；自定义位置可通过 CODEX_QUOTA_AGY 指定。' : null,
+      refreshing: antigravityScene === 'initial-loading', requiresAction: antigravityScene === 'missing-cli',
+    }
+  }
   state.priceDate = '离线示例'
   return state
 }

@@ -20,7 +20,6 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
     </div>
     <p v-if="!state.settings.antigravityEnabled" class="notice">Antigravity 监测已关闭，可在设置中开启。</p>
     <p v-if="state.antigravity.error" class="notice warning" role="status">{{ state.antigravity.error }}<span v-if="state.antigravity.lastSuccess"> 上次读数已过期。</span></p>
-    <div v-if="!state.antigravity.groups.length" class="empty-state">{{ state.antigravity.refreshing ? '正在读取 CLI 额度报告…' : state.settings.antigravityEnabled ? '尚无额度数据。请在终端运行 agy 并登录，再刷新。' : '暂无额度数据' }}</div>
     <div v-for="(group, index) in state.antigravity.groups" :key="index" class="antigravity-group">
       <h3>{{ group.name }}</h3>
       <div class="antigravity-buckets">
