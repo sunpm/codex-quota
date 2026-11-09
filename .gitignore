@@ -11,3 +11,4 @@ crates/quota-core/Cargo.lock
 src-tauri/gen/schemas/
 *.tsbuildinfo
 Resources/ThirdPartyNotices/dependencies-LICENSES.txt
+.impeccable/
