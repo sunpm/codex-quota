@@ -37,9 +37,17 @@ async fn refresh_antigravity(app: AppHandle) -> AppSnapshot {
 }
 
 #[tauri::command]
-async fn scan_usage(app: AppHandle, rescan: bool) -> AppSnapshot {
-    monitor::scan_usage(&app, rescan).await;
-    get_snapshot(app)
+async fn scan_usage(app: AppHandle, rescan: bool, service: Option<String>) -> Result<AppSnapshot, String> {
+    if rescan {
+        if let Some(service) = &service {
+            let reader = controller(&app).reader.clone();
+            let service = service.clone();
+            tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().invalidate_service(&service))
+                .await.map_err(|_| "重新扫描未完成。")??;
+        }
+    }
+    monitor::scan_usage(&app, rescan && service.is_none()).await;
+    Ok(get_snapshot(app))
 }
 
 #[tauri::command]
@@ -129,7 +137,7 @@ fn save_prices(
 ) -> Result<AppSnapshot, String> {
     if prices
         .iter()
-        .any(|price| price.service != "codex" || !price.is_valid())
+        .any(|price| !["codex", "antigravity"].contains(&price.service.as_str()) || !price.is_valid())
     {
         return Err("模型价格无效，请检查名称、非负单价、倍率和上下文阈值。".into());
     }
@@ -140,7 +148,7 @@ fn save_prices(
         for price in prices {
             saved
                 .overrides
-                .insert(format!("codex:{}", price.model.to_lowercase()), price);
+                .insert(price.key(), price);
         }
         store.commit(saved)?;
         store.reprice();
@@ -150,14 +158,15 @@ fn save_prices(
 }
 
 #[tauri::command]
-fn reset_price(app: AppHandle, model: String) -> Result<AppSnapshot, String> {
+fn reset_price(app: AppHandle, service: String, model: String) -> Result<AppSnapshot, String> {
+    if !["codex", "antigravity"].contains(&service.as_str()) { return Err("服务无效。".into()); }
     let state = controller(&app);
     {
         let mut store = state.store.lock().unwrap();
         let mut saved = store.saved.clone();
         saved
             .overrides
-            .remove(&format!("codex:{}", model.to_lowercase()));
+            .remove(&format!("{service}:{}", model.to_lowercase()));
         store.commit(saved)?;
         store.reprice();
     }
@@ -202,15 +211,16 @@ async fn update_prices(app: AppHandle) -> Result<AppSnapshot, String> {
 }
 
 #[tauri::command]
-async fn clear_history(app: AppHandle) -> Result<AppSnapshot, String> {
+async fn clear_history(app: AppHandle, service: String) -> Result<AppSnapshot, String> {
     let state = controller(&app);
     let reader = state.reader.clone();
-    tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().clear_history())
+    let selected = service.clone();
+    tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().clear_history(&selected))
         .await
         .map_err(|_| "清除历史未完成。")??;
     {
         let mut store = state.store.lock().unwrap();
-        store.snapshot.usage.records.clear();
+        store.snapshot.usage.records.retain(|record| record.service != service);
         store.snapshot.usage.scanned_at = None;
         store.reprice();
     }

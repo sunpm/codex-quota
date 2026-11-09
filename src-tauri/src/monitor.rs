@@ -43,6 +43,11 @@ impl Controller {
             .or_else(|| dirs::home_dir().map(|p| p.join(".codex")))
             .ok_or("无法找到 Codex 目录")?;
         let path = data_dir.join("desktop-state.json");
+        let gemini_home = std::env::var_os("GEMINI_CLI_HOME")
+            .filter(|value| !value.is_empty())
+            .map(std::path::PathBuf::from)
+            .or_else(|| dirs::home_dir().map(|home| home.join(".gemini")))
+            .ok_or("无法找到 Antigravity 数据目录")?;
         let (mut saved, error) = match SavedState::load(&path) {
             Ok(saved) => (saved, None),
             Err(error) => (SavedState::default(), Some(error)),
@@ -59,6 +64,9 @@ impl Controller {
         }
         if !settings.antigravity_enabled {
             saved.antigravity_announcements.tracker.has_baseline = false;
+        } else if saved.antigravity_schedule.failures == 0 {
+            // Quota snapshots are memory-only; a normal poll deadline must not delay startup.
+            saved.antigravity_schedule.next_attempt = 0.0;
         }
         let snapshot = AppSnapshot {
             antigravity: AntigravitySnapshot::default(),
@@ -86,7 +94,7 @@ impl Controller {
                 ..Default::default()
             },
             usage: UsageSnapshot {
-                source: codex_home.to_string_lossy().into_owned(),
+                source: format!("Codex: {}\nAntigravity: {}", codex_home.display(), gemini_home.display()),
                 ..Default::default()
             },
             prices: Vec::new(),
@@ -118,6 +126,7 @@ impl Controller {
             store: Mutex::new(store),
             reader: Arc::new(Mutex::new(LocalUsageReader::new(
                 codex_home,
+                gemini_home,
                 data_dir.join("usage-history.json"),
             ))),
             client: AsyncMutex::new(CodexClient::default()),

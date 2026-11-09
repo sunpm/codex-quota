@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::BTreeMap, str::FromStr};
 
-pub const BUNDLED_PRICE_DATE: &str = "2026-10-28";
+pub const BUNDLED_PRICE_DATE: &str = "2026-11-09";
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -33,6 +33,18 @@ impl TokenRates {
         })
     }
     pub fn cost(&self, tokens: &UsageTokens) -> Option<Decimal> {
+        if [
+            self.input,
+            self.output,
+            self.cached,
+            self.cache_write,
+            self.cache_write_long,
+        ]
+        .iter()
+        .all(Option::is_none)
+        {
+            return None;
+        }
         let parts = [
             (tokens.input, self.input),
             (tokens.output, self.output),
@@ -84,7 +96,11 @@ impl ModelPricing {
                 .all(|value| value.is_none_or(|v| v > Decimal::ZERO && v < Decimal::from(1000u32)))
     }
     pub fn cost(&self, record: &UsageRecord) -> Option<Decimal> {
-        if record.service != "codex" {
+        if record.service != self.service || !record.tokens.complete() {
+            return None;
+        }
+        // Native agy does not report cache-write TTL; do not silently price it as short-lived.
+        if record.service == "antigravity" && record.tokens.cache_write > 0 {
             return None;
         }
         let incoming = record.tokens.input + record.tokens.cached + record.tokens.cache_write;
@@ -96,11 +112,15 @@ impl ModelPricing {
         } else {
             &self.rates
         };
-        let multiplier = match record.service_tier.as_str() {
-            "standard" | "default" | "auto" => Decimal::ONE,
-            "fast" | "priority" => self.fast_multiplier?,
-            "ultrafast" => self.ultrafast_multiplier?,
-            _ => return None,
+        let multiplier = if record.service == "antigravity" {
+            Decimal::ONE
+        } else {
+            match record.service_tier.as_str() {
+                "standard" | "default" | "auto" => Decimal::ONE,
+                "fast" | "priority" => self.fast_multiplier?,
+                "ultrafast" => self.ultrafast_multiplier?,
+                _ => return None,
+            }
         };
         Some(rates.cost(&record.tokens)? * multiplier)
     }
@@ -110,6 +130,9 @@ pub fn price_record(
     record: &UsageRecord,
     prices: &BTreeMap<String, ModelPricing>,
 ) -> Option<Decimal> {
+    if record.model == "unknown" {
+        return None;
+    }
     lookup_price(&record.service, &record.model, prices)?.cost(record)
 }
 
@@ -118,15 +141,25 @@ pub fn lookup_price<'a>(
     model: &str,
     prices: &'a BTreeMap<String, ModelPricing>,
 ) -> Option<&'a ModelPricing> {
-    if service != "codex" {
+    if !["codex", "antigravity"].contains(&service) {
         return None;
     }
     let raw = model.trim().to_lowercase();
-    if let Some(price) = prices.get(&format!("codex:{raw}")) {
+    if let Some(price) = prices.get(&format!("{service}:{raw}")) {
         return Some(price);
     }
-    let name = raw.strip_prefix("openai/").unwrap_or(&raw);
-    if let Some(price) = prices.get(&format!("codex:{name}")) {
+    let name = raw
+        .strip_prefix("openai/")
+        .or_else(|| {
+            (service == "antigravity")
+                .then(|| {
+                    raw.strip_prefix("google/")
+                        .or_else(|| raw.strip_prefix("anthropic/"))
+                })
+                .flatten()
+        })
+        .unwrap_or(&raw);
+    if let Some(price) = prices.get(&format!("{service}:{name}")) {
         return Some(price);
     }
     // 只移除日期后缀，不把未知模型别名映射到已知价格。
@@ -161,7 +194,7 @@ pub fn lookup_price<'a>(
             _ => false,
         };
         if valid {
-            return prices.get(&format!("codex:{}", &name[..name.len() - length]));
+            return prices.get(&format!("{service}:{}", &name[..name.len() - length]));
         }
     }
     None
@@ -169,63 +202,79 @@ pub fn lookup_price<'a>(
 
 pub fn decode_catalog(data: &[u8]) -> Result<BTreeMap<String, ModelPricing>, String> {
     let root: Value = serde_json::from_slice(data).map_err(|_| "价格数据无效，已保留原有价格。")?;
-    let models = root
-        .pointer("/openai/models")
+    root.pointer("/openai/models")
         .and_then(Value::as_object)
         .filter(|models| !models.is_empty())
         .ok_or("价格数据无效，已保留原有价格。")?;
     let mut result = BTreeMap::new();
-    for (name, model) in models {
-        let Some(cost) = model.get("cost").filter(|v| v.is_object()) else {
+    for (provider, service) in [
+        ("openai", "codex"),
+        ("google", "antigravity"),
+        ("anthropic", "antigravity"),
+        ("openai", "antigravity"),
+    ] {
+        let Some(models) = root
+            .get(provider)
+            .and_then(|v| v.get("models"))
+            .and_then(Value::as_object)
+        else {
             continue;
         };
-        if model
-            .pointer("/modalities/output")
-            .is_some_and(|output| output != &serde_json::json!(["text"]))
-        {
-            continue;
-        }
-        let rates = decode_rates(cost);
-        if rates.input.is_none() || rates.output.is_none() {
-            continue;
-        }
-        let mut price = ModelPricing {
-            service: "codex".into(),
-            model: name.clone(),
-            rates,
-            context_threshold: None,
-            long_context_rates: None,
-            fast_multiplier: None,
-            ultrafast_multiplier: None,
-        };
-        let context = cost
-            .get("tiers")
-            .and_then(Value::as_array)
-            .and_then(|tiers| {
-                tiers.iter().find(|tier| {
-                    tier.pointer("/tier/type").and_then(Value::as_str) == Some("context")
-                })
-            });
-        if let Some((context, threshold)) = context.and_then(|v| {
-            v.pointer("/tier/size")
-                .and_then(Value::as_u64)
-                .filter(|n| *n > 0)
-                .map(|n| (v, n))
-        }) {
-            price.context_threshold = Some(threshold);
-            price.long_context_rates = Some(decode_rates(context));
-        } else if let Some(long) = cost.get("context_over_200k").filter(|v| v.is_object()) {
-            price.context_threshold = Some(200_000);
-            price.long_context_rates = Some(decode_rates(long));
-        }
-        if ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"].contains(&name.as_str()) {
-            price.fast_multiplier = Some(Decimal::from(2u32));
-        }
-        if ["gpt-6-astra", "gpt-6.1-sol"].contains(&name.as_str()) {
-            price.ultrafast_multiplier = Some(Decimal::from(6u32));
-        }
-        if price.is_valid() {
-            result.insert(price.key(), price);
+        for (name, model) in models {
+            let Some(cost) = model.get("cost").filter(|v| v.is_object()) else {
+                continue;
+            };
+            if model
+                .pointer("/modalities/output")
+                .is_some_and(|output| output != &serde_json::json!(["text"]))
+            {
+                continue;
+            }
+            let rates = decode_rates(cost);
+            if rates.input.is_none() || rates.output.is_none() {
+                continue;
+            }
+            let mut price = ModelPricing {
+                service: service.into(),
+                model: name.clone(),
+                rates,
+                context_threshold: None,
+                long_context_rates: None,
+                fast_multiplier: None,
+                ultrafast_multiplier: None,
+            };
+            let context = cost
+                .get("tiers")
+                .and_then(Value::as_array)
+                .and_then(|tiers| {
+                    tiers.iter().find(|tier| {
+                        tier.pointer("/tier/type").and_then(Value::as_str) == Some("context")
+                    })
+                });
+            if let Some((context, threshold)) = context.and_then(|v| {
+                v.pointer("/tier/size")
+                    .and_then(Value::as_u64)
+                    .filter(|n| *n > 0)
+                    .map(|n| (v, n))
+            }) {
+                price.context_threshold = Some(threshold);
+                price.long_context_rates = Some(decode_rates(context));
+            } else if let Some(long) = cost.get("context_over_200k").filter(|v| v.is_object()) {
+                price.context_threshold = Some(200_000);
+                price.long_context_rates = Some(decode_rates(long));
+            }
+            if service == "codex"
+                && ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"]
+                    .contains(&name.as_str())
+            {
+                price.fast_multiplier = Some(Decimal::from(2u32));
+            }
+            if service == "codex" && ["gpt-6-astra", "gpt-6.1-sol"].contains(&name.as_str()) {
+                price.ultrafast_multiplier = Some(Decimal::from(6u32));
+            }
+            if price.is_valid() {
+                result.insert(price.key(), price);
+            }
         }
     }
     if result.is_empty() {
@@ -248,11 +297,11 @@ fn decode_rates(value: &Value) -> TokenRates {
         output: rate("output"),
         cached: rate("cache_read"),
         cache_write: write,
-        cache_write_long: write.map(|n| n * Decimal::from(2u32)),
+        cache_write_long: rate("cache_write_long"),
     }
 }
 
 pub fn bundled_prices() -> BTreeMap<String, ModelPricing> {
-    // Snapshot from models.dev (MIT), retrieved 2026-10-28, retained from the Swift release.
+    // Public text-token API rates from models.dev (MIT), retrieved 2026-11-09.
     decode_catalog(include_bytes!("pricing-catalog.json")).expect("bundled model price catalog")
 }

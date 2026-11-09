@@ -29,10 +29,10 @@ export async function execute(command: string, args?: Record<string, unknown>) {
     if (command === 'save_settings') snapshot.value = { ...snapshot.value, settings: args?.settings as Settings }
     else if (command === 'save_prices') {
       const prices = args?.prices as AppSnapshot['prices']
-      snapshot.value = { ...snapshot.value, prices: [...snapshot.value.prices.filter(price => !prices.some(updated => updated.model === price.model)), ...prices] }
+      snapshot.value = { ...snapshot.value, prices: [...snapshot.value.prices.filter(price => !prices.some(updated => updated.service === price.service && updated.model === price.model)), ...prices] }
     }
-    else if (command === 'reset_price') { const original = previewSnapshot().prices.find(price => price.model === args?.model); snapshot.value = { ...snapshot.value, prices: [...snapshot.value.prices.filter(price => price.model !== args?.model), ...(original ? [original] : [])] } }
-    else if (command === 'clear_history') snapshot.value = { ...snapshot.value, usage: { ...snapshot.value.usage, records: [] } }
+    else if (command === 'reset_price') { const original = previewSnapshot().prices.find(price => price.service === args?.service && price.model === args?.model); snapshot.value = { ...snapshot.value, prices: [...snapshot.value.prices.filter(price => price.service !== args?.service || price.model !== args?.model), ...(original ? [original] : [])] } }
+    else if (command === 'clear_history') snapshot.value = { ...snapshot.value, usage: { ...snapshot.value.usage, records: snapshot.value.usage.records.filter(record => record.service !== args?.service) } }
     else if (command === 'scan_usage') snapshot.value = { ...snapshot.value, usage: previewSnapshot().usage }
     else if (command === 'cancel_update') snapshot.value = { ...snapshot.value, update: { ...snapshot.value.update, status: 'idle' } }
     else if (command === 'check_update') snapshot.value = { ...snapshot.value, update: { ...snapshot.value.update, status: 'current' } }

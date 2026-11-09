@@ -24,6 +24,10 @@ export function previewSnapshot(): AppSnapshot {
       records.push({ id: `preview-${day}-${event}`, service: 'codex', session: `sample-${day}-${Math.floor(event / 3)}`, project: `/Projects/${['workspace', 'design-system', 'notes'][event % 3]}`, model: models[event % 3]!, date: Math.min(now, date.getTime() / 1000), tokens: { input, output: 1200 + event * 157, cached: input * 4, cacheWrite: 0, cacheWriteLong: 0, cacheWriteReported: false }, serviceTier: 'standard', isUSOnly: false, serviceTierReported: true, estimatedDuration: 16 + event, estimatedFirstToken: 1.2, cost: (input * 0.000004).toFixed(6) })
     }
   }
+  for (let i = 0; i < 18; i++) {
+    const base = records[i]!
+    records.push({ ...base, id: `preview-antigravity-${i}`, service: 'antigravity', session: `antigravity-sample-${Math.floor(i / 3)}`, model: i % 3 === 0 ? 'unknown' : 'gemini-3.8-flash', tokens: { ...base.tokens, input: 2100 + i * 100, cached: 8400 }, serviceTier: 'unknown', serviceTierReported: false, cost: i % 3 === 0 ? null : '0.0052' })
+  }
   state.usage = { records, projectRoots: {}, warnings: [], scannedAt: now, fileCount: 312, refreshing: false, source: '离线示例日志' }
   state.quota.windows = [{ id: 'codex:primary:300', bucket: 'codex', name: 'Codex', usedPercent: 28, durationMinutes: 300, resetsAt: now + 12700, label: null }, { id: 'codex:secondary:10080', bucket: 'codex', name: 'Codex', usedPercent: 63, durationMinutes: 10080, resetsAt: now + 276000, label: null }]
   for (const window of state.quota.windows) state.quota.history[window.id] = { window, points: Array.from({ length: 32 }, (_, index) => ({ date: now - (31 - index) * 900, usedPercent: Math.max(0, window.usedPercent - (31 - index) * .7), segment: index === 0 ? 1 : 2 })).filter((_, index) => index === 0 || index >= 8) }
@@ -49,6 +53,7 @@ export function previewSnapshot(): AppSnapshot {
   state.quota.lastSuccess = now
   state.quota.resetCredits = { availableCount: 1, credits: [{ id: 'sample-credit', resetType: 'codexRateLimits', status: 'available', expiresAt: now + 360000 }] }
   state.prices = models.map(model => ({ model, service: 'codex', rates: { input: '2.5', output: '15', cached: '0.25', cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: '2', ultrafastMultiplier: null }))
+  state.prices.push({ model: 'gemini-3.8-flash', service: 'antigravity', rates: { input: '0.5', output: '3', cached: '0.05', cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })
   // Explicit offline scenes exercise the displayed states without starting a local CLI.
   const antigravityScene = new URLSearchParams(location.search).get('antigravity')
   if (antigravityScene === 'stale') {

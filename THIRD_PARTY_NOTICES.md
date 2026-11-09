@@ -54,6 +54,14 @@ Windows headless 环境变量与单进程 Job 设计参考 [hemsoft-dev/codexbar
 
 官方 CLI 由用户单独安装，本应用不分发 `agy`，不自行提取、复制或保存 Google 凭据。CLI 报告不提供可靠账号身份，首版只显示当前额度；真实账号、后台失效登录与各平台系统集成的验收限制见[开发说明](docs/development.md#antigravity-cli-接入边界)。
 
+## Antigravity 本地用量
+
+2026-11-09 先核对 CC Switch 的 [#8693](https://github.com/farion1231/cc-switch/pull/8693)、[#8914](https://github.com/farion1231/cc-switch/pull/8914)、[#8941](https://github.com/farion1231/cc-switch/issues/8941)，再阅读当前源码。模型补全已合并，历史 Token 补全仍未合并；索引遮蔽修复已在当前源码中。改编其原生步骤与生成记录关联、模型和计时字段，沿用随包 MIT 许可。
+
+项目归属字段参考 [TokenUsageInsights](https://github.com/doggy8088/TokenUsageInsights) 的原生元数据读取；只读 SQLite、时间依据和覆盖缺口参考 [CodexBar 本地用量说明](https://github.com/steipete/CodexBar/blob/main/docs/antigravity.md)。三者均仍在维护，许可证均为 MIT。固定源码版本、改编范围和完整许可见 `Resources/ThirdPartyNotices/antigravity-usage-NOTICE.txt` 与 `TokenUsageInsights-LICENSE.txt`。本项目未引入状态栏脚本、hook、凭据处理、解密或本地服务导出路径。
+
+内置价格于 2026-11-09 更新为 models.dev 的 OpenAI / Google 文字 Token 单价，以及固定源码中的 Anthropic Sonnet / Opus 4.5、4.6、5、5.5 单价；不匹配未确认的模型后缀。新增 `rusqlite`（bundled SQLite）、`prost` 及其依赖的许可通过现有 `scripts/collect-licenses.mjs` 重新生成，随包分发。
+
 ## 界面与服务实现
 
 旧版菜单栏模板图像、紧凑额度面板、部分尺寸与颜色以及 Codex SVG 图标，改编自 [nanvon/cc-bar](https://github.com/nanvon/cc-bar)，参考版本 `6d990a2c3c50e8d404ea4d9982c651ce3c544baa`。
@@ -99,9 +107,9 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 统计口径与用量处理同时参考 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 的 `src/components/usage/UsageHero.tsx`、`src-tauri/src/services/session_usage.rs`、`session_usage_codex.rs` 和用量统计文档（参考日期：2026-10-28）。Copyright (c) 2025 Jason Young。采用 MIT License；完整原文保存在 `Resources/ThirdPartyNotices/cc-switch-LICENSE.txt`，随应用分发。未引入其 Tauri、路由代理或数据库。费用计算进一步参考并改编其 `src-tauri/src/proxy/usage/calculator.rs` 的 Decimal 分项公式；模型价格导入参考 `src/lib/modelsDevPricing.ts` 的公开目录结构，并保留缺价状态。旧版 Claude 缓存计费规则已移除。
 
-旧版 Antigravity 本地用量曾参考并改编 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）；相关采集与解析现已移除。
+旧版 Antigravity 本地用量曾参考并改编 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）；旧实现已移除，本轮原生读取的参考范围与来源见“Antigravity 本地用量”。
 
-内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
+内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI、Google 与 Anthropic 公开文字模型条目，当前快照日期 2026-11-09（范围见上节）。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
 旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，相关脚本现仅保存在 Git 历史中。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
 

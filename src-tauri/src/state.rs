@@ -419,9 +419,10 @@ impl SavedState {
     }
 
     pub fn prices(&self) -> BTreeMap<String, ModelPricing> {
-        let mut prices = self.catalog.clone();
+        let mut prices = quota_core::bundled_prices();
+        prices.extend(self.catalog.clone());
         prices.extend(self.overrides.clone());
-        prices.retain(|_, price| price.service == "codex");
+        prices.retain(|_, price| ["codex", "antigravity"].contains(&price.service.as_str()));
         prices
     }
 }
@@ -504,14 +505,13 @@ impl Store {
             .usage
             .records
             .iter()
-            .filter(|record| record.service == "codex")
         {
-            let key = format!("codex:{}", record.model.to_lowercase());
+            let key = format!("{}:{}", record.service, record.model.to_lowercase());
             display_prices.entry(key).or_insert_with(|| {
-                let mut price = quota_core::lookup_price("codex", &record.model, &prices)
+                let mut price = quota_core::lookup_price(&record.service, &record.model, &prices)
                     .cloned()
                     .unwrap_or_else(|| ModelPricing {
-                        service: "codex".into(),
+                        service: record.service.clone(),
                         model: record.model.clone(),
                         rates: Default::default(),
                         context_threshold: None,

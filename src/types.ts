@@ -1,5 +1,6 @@
 export type Page = 'overview' | 'details' | 'quota' | 'settings'
 export type Metric = 'tokens' | 'cost'
+export type UsageService = 'codex' | 'antigravity'
 export interface ChartTimeHover { timestamp: number; tolerance: number }
 export interface NotificationStatus {
   permission: 'system' | 'granted' | 'denied' | 'prompt'
@@ -24,7 +25,7 @@ export interface Settings {
   todayMetrics: string[]
   detailColumns: string[]
 }
-export interface UsageTokens { input: number; output: number; cached: number; cacheWrite: number; cacheWriteLong: number; cacheWriteReported?: boolean | null }
+export interface UsageTokens { input: number; output: number; cached: number; cacheWrite: number; cacheWriteLong: number; cacheWriteReported?: boolean | null; inputReported?: boolean | null; outputReported?: boolean | null; cachedReported?: boolean | null }
 export interface UsageRecord {
   id: string; service: string; session: string; project: string; model: string; date: number
   tokens: UsageTokens; serviceTier: string; isUSOnly: boolean; serviceTierReported?: boolean | null
