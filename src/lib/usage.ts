@@ -1,6 +1,9 @@
 import { addDays, formatDate, startOf, trimDecimalZeros } from '@pmun/utils'
 import type { UsageRecord, Metric } from '@/types'
 
+export const serviceName = (service: string) => service === 'codex' ? 'Codex' : service === 'antigravity' ? 'Antigravity' : '全部服务'
+export const knownTokens = (record: UsageRecord) => record.tokens.inputReported !== false && record.tokens.outputReported !== false && record.tokens.cachedReported !== false
+
 export const tokenCount = (record: UsageRecord) => record.tokens.input + record.tokens.output + record.tokens.cached + record.tokens.cacheWrite
 export const shortTokens = (value: number) => value < 10000 ? value.toLocaleString('zh-CN') : new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 3 }).format(value)
 export const dateText = (seconds: number | null | undefined, full = false) => seconds == null ? '—' : new Date(seconds * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', ...(full ? { year: 'numeric', second: '2-digit' } : {}) })
@@ -19,16 +22,17 @@ export function sumCosts(records: UsageRecord[]) {
   }, 0n)
   return `${amount / decimalScale}.${String(amount % decimalScale).padStart(28, '0')}`
 }
-export interface Summary { tokens: number; input: number; output: number; cached: number; cacheWrite: number; count: number; sessions: number; amount: string; priced: number; unpriced: number; hitRate: number | null }
+export interface Summary { tokens: number; input: number; output: number; cached: number; cacheWrite: number; count: number; sessions: number; amount: string; priced: number; unpriced: number; hitRate: number | null; incomplete: number; inputKnown: boolean; outputKnown: boolean; cachedKnown: boolean; cacheWriteKnown: boolean }
 export function summarize(records: UsageRecord[]): Summary {
-  const result: Summary = { tokens: 0, input: 0, output: 0, cached: 0, cacheWrite: 0, count: records.length, sessions: new Set(records.map(record => record.session)).size, amount: sumCosts(records), priced: 0, unpriced: 0, hitRate: null }
+  const result: Summary = { tokens: 0, input: 0, output: 0, cached: 0, cacheWrite: 0, count: records.length, sessions: new Set(records.map(record => `${record.service}:${record.session}`)).size, amount: sumCosts(records), priced: 0, unpriced: 0, hitRate: null, incomplete: 0, inputKnown: records.every(record => record.tokens.inputReported !== false), outputKnown: records.every(record => record.tokens.outputReported !== false), cachedKnown: records.every(record => record.tokens.cachedReported !== false), cacheWriteKnown: records.length > 0 && records.every(record => record.tokens.cacheWriteReported || record.tokens.cacheWrite > 0) }
   for (const record of records) {
     result.tokens += tokenCount(record); result.input += record.tokens.input; result.output += record.tokens.output
     result.cached += record.tokens.cached; result.cacheWrite += record.tokens.cacheWrite
+    if (!knownTokens(record)) result.incomplete++
     if (record.cost == null) result.unpriced++; else result.priced++
   }
   const incoming = result.input + result.cached + result.cacheWrite
-  result.hitRate = incoming ? result.cached / incoming : null
+  result.hitRate = incoming && !result.incomplete ? result.cached / incoming : null
   return result
 }
 export const costLabel = (summary: Summary) => summary.unpriced && summary.priced ? '已定价费用' : '估算费用'

@@ -73,7 +73,7 @@ CLI 未在 stderr 中提供认证原因时，只能显示无法确认原因的�
 
 参考源码、许可证及已知问题见[第三方来源](../THIRD_PARTY_NOTICES.md#antigravity-额度接入)。
 
-### 本轮验收（2026-11-08）
+### 前次离线验收（2026-11-08）
 
 本轮按用户要求只做离线实现，未查询真实账号，本机未找到官方 `agy`。在 macOS 15.7.9 x86_64 上，`pnpm build` 的 TypeScript 检查与 Vite 构建，以及 `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml` 均通过。未新增或修改自动化测试，也未使用临时脚本编写测试。
 
@@ -87,6 +87,68 @@ Chrome 专门代理完成一次离线关键流程验收：默认额度、未知�
 | 两平台真实额度与官方界面对照、登录失效的静默行为、原生菜单栏 / 托盘 | 未验收 |
 
 界面沿用现有 `surface`、原生选择器、Switch、Button 与主题，无新增设计系统，因此不改写 `DESIGN.md` 或 `.impeccable/design.json`。工具报告的 `DESIGN.md` 比 sidecar 更新属于既有文档差异，本轮保留。Chrome 截图 API 没有文档化的落盘方式，本轮未保存截图文件。
+
+## 本地用量接入与验收（2026-11-09）
+
+本轮将用量范围扩展为 Codex + Antigravity；额度采集继续沿用原有 CLI 路线。产品名、仓库名与正式 Bundle ID 保持不变。
+
+### 读取、去重与费用
+
+`quota-core::LocalUsageReader` 继续管理同一份 `usage-history.json`、项目映射和扫描缓存，新增 Antigravity 格式适配。读取 `GEMINI_CLI_HOME` 或用户目录的 `.gemini`，扫描 `antigravity-cli` / `antigravity` 的 `brain/<会话>/.system_generated/logs/transcript_full.jsonl` 与 `conversations/<会话>.db`，兼容桌面根目录中以会话 UUID 命名的 `.db`。不扫描登录文件、配置、其他用户目录或外部导出缓存。
+
+JSONL 仅导入已完成的 `PLANNER_RESPONSE`；同一 `step_index` 以文件内最后版本为准。原生 SQLite 只打开只读连接，在同一事务内读取 `steps`、`gen_metadata` 和项目元数据；有 WAL 时读取其已提交记录，不等待写锁。无 WAL 的已关闭数据库使用 `immutable=1`，避免创建 sidecar，读取前后核对主文件身份、大小、修改时间与 WAL 状态，变化时保留其他可读来源并报告覆盖缺口。这是本机普通只读打开已关闭 WAL 库失败后采用的上游已验证处理，不复制数据库或写入源表。
+
+仅使用 `prost` 的小型字段声明，无构建期 Protobuf 生成器：
+
+| 元数据 | 字段与口径 |
+| --- | --- |
+| 生成关联 | `steps.metadata.#20.#3` → `gen_metadata.idx`，索引零有效 |
+| 模型 | JSONL 明确模型优先，其次原生 `gen_metadata.data.#1.#19`；最后采用已记录的 Model Selection 事件；无依据则 `unknown` |
+| Token | 原生 `#1.#4` 的字段 2 / 3 / 5 为新增输入 / 总输出 / 缓存读取；有效 Protobuf 消息中省略的标量按其 schema 表示零。JSONL 缺失字段不会当零，可由对应原生计数补全 |
+| 时间 | JSONL `created_at`，或直接关联的 `steps.metadata.#1`；独立生成只接受已确认的 `#1.#9.#4` 标准 Timestamp。没有可靠时间则不导入，不拿会话开始或文件修改时间代替 |
+| 计时 | 原生 `#1.#11` 为首字耗时，`#1.#12` 为后续流耗时；显示仍带近似标识，不推断缺失计时 |
+| 项目 | `trajectory_metadata_blob` 的 `workspace_uris #7`，兼容旧 `workspaces #1.#1`；仅唯一可确认的文件 URI 归属项目 |
+
+Antigravity 输入不含缓存、输出已包含思考；这与 Codex 输入拆分的入口不同。内部继续使用归一化 `UsageTokens`，增加字段是否报告的标识，保留未知与真实零值的区别。只保留统计元数据，不保存消息正文、模型思考文本或登录凭据。
+
+缓存以会话的 JSONL、SQLite 和 WAL 文件状态为依据；变化后重读该会话，以修正已完成步骤的重写。跨根目录按会话 UUID 与步骤去重，SQLite 独立生成按生成索引去重，建立关联后移除旧的独立生成键；纯会话索引从不占用日志候选。副本计数冲突采用最近修改来源并提示统计可能不完整，文件修改时间只用于来源选择。父会话中的代理消息、汇总和工具输出不额外累计 Token。
+
+新记录使用 `antigravity:v2:` ID 前缀，沿用历史文件版本及 Swift epoch 存储兼容。旧版 Antigravity 记录保持原值，不自动加入统计；从可读源文件重新导入，因此不会把旧记录再加一次。清除历史按所选服务进行，包括该服务的旧记录，保留其他服务与模型定价；源文件不删除。重新扫描只失效所选服务缓存。
+
+价格按 `service:model` 区分，复用 Rust Decimal；OpenAI / Google / Anthropic 公开文字 Token 单价和自定义价格均按服务匹配。未知模型及未确认的 `trial`、`tiered`、`high`、`-n` 等后缀不自动套价。Antigravity 按公开基准单价作 API 等价估算，不推断订阅扣费、计费档位、地区或工具附加费；原生来源未提供缓存写入时长，有写入计数时费用保持未知。公开价格更新失败保留原目录，自定义价格优先。快照与历史重算沿用现有流程，不新增历史价格版本。
+
+### 上游与版本边界
+
+先阅读 CC Switch #8693、#8914、#8941，再核对当前源码及 MIT 许可证：#8693 已合并，#8914 截至本次复核仍未合并；#8941 已关闭，源码中已有纯索引不遮蔽 transcript 的处理。对照 CodexBar 的本地 SQLite / 时间覆盖说明及 TokenUsageInsights 的原生项目元数据，固定源码与来源声明见 [第三方许可](../THIRD_PARTY_NOTICES.md#antigravity-本地用量)。
+
+最低额度查询版本保持 macOS 正式版 1.1.11、Windows 原生正式版 1.4.10：前者由[官方变更说明](https://antigravity.google/docs/changelog)确认引入只读 print slash command；Windows 下限复核[已合并的 #290](https://github.com/hemsoft-dev/codexbar/pull/290)中的 headless 认证与 Job 条件。这个版本下限不代表所有历史格式都受支持。旧加密 `.pb`、未知 Protobuf 布局、缺少可靠时间或无法读取的数据明确报告未覆盖，不解密、不处理 Google 凭据、不增加本地服务导出路线。
+
+### 本次结果与限制
+
+| 环境 / 范围 | 结果 |
+| --- | --- |
+| macOS 27.2 Apple Silicon | 仓库 `scripts/test.sh` 的 TypeScript、Vite 构建与 Rust 检查通过；最终局部调整另跑类型检查与 Rust 检查，未重复前端构建 |
+| 本机 Antigravity 2.29.0 原生记录 | 本次实际 Rust 桌面进程在隔离历史目录导入 324 条响应、11 会话、4 项目；全部补全原生模型与计时。多次后台扫描后仍为 324 条。新增输入 1,492,541、输出 362,001、缓存读取 17,656,799 |
+| 旧历史与覆盖 | 本机 199 条旧 Antigravity 历史保留且未计入；79 份旧 `.pb` 未覆盖。Codex 与其他服务原有历史保留。本机 CLI 目录没有完整日志，因此 CLI 来源发现已实现，尚无本机 CLI 历史样本实机验收 |
+| 官方 CLI 真实额度 | `agy 1.5.3` 只读查询成功。Gemini 周额度 99.928343%、五小时 100%；Claude/GPT 两桶 100%；Argon 周额度 80.242974%，与官方界面的 100% / 80% 取整显示一致 |
+| 官方界面关闭后查询 | 由 Computer Use 退出本轮启动的官方 Antigravity，并确认未运行；随后独立 CLI 查询仍成功。已使用周窗口的重置时间不变，分别为 2026-11-14 16:17:25 与 15:48:56（Asia/Shanghai），符合官方界面“5 天 5 小时”提示。条件为独立 CLI 已登录、系统登录存储可访问且网络正常 |
+| 一次 Chrome 离线关键流程 | 服务筛选、概览 / 明细 / 侧栏一致、来源区分、未知模型 / 价格、按服务自定义价格、按服务清除与刷新通过；新增选择器默认、聚焦、失焦与相邻控件对齐通过。CUA 原生选项菜单中方向键没有可判断结果，键盘箭头未验收 |
+| 原生额度、设置持久化与正常退出 | 按准确路径操作已安装的 0.25.5，临时开启 Antigravity 后成功读取关闭官方界面时的额度；分组及两个已用周窗口时间与 CLI 一致。99.928343% 按现有向下取整规则显示 99%，官方界面显示 100%。正常 `⌘Q` 后核对无应用或 `agy` 遗留，重开后监测开关保持开启，手动读取成功；验收结束已恢复原先关闭的 Antigravity 监测，其他原设置未变，原应用保持运行 |
+| 原生菜单栏状态项与菜单 | 未验收；工具的应用窗口树无法观察系统状态栏。菜单栏显示偏好已核对，不能据此宣称状态项视觉与菜单交互通过 |
+| 登录失效时静默失败与停止重试 | 未验收；当前 CLI 登录有效，未为构造失败而退出账号、读取凭据或修改官方配置。现有 `requires_action` 调度逻辑保留 |
+| Windows、macOS Intel 及其他系统版本 | 本轮未编译、未验收。Windows 无终端闪现和单进程 Job 对实际配置的影响均未验收 |
+
+原安装版重启时发现：内存额度快照已丢弃，但成功轮询的下一次期限仍在持久化调度中，导致启动后等待普通间隔才自动查询。已在本次代码的启动入口修复：已开启监测且无失败退避时重置普通下一次期限；服务端限流截止时间保持不变。修复后用独立数据目录运行真实桌面代码，沿用刚刚真实查询保存的下一次期限（10:56:27）；实际在 10:53:37 已成功取数，下一次期限推进到 10:58:37，失败计数为零，确认未等待旧的普通轮询期限（均为 Asia/Shanghai）。该实机检查使用现有生产读取器，没有新增测试代码。
+
+真实服务查询经过用户授权；没有创建模型任务或保存登录凭据。本次新代码的本地历史验收使用临时应用标识与 `CODEX_QUOTA_DATA_DIR`；现有额度接入另在已安装 0.25.5 上验收，未替换 `/Applications` 的安装。没有新增或修改自动化测试，也没有临时断言或测试夹具。已有前端构建保留 chunk 大小提示；机械界面检查无新增发现。现有设计规则继续复用，未扩展设计系统，`.impeccable/design.json` 的既有不同步状态保留。
+
+### 用量界面调整（2026-11-09）
+
+服务筛选改为带品牌图标的原生单选分段，页头刷新按钮显示相对扫描时间；Tokens、费用和四项用量构成合并为横排指标。趋势图按服务堆叠，Tokens 与费用分开切换；模型、项目和对话共用汇总表区域。未定价记录不补零，全部未定价时显示明确空态。定价匹配规则保持不变，`-n`、`trial` 等未确认后缀仍需按完整模型名设置自定义价格。
+
+本次 `pnpm build` 的类型检查与前端构建通过，保留既有 chunk 大小提示。Chrome 在当前窗口完成一次离线关键流程验收：图标默认、选中、聚焦、失焦与方向键操作，和相邻控件对齐；服务筛选、Tokens / 费用堆叠切换、全未定价空态、三种汇总维度、打开逐条明细以及刷新时间。发现并修复 SVG 内联地址导致 mask 无效、长表头不换行的问题后，仅复查受影响位置。工具不提供悬停与精确窗口尺寸调整，图表 tooltip 和 1140 / 860px 两个指定宽度未单独验收；未扩大浏览器或平台范围。
+
+没有新增或修改自动化测试。机械检查提示的新字号已改用现有 18px；复用现有主题与组件，`.impeccable/design.json` 与 `DESIGN.md` 的既有不同步状态未扩展处理。图标和布局参考来源见随包 `usage-ui-NOTICE.txt` 与 `lobe-icons-LICENSE.txt`。
 
 ## 通用工具方法
 
@@ -122,3 +184,13 @@ cp work/dark-app-icon.iconset/icon_512x512@2x.png src-tauri/icons/dock-dark.png
 生成后清理 `work/app-icon.iconset`、`work/app-icons`、`work/tray-icons` 和 `work/dark-app-icon.iconset`。托盘使用独立的单色图形，不从带背景的应用图标裁切。
 
 发布流程与签名配置统一见 [打包、更新与发布](updating.md)。第三方来源与许可见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
+
+### 官方定价维护
+
+`crates/quota-core/src/official_pricing.rs` 解析 OpenAI / Google / Anthropic 官方 Markdown，在线更新与内置快照生成共用同一实现。OpenAI 读取 Standard 与已确认的 Fast / Ultrafast 文字 Token 表，只有全部 Token 单价和长上下文档位比例一致时生成速度倍率；未提供长上下文 Fast 价或无法统一倍率的条目保持未知。Google 仅读取已确认文字模型的 Standard 付费列，区分 200K 上下文分档和带生效日期的促销价，不读免费、Batch、存储与工具价格。Claude 读取基准、缓存写入 / 命中价格及 Haiku 5.5 的 100K 分档。Antigravity 不推断实际订阅计费档位或缓存时长。
+
+运行 `node scripts/update-prices.mjs` 下载公开文档并通过 `src-tauri/examples/update-prices.rs` 生成 `official-pricing.json`，同步 `BUNDLED_PRICE_DATE` 后审查 diff；不要手工修改生成 JSON。旧 `pricing-catalog.json` 只为当前官方页面未列出的历史模型提供兼容价格。旧设置的 models.dev 下载目录不覆盖新官方快照，自定义价格仍优先；`official_pricing` 标记新下载目录。当前官方快照核验日期为 2026-11-09，包含 86 条服务/模型价格。
+
+官方页面没有本项目可直接使用的统一价格 JSON API，解析结构变化时更新会报错并保留原目录。2026-11-09 查阅 AIHOT 公开 OpenAPI，未找到模型价格查询端点；其价格榜单未作为机器更新来源。价格日期是快照核验/更新日期，不是历史账单日期；Google 促销到期后需更新，不在本地猜测未公布的未来价格。
+
+本次验收：`bash scripts/test.sh` 的前端类型检查、构建及 Rust 编译通过；用维护生成器经实际 HTTP 客户端下载三方官方文档并解析成功（56 / 11 / 19 条服务/模型价格）。Chrome 一次离线关键流程通过 Codex 范围筛选、两服务切换、搜索、同名阻止、新增/移除自定义、Gemini/Claude 单价、长上下文显隐、Esc 返回、Tab/方向键、默认/聚焦/失焦及相邻控件对齐；重名错误随输入清除的修复已复查。Antigravity 的“含未定价”筛选因浏览器被切换未单独完成；桌面命令持久化与费用重算、外链、其他平台和多尺寸未实机验收。未新增或修改自动化测试，仓库当前验证入口仅做编译与构建。

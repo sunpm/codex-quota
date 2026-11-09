@@ -1,0 +1,1460 @@
+{
+  "antigravity:claude-fable-5": {
+    "service": "antigravity",
+    "model": "claude-fable-5",
+    "rates": {
+      "input": "10",
+      "output": "50",
+      "cached": "1",
+      "cacheWrite": "12.50",
+      "cacheWriteLong": "20"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-fable-5-1": {
+    "service": "antigravity",
+    "model": "claude-fable-5-1",
+    "rates": {
+      "input": "10",
+      "output": "50",
+      "cached": "0.25",
+      "cacheWrite": "12.50",
+      "cacheWriteLong": "20"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-haiku-4-5": {
+    "service": "antigravity",
+    "model": "claude-haiku-4-5",
+    "rates": {
+      "input": "1",
+      "output": "5",
+      "cached": "0.10",
+      "cacheWrite": "1.25",
+      "cacheWriteLong": "2"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-haiku-5-5": {
+    "service": "antigravity",
+    "model": "claude-haiku-5-5",
+    "rates": {
+      "input": "0.10",
+      "output": "0.50",
+      "cached": "0.01",
+      "cacheWrite": "0.125",
+      "cacheWriteLong": "0.20"
+    },
+    "contextThreshold": 100000,
+    "longContextRates": {
+      "input": "0.50",
+      "output": "2.50",
+      "cached": "0.05",
+      "cacheWrite": "0.625",
+      "cacheWriteLong": "1"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-mythos-5": {
+    "service": "antigravity",
+    "model": "claude-mythos-5",
+    "rates": {
+      "input": "10",
+      "output": "50",
+      "cached": "1",
+      "cacheWrite": "12.50",
+      "cacheWriteLong": "20"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-mythos-5-1": {
+    "service": "antigravity",
+    "model": "claude-mythos-5-1",
+    "rates": {
+      "input": "10",
+      "output": "50",
+      "cached": "0.25",
+      "cacheWrite": "12.50",
+      "cacheWriteLong": "20"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-4": {
+    "service": "antigravity",
+    "model": "claude-opus-4",
+    "rates": {
+      "input": "15",
+      "output": "75",
+      "cached": "1.50",
+      "cacheWrite": "18.75",
+      "cacheWriteLong": "30"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-4-1": {
+    "service": "antigravity",
+    "model": "claude-opus-4-1",
+    "rates": {
+      "input": "15",
+      "output": "75",
+      "cached": "1.50",
+      "cacheWrite": "18.75",
+      "cacheWriteLong": "30"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-4-5": {
+    "service": "antigravity",
+    "model": "claude-opus-4-5",
+    "rates": {
+      "input": "5",
+      "output": "25",
+      "cached": "0.50",
+      "cacheWrite": "6.25",
+      "cacheWriteLong": "10"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-4-6": {
+    "service": "antigravity",
+    "model": "claude-opus-4-6",
+    "rates": {
+      "input": "5",
+      "output": "25",
+      "cached": "0.50",
+      "cacheWrite": "6.25",
+      "cacheWriteLong": "10"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-4-7": {
+    "service": "antigravity",
+    "model": "claude-opus-4-7",
+    "rates": {
+      "input": "5",
+      "output": "25",
+      "cached": "0.50",
+      "cacheWrite": "6.25",
+      "cacheWriteLong": "10"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-4-8": {
+    "service": "antigravity",
+    "model": "claude-opus-4-8",
+    "rates": {
+      "input": "5",
+      "output": "25",
+      "cached": "0.50",
+      "cacheWrite": "6.25",
+      "cacheWriteLong": "10"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-5": {
+    "service": "antigravity",
+    "model": "claude-opus-5",
+    "rates": {
+      "input": "5",
+      "output": "25",
+      "cached": "0.50",
+      "cacheWrite": "6.25",
+      "cacheWriteLong": "10"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-opus-5-5": {
+    "service": "antigravity",
+    "model": "claude-opus-5-5",
+    "rates": {
+      "input": "4",
+      "output": "20",
+      "cached": "0.20",
+      "cacheWrite": "5",
+      "cacheWriteLong": "8"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-sonnet-4": {
+    "service": "antigravity",
+    "model": "claude-sonnet-4",
+    "rates": {
+      "input": "3",
+      "output": "15",
+      "cached": "0.30",
+      "cacheWrite": "3.75",
+      "cacheWriteLong": "6"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-sonnet-4-5": {
+    "service": "antigravity",
+    "model": "claude-sonnet-4-5",
+    "rates": {
+      "input": "3",
+      "output": "15",
+      "cached": "0.30",
+      "cacheWrite": "3.75",
+      "cacheWriteLong": "6"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-sonnet-4-6": {
+    "service": "antigravity",
+    "model": "claude-sonnet-4-6",
+    "rates": {
+      "input": "3",
+      "output": "15",
+      "cached": "0.30",
+      "cacheWrite": "3.75",
+      "cacheWriteLong": "6"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-sonnet-5": {
+    "service": "antigravity",
+    "model": "claude-sonnet-5",
+    "rates": {
+      "input": "2",
+      "output": "10",
+      "cached": "0.20",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "4"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:claude-sonnet-5-5": {
+    "service": "antigravity",
+    "model": "claude-sonnet-5-5",
+    "rates": {
+      "input": "2",
+      "output": "10",
+      "cached": "0.10",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "4"
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-2.5-flash": {
+    "service": "antigravity",
+    "model": "gemini-2.5-flash",
+    "rates": {
+      "input": "0.30",
+      "output": "2.50",
+      "cached": "0.03",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-2.5-flash-lite": {
+    "service": "antigravity",
+    "model": "gemini-2.5-flash-lite",
+    "rates": {
+      "input": "0.10",
+      "output": "0.40",
+      "cached": "0.01",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-2.5-pro": {
+    "service": "antigravity",
+    "model": "gemini-2.5-pro",
+    "rates": {
+      "input": "1.25",
+      "output": "10.00",
+      "cached": "0.125",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 200000,
+    "longContextRates": {
+      "input": "2.50",
+      "output": "15.00",
+      "cached": "0.25",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3-flash-preview": {
+    "service": "antigravity",
+    "model": "gemini-3-flash-preview",
+    "rates": {
+      "input": "0.50",
+      "output": "3.00",
+      "cached": "0.05",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3.1-flash-lite": {
+    "service": "antigravity",
+    "model": "gemini-3.1-flash-lite",
+    "rates": {
+      "input": "0.25",
+      "output": "1.50",
+      "cached": "0.025",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3.1-pro-preview": {
+    "service": "antigravity",
+    "model": "gemini-3.1-pro-preview",
+    "rates": {
+      "input": "2.00",
+      "output": "12.00",
+      "cached": "0.20",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 200000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "18.00",
+      "cached": "0.40",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3.1-pro-preview-customtools": {
+    "service": "antigravity",
+    "model": "gemini-3.1-pro-preview-customtools",
+    "rates": {
+      "input": "2.00",
+      "output": "12.00",
+      "cached": "0.20",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 200000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "18.00",
+      "cached": "0.40",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3.5-flash-lite": {
+    "service": "antigravity",
+    "model": "gemini-3.5-flash-lite",
+    "rates": {
+      "input": "0.30",
+      "output": "2.50",
+      "cached": "0.03",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3.6-flash": {
+    "service": "antigravity",
+    "model": "gemini-3.6-flash",
+    "rates": {
+      "input": "0.75",
+      "output": "3.75",
+      "cached": "0.075",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-3.8-flash": {
+    "service": "antigravity",
+    "model": "gemini-3.8-flash",
+    "rates": {
+      "input": "0.75",
+      "output": "3.75",
+      "cached": "0.075",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gemini-4-argon": {
+    "service": "antigravity",
+    "model": "gemini-4-argon",
+    "rates": {
+      "input": "2.00",
+      "output": "10.00",
+      "cached": "0.10",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-4.1": {
+    "service": "antigravity",
+    "model": "gpt-4.1",
+    "rates": {
+      "input": "2.00",
+      "output": "8.00",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-4.1-mini": {
+    "service": "antigravity",
+    "model": "gpt-4.1-mini",
+    "rates": {
+      "input": "0.40",
+      "output": "1.60",
+      "cached": "0.10",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-4o": {
+    "service": "antigravity",
+    "model": "gpt-4o",
+    "rates": {
+      "input": "2.50",
+      "output": "10.00",
+      "cached": "1.25",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-4o-mini": {
+    "service": "antigravity",
+    "model": "gpt-4o-mini",
+    "rates": {
+      "input": "0.15",
+      "output": "0.60",
+      "cached": "0.075",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5": {
+    "service": "antigravity",
+    "model": "gpt-5",
+    "rates": {
+      "input": "1.25",
+      "output": "10.00",
+      "cached": "0.125",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5-mini": {
+    "service": "antigravity",
+    "model": "gpt-5-mini",
+    "rates": {
+      "input": "0.25",
+      "output": "2.00",
+      "cached": "0.025",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5-nano": {
+    "service": "antigravity",
+    "model": "gpt-5-nano",
+    "rates": {
+      "input": "0.05",
+      "output": "0.40",
+      "cached": "0.005",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5-pro": {
+    "service": "antigravity",
+    "model": "gpt-5-pro",
+    "rates": {
+      "input": "15.00",
+      "output": "120.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.1": {
+    "service": "antigravity",
+    "model": "gpt-5.1",
+    "rates": {
+      "input": "1.25",
+      "output": "10.00",
+      "cached": "0.125",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.2": {
+    "service": "antigravity",
+    "model": "gpt-5.2",
+    "rates": {
+      "input": "1.75",
+      "output": "14.00",
+      "cached": "0.175",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.2-pro": {
+    "service": "antigravity",
+    "model": "gpt-5.2-pro",
+    "rates": {
+      "input": "21.00",
+      "output": "168.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.3-codex": {
+    "service": "antigravity",
+    "model": "gpt-5.3-codex",
+    "rates": {
+      "input": "1.75",
+      "output": "14.00",
+      "cached": "0.175",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.4": {
+    "service": "antigravity",
+    "model": "gpt-5.4",
+    "rates": {
+      "input": "2.50",
+      "output": "15.00",
+      "cached": "0.25",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "5.00",
+      "output": "22.50",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.4-mini": {
+    "service": "antigravity",
+    "model": "gpt-5.4-mini",
+    "rates": {
+      "input": "0.75",
+      "output": "4.50",
+      "cached": "0.075",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.4-nano": {
+    "service": "antigravity",
+    "model": "gpt-5.4-nano",
+    "rates": {
+      "input": "0.20",
+      "output": "1.25",
+      "cached": "0.02",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.4-pro": {
+    "service": "antigravity",
+    "model": "gpt-5.4-pro",
+    "rates": {
+      "input": "30.00",
+      "output": "180.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "60.00",
+      "output": "270.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.5": {
+    "service": "antigravity",
+    "model": "gpt-5.5",
+    "rates": {
+      "input": "5.00",
+      "output": "30.00",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "10.00",
+      "output": "45.00",
+      "cached": "1.00",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.5-pro": {
+    "service": "antigravity",
+    "model": "gpt-5.5-pro",
+    "rates": {
+      "input": "30.00",
+      "output": "180.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "60.00",
+      "output": "270.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.6-luna": {
+    "service": "antigravity",
+    "model": "gpt-5.6-luna",
+    "rates": {
+      "input": "0.20",
+      "output": "1.20",
+      "cached": "0.02",
+      "cacheWrite": "0.25",
+      "cacheWriteLong": "0.50"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "0.40",
+      "output": "1.80",
+      "cached": "0.04",
+      "cacheWrite": "0.50",
+      "cacheWriteLong": "1.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.6-sol": {
+    "service": "antigravity",
+    "model": "gpt-5.6-sol",
+    "rates": {
+      "input": "4.00",
+      "output": "20.00",
+      "cached": "0.40",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "8.00",
+      "output": "30.00",
+      "cached": "0.80",
+      "cacheWrite": "10.00",
+      "cacheWriteLong": "20.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-5.6-terra": {
+    "service": "antigravity",
+    "model": "gpt-5.6-terra",
+    "rates": {
+      "input": "2.00",
+      "output": "12.00",
+      "cached": "0.20",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "18.00",
+      "cached": "0.40",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-6-astra": {
+    "service": "antigravity",
+    "model": "gpt-6-astra",
+    "rates": {
+      "input": "10.00",
+      "output": "50.00",
+      "cached": "1.00",
+      "cacheWrite": "12.50",
+      "cacheWriteLong": "25.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "20.00",
+      "output": "75.00",
+      "cached": "2.00",
+      "cacheWrite": "25.00",
+      "cacheWriteLong": "50.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-6-luna": {
+    "service": "antigravity",
+    "model": "gpt-6-luna",
+    "rates": {
+      "input": "0.10",
+      "output": "0.50",
+      "cached": "0.01",
+      "cacheWrite": "0.125",
+      "cacheWriteLong": "0.25"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "0.20",
+      "output": "0.75",
+      "cached": "0.02",
+      "cacheWrite": "0.25",
+      "cacheWriteLong": "0.50"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-6-sol": {
+    "service": "antigravity",
+    "model": "gpt-6-sol",
+    "rates": {
+      "input": "2.00",
+      "output": "10.00",
+      "cached": "0.20",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "15.00",
+      "cached": "0.40",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-6.1-sol": {
+    "service": "antigravity",
+    "model": "gpt-6.1-sol",
+    "rates": {
+      "input": "2.00",
+      "output": "10.00",
+      "cached": "0.10",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "15.00",
+      "cached": "0.20",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:gpt-6.1-terra": {
+    "service": "antigravity",
+    "model": "gpt-6.1-terra",
+    "rates": {
+      "input": "1.00",
+      "output": "5.00",
+      "cached": "0.05",
+      "cacheWrite": "1.25",
+      "cacheWriteLong": "2.50"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "2.00",
+      "output": "7.50",
+      "cached": "0.10",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:o3": {
+    "service": "antigravity",
+    "model": "o3",
+    "rates": {
+      "input": "2.00",
+      "output": "8.00",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "antigravity:o3-pro": {
+    "service": "antigravity",
+    "model": "o3-pro",
+    "rates": {
+      "input": "20.00",
+      "output": "80.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-4.1": {
+    "service": "codex",
+    "model": "gpt-4.1",
+    "rates": {
+      "input": "2.00",
+      "output": "8.00",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "1.75",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-4.1-mini": {
+    "service": "codex",
+    "model": "gpt-4.1-mini",
+    "rates": {
+      "input": "0.40",
+      "output": "1.60",
+      "cached": "0.10",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "1.75",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-4o": {
+    "service": "codex",
+    "model": "gpt-4o",
+    "rates": {
+      "input": "2.50",
+      "output": "10.00",
+      "cached": "1.25",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "1.70",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-4o-mini": {
+    "service": "codex",
+    "model": "gpt-4o-mini",
+    "rates": {
+      "input": "0.15",
+      "output": "0.60",
+      "cached": "0.075",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "1.6666666666666666666666666667",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5": {
+    "service": "codex",
+    "model": "gpt-5",
+    "rates": {
+      "input": "1.25",
+      "output": "10.00",
+      "cached": "0.125",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5-mini": {
+    "service": "codex",
+    "model": "gpt-5-mini",
+    "rates": {
+      "input": "0.25",
+      "output": "2.00",
+      "cached": "0.025",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "1.80",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5-nano": {
+    "service": "codex",
+    "model": "gpt-5-nano",
+    "rates": {
+      "input": "0.05",
+      "output": "0.40",
+      "cached": "0.005",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5-pro": {
+    "service": "codex",
+    "model": "gpt-5-pro",
+    "rates": {
+      "input": "15.00",
+      "output": "120.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.1": {
+    "service": "codex",
+    "model": "gpt-5.1",
+    "rates": {
+      "input": "1.25",
+      "output": "10.00",
+      "cached": "0.125",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.2": {
+    "service": "codex",
+    "model": "gpt-5.2",
+    "rates": {
+      "input": "1.75",
+      "output": "14.00",
+      "cached": "0.175",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.2-pro": {
+    "service": "codex",
+    "model": "gpt-5.2-pro",
+    "rates": {
+      "input": "21.00",
+      "output": "168.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.3-codex": {
+    "service": "codex",
+    "model": "gpt-5.3-codex",
+    "rates": {
+      "input": "1.75",
+      "output": "14.00",
+      "cached": "0.175",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.4": {
+    "service": "codex",
+    "model": "gpt-5.4",
+    "rates": {
+      "input": "2.50",
+      "output": "15.00",
+      "cached": "0.25",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "5.00",
+      "output": "22.50",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.4-mini": {
+    "service": "codex",
+    "model": "gpt-5.4-mini",
+    "rates": {
+      "input": "0.75",
+      "output": "4.50",
+      "cached": "0.075",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.4-nano": {
+    "service": "codex",
+    "model": "gpt-5.4-nano",
+    "rates": {
+      "input": "0.20",
+      "output": "1.25",
+      "cached": "0.02",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.4-pro": {
+    "service": "codex",
+    "model": "gpt-5.4-pro",
+    "rates": {
+      "input": "30.00",
+      "output": "180.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "60.00",
+      "output": "270.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.5": {
+    "service": "codex",
+    "model": "gpt-5.5",
+    "rates": {
+      "input": "5.00",
+      "output": "30.00",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "10.00",
+      "output": "45.00",
+      "cached": "1.00",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.5-pro": {
+    "service": "codex",
+    "model": "gpt-5.5-pro",
+    "rates": {
+      "input": "30.00",
+      "output": "180.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "60.00",
+      "output": "270.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.6-luna": {
+    "service": "codex",
+    "model": "gpt-5.6-luna",
+    "rates": {
+      "input": "0.20",
+      "output": "1.20",
+      "cached": "0.02",
+      "cacheWrite": "0.25",
+      "cacheWriteLong": "0.50"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "0.40",
+      "output": "1.80",
+      "cached": "0.04",
+      "cacheWrite": "0.50",
+      "cacheWriteLong": "1.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.6-sol": {
+    "service": "codex",
+    "model": "gpt-5.6-sol",
+    "rates": {
+      "input": "4.00",
+      "output": "20.00",
+      "cached": "0.40",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "8.00",
+      "output": "30.00",
+      "cached": "0.80",
+      "cacheWrite": "10.00",
+      "cacheWriteLong": "20.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-5.6-terra": {
+    "service": "codex",
+    "model": "gpt-5.6-terra",
+    "rates": {
+      "input": "2.00",
+      "output": "12.00",
+      "cached": "0.20",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "18.00",
+      "cached": "0.40",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-6-astra": {
+    "service": "codex",
+    "model": "gpt-6-astra",
+    "rates": {
+      "input": "10.00",
+      "output": "50.00",
+      "cached": "1.00",
+      "cacheWrite": "12.50",
+      "cacheWriteLong": "25.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "20.00",
+      "output": "75.00",
+      "cached": "2.00",
+      "cacheWrite": "25.00",
+      "cacheWriteLong": "50.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": "6"
+  },
+  "codex:gpt-6-luna": {
+    "service": "codex",
+    "model": "gpt-6-luna",
+    "rates": {
+      "input": "0.10",
+      "output": "0.50",
+      "cached": "0.01",
+      "cacheWrite": "0.125",
+      "cacheWriteLong": "0.25"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "0.20",
+      "output": "0.75",
+      "cached": "0.02",
+      "cacheWrite": "0.25",
+      "cacheWriteLong": "0.50"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-6-sol": {
+    "service": "codex",
+    "model": "gpt-6-sol",
+    "rates": {
+      "input": "2.00",
+      "output": "10.00",
+      "cached": "0.20",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "15.00",
+      "cached": "0.40",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:gpt-6.1-sol": {
+    "service": "codex",
+    "model": "gpt-6.1-sol",
+    "rates": {
+      "input": "2.00",
+      "output": "10.00",
+      "cached": "0.10",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "4.00",
+      "output": "15.00",
+      "cached": "0.20",
+      "cacheWrite": "5.00",
+      "cacheWriteLong": "10.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": "6"
+  },
+  "codex:gpt-6.1-terra": {
+    "service": "codex",
+    "model": "gpt-6.1-terra",
+    "rates": {
+      "input": "1.00",
+      "output": "5.00",
+      "cached": "0.05",
+      "cacheWrite": "1.25",
+      "cacheWriteLong": "2.50"
+    },
+    "contextThreshold": 272000,
+    "longContextRates": {
+      "input": "2.00",
+      "output": "7.50",
+      "cached": "0.10",
+      "cacheWrite": "2.50",
+      "cacheWriteLong": "5.00"
+    },
+    "fastMultiplier": "2",
+    "ultrafastMultiplier": null
+  },
+  "codex:o3": {
+    "service": "codex",
+    "model": "o3",
+    "rates": {
+      "input": "2.00",
+      "output": "8.00",
+      "cached": "0.50",
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": "1.75",
+    "ultrafastMultiplier": null
+  },
+  "codex:o3-pro": {
+    "service": "codex",
+    "model": "o3-pro",
+    "rates": {
+      "input": "20.00",
+      "output": "80.00",
+      "cached": null,
+      "cacheWrite": null,
+      "cacheWriteLong": null
+    },
+    "contextThreshold": null,
+    "longContextRates": null,
+    "fastMultiplier": null,
+    "ultrafastMultiplier": null
+  }
+}

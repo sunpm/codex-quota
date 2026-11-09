@@ -1,0 +1,17 @@
+Usage service filters and summary layout — source review 2026-11-09
+
+CC Switch (MIT), Copyright (c) 2025 Jason Young
+https://github.com/farion1231/cc-switch/tree/5a3d7f92ab696b9d35c08ac9bc81e4067de6f9bc
+src/components/usage/UsageDashboard.tsx and UsageHero.tsx informed the
+icon-only service filter, relative refresh status, metric row, and grouped table.
+Implemented with the existing Vue components and Apache ECharts; no React code
+or additional runtime dependency was imported. Reviewed usage chart issue #6302;
+the existing full-date bucket keys are retained.
+License: cc-switch-LICENSE.txt
+
+OpenAI and Antigravity icons are copied without modification from this pinned
+CC Switch revision's src/icons/extracted/openai.svg and antigravity.svg.
+The assets originate from LobeHub Icons (MIT), Copyright (c) 2023 LobeHub.
+https://github.com/lobehub/lobe-icons
+License: lobe-icons-LICENSE.txt
+Brand names and marks identify their respective services.

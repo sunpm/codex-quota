@@ -54,7 +54,19 @@ Windows headless 环境变量与单进程 Job 设计参考 [hemsoft-dev/codexbar
 
 官方 CLI 由用户单独安装，本应用不分发 `agy`，不自行提取、复制或保存 Google 凭据。CLI 报告不提供可靠账号身份，首版只显示当前额度；真实账号、后台失效登录与各平台系统集成的验收限制见[开发说明](docs/development.md#antigravity-cli-接入边界)。
 
+## Antigravity 本地用量
+
+2026-11-09 先核对 CC Switch 的 [#8693](https://github.com/farion1231/cc-switch/pull/8693)、[#8914](https://github.com/farion1231/cc-switch/pull/8914)、[#8941](https://github.com/farion1231/cc-switch/issues/8941)，再阅读当前源码。模型补全已合并，历史 Token 补全仍未合并；索引遮蔽修复已在当前源码中。改编其原生步骤与生成记录关联、模型和计时字段，沿用随包 MIT 许可。
+
+项目归属字段参考 [TokenUsageInsights](https://github.com/doggy8088/TokenUsageInsights) 的原生元数据读取；只读 SQLite、时间依据和覆盖缺口参考 [CodexBar 本地用量说明](https://github.com/steipete/CodexBar/blob/main/docs/antigravity.md)。三者均仍在维护，许可证均为 MIT。固定源码版本、改编范围和完整许可见 `Resources/ThirdPartyNotices/antigravity-usage-NOTICE.txt` 与 `TokenUsageInsights-LICENSE.txt`。本项目未引入状态栏脚本、hook、凭据处理、解密或本地服务导出路径。
+
+内置价格于 2026-11-09 更新为 models.dev 的 OpenAI / Google 文字 Token 单价，以及固定源码中的 Anthropic Sonnet / Opus 4.5、4.6、5、5.5 单价；不匹配未确认的模型后缀。新增 `rusqlite`（bundled SQLite）、`prost` 及其依赖的许可通过现有 `scripts/collect-licenses.mjs` 重新生成，随包分发。
+
 ## 界面与服务实现
+
+用量页的图标服务筛选、相对刷新时间、横排指标和分组表格参考 CC Switch `5a3d7f92ab696b9d35c08ac9bc81e4067de6f9bc` 的 `UsageDashboard.tsx`、`UsageHero.tsx`（2026-11-09），复用现有 Vue 组件与 Apache ECharts，未引入 React 或新增运行时依赖。先核对其 [#6302](https://github.com/farion1231/cc-switch/issues/6302) 跨年图表定位问题，保留完整日期作为桶键。
+
+服务筛选的 OpenAI 与 Antigravity SVG 原样取自该固定版本的 `src/icons/extracted/`，源于 [LobeHub Icons](https://github.com/lobehub/lobe-icons)，MIT License，Copyright (c) 2023 LobeHub。来源记录与完整许可分别保存在 `Resources/ThirdPartyNotices/usage-ui-NOTICE.txt`、`lobe-icons-LICENSE.txt`，沿用随包 CC Switch 许可；品牌标记仅用于服务识别。
 
 旧版菜单栏模板图像、紧凑额度面板、部分尺寸与颜色以及 Codex SVG 图标，改编自 [nanvon/cc-bar](https://github.com/nanvon/cc-bar)，参考版本 `6d990a2c3c50e8d404ea4d9982c651ce3c544baa`。
 
@@ -99,9 +111,9 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 统计口径与用量处理同时参考 [farion1231/cc-switch](https://github.com/farion1231/cc-switch) 的 `src/components/usage/UsageHero.tsx`、`src-tauri/src/services/session_usage.rs`、`session_usage_codex.rs` 和用量统计文档（参考日期：2026-10-28）。Copyright (c) 2025 Jason Young。采用 MIT License；完整原文保存在 `Resources/ThirdPartyNotices/cc-switch-LICENSE.txt`，随应用分发。未引入其 Tauri、路由代理或数据库。费用计算进一步参考并改编其 `src-tauri/src/proxy/usage/calculator.rs` 的 Decimal 分项公式；模型价格导入参考 `src/lib/modelsDevPricing.ts` 的公开目录结构，并保留缺价状态。旧版 Claude 缓存计费规则已移除。
 
-旧版 Antigravity 本地用量曾参考并改编 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）；相关采集与解析现已移除。
+旧版 Antigravity 本地用量曾参考并改编 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）；旧实现已移除，本轮原生读取的参考范围与来源见“Antigravity 本地用量”。
 
-内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI 公开模型条目，快照日期 2026-10-28。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
+历史模型价格兼容快照来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI、Google 与 Anthropic 公开文字模型条目，当前快照日期 2026-11-09（范围见上节）。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
 旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，相关脚本现仅保存在 Git 历史中。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
 
@@ -110,3 +122,11 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 旧 Swift 应用曾使用 [Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1) 和 [Zstandard v1.5.7](https://github.com/facebook/zstd/tree/v1.5.7) 单文件解码器。Sparkle 主体采用 MIT，并包含 BSD、zlib 等组件；Zstandard 当时选择 BSD 许可。两者的旧源码、锁定版本及完整许可保存在 [迁移前版本](https://github.com/sunpm/codex-quota/tree/752a5f9b430a39a1b42d873c08151eb845acf690)，历史升级验收见 [归档说明](docs/archive/updating-sparkle.md)。
 
 当前应用使用 Tauri updater 与 Rust `zstd` 依赖，不再分发 Sparkle 或旧 CZstd 源码；当前压缩依赖及其底层库的版本、来源和完整许可由 `scripts/collect-licenses.mjs` 从锁定的 Cargo 依赖生成并随包分发。
+
+### 官方价格数据
+
+当前文字 Token 单价以 OpenAI、Google 与 Anthropic 官方文档为准，核验于 2026-11-09；仅提取价格事实与模型标识，解析器由本项目实现，未复制官方示例代码。内置 `official-pricing.json` 由维护脚本生成；models.dev 的历史快照及 MIT 声明保留，用于当前官方页面未列出的旧模型。
+
+- https://developers.openai.com/api/docs/pricing
+- https://ai.google.dev/gemini-api/docs/pricing
+- https://platform.claude.com/docs/en/about-claude/pricing

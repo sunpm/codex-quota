@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { AppSnapshot, UsageRecord } from '@/types'
-import { billingTier, billingTierLabel, costLabel, costTooltip, dateText, exactMoney, money, shortTokens, summarize, summaryMoney } from '@/lib/usage'
+import { billingTier, billingTierLabel, costLabel, costTooltip, dateText, exactMoney, money, serviceName, shortTokens, summarize, summaryMoney } from '@/lib/usage'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
@@ -25,10 +25,11 @@ interface Column {
 }
 const columns = computed<Column[]>(() => [
   { id: 'time', label: '时间', width: 120, min: 100, value: (r: UsageRecord) => dateText(r.date), title: (r: UsageRecord) => dateText(r.date, true) },
-  { id: 'model', label: '模型', width: 200, min: 100, value: (r: UsageRecord) => r.model },
-  { id: 'input', label: '新增输入', width: 90, min: 75, numeric: true, value: (r: UsageRecord) => shortTokens(r.tokens.input), title: (r: UsageRecord) => r.tokens.input.toLocaleString() },
-  { id: 'output', label: '输出', width: 80, min: 64, numeric: true, value: (r: UsageRecord) => shortTokens(r.tokens.output), title: (r: UsageRecord) => r.tokens.output.toLocaleString() },
-  { id: 'cached', label: '缓存命中', width: 90, min: 75, numeric: true, value: (r: UsageRecord) => shortTokens(r.tokens.cached), title: (r: UsageRecord) => r.tokens.cached.toLocaleString() },
+  { id: 'service', label: '服务', width: 110, min: 90, value: (r: UsageRecord) => serviceName(r.service) },
+  { id: 'model', label: '模型', width: 200, min: 100, value: (r: UsageRecord) => r.model === 'unknown' ? '未知模型' : r.model },
+  { id: 'input', label: '新增输入', width: 90, min: 75, numeric: true, value: (r: UsageRecord) => r.tokens.inputReported === false ? '—' : shortTokens(r.tokens.input), title: (r: UsageRecord) => r.tokens.inputReported === false ? '来源未报告' : r.tokens.input.toLocaleString() },
+  { id: 'output', label: '输出', width: 80, min: 64, numeric: true, value: (r: UsageRecord) => r.tokens.outputReported === false ? '—' : shortTokens(r.tokens.output), title: (r: UsageRecord) => r.tokens.outputReported === false ? '来源未报告' : r.tokens.output.toLocaleString() },
+  { id: 'cached', label: '缓存命中', width: 90, min: 75, numeric: true, value: (r: UsageRecord) => r.tokens.cachedReported === false ? '—' : shortTokens(r.tokens.cached), title: (r: UsageRecord) => r.tokens.cachedReported === false ? '来源未报告' : r.tokens.cached.toLocaleString() },
   { id: 'cacheWrite', label: '缓存写入', width: 90, min: 75, numeric: true, optional: true, value: (r: UsageRecord) => (r.tokens.cacheWriteReported || r.tokens.cacheWrite > 0) ? shortTokens(r.tokens.cacheWrite) : '—', title: (r: UsageRecord) => (r.tokens.cacheWriteReported || r.tokens.cacheWrite > 0) ? r.tokens.cacheWrite.toLocaleString() : '日志未报告' },
   { id: 'cost', label: costLabel(total.value), width: 105, min: 100, numeric: true, value: (r: UsageRecord) => money(r.cost), title: (r: UsageRecord) => exactMoney(r.cost) },
   { id: 'speed', label: '速度', width: 100, min: 85, numeric: true, optional: true, value: (r: UsageRecord) => r.tokens.output >= 200 && (r.estimatedDuration ?? 0) >= 1 ? `≈${(r.tokens.output / r.estimatedDuration!).toFixed(1)} t/s` : '—' },
@@ -58,7 +59,7 @@ function stepColumn(event: KeyboardEvent, column: Column, amount: number) {
 <template>
   <Dialog :open="true" @update:open="value => { if (!value) emit('close') }"><DialogContent class="detail-dialog"><DialogHeader><DialogTitle>{{ title }}</DialogTitle><DialogDescription>{{ records.length }} 条用量记录 · 当前筛选范围</DialogDescription></DialogHeader>
     <div class="detail-context">
-      <div class="detail-totals"><strong>{{ total.tokens.toLocaleString('zh-CN') }} Tokens</strong><span>{{ costLabel(total) }} <strong :class="{ 'unpriced-text': total.count && !total.priced }" :title="costTooltip(total)">{{ summaryMoney(total) }}</strong><span class="muted"> · API 等价估算</span><span v-if="total.unpriced" class="unpriced-text"> · {{ total.unpriced.toLocaleString('zh-CN') }} 条未定价</span></span></div>
+      <div class="detail-totals"><strong>{{ total.tokens.toLocaleString('zh-CN') }} {{ total.incomplete ? '已知 Tokens' : 'Tokens' }}</strong><span>{{ costLabel(total) }} <strong :class="{ 'unpriced-text': total.count && !total.priced }" :title="costTooltip(total)">{{ summaryMoney(total) }}</strong><span class="muted"> · API 等价估算</span><span v-if="total.unpriced" class="unpriced-text"> · {{ total.unpriced.toLocaleString('zh-CN') }} 条未定价</span></span></div>
       <div v-if="sessions.length === 1" class="session-identity"><span class="muted">会话 ID</span><code>{{ sessions[0] }}</code></div>
       <details v-else><summary>会话 ID（{{ sessions.length }}）</summary><code v-for="session in sessions" :key="session" class="session-id">{{ session }}</code></details>
       <details v-if="directories.length"><summary>工作目录</summary><div v-for="{ directory, root } in directories" :key="directory" class="directory"><code>{{ directory }}</code><div v-if="root !== directory" class="muted">主项目：<code>{{ root }}</code></div></div></details>

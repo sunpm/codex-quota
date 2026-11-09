@@ -2,13 +2,16 @@
 name = "quota-core"
 version = "0.1.0"
 edition = "2021"
-description = "Offline Codex quota, usage and pricing models"
+description = "Offline Codex and Antigravity quota, usage and pricing models"
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 file-id = "0.2"
+prost = "0.14"
+rusqlite = { version = "0.41", features = ["bundled"] }
 rust_decimal = { version = "1.43", default-features = false, features = ["std", "serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
+url = "2"
 zstd = { version = "0.14", default-features = false }

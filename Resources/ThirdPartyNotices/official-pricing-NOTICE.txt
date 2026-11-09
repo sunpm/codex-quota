@@ -1,0 +1,9 @@
+Official text-token pricing facts, verified 2026-11-09.
+
+OpenAI: https://developers.openai.com/api/docs/pricing
+Google: https://ai.google.dev/gemini-api/docs/pricing
+Anthropic: https://platform.claude.com/docs/en/about-claude/pricing
+
+Only model identifiers and published pricing facts are extracted. No vendor
+example code is copied. The parser is implemented in this project.
+The older models.dev snapshot and MIT notice remain for historical model coverage.
