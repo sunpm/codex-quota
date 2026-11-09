@@ -14,4 +14,8 @@ CC Switch revision's src/icons/extracted/openai.svg and antigravity.svg.
 The assets originate from LobeHub Icons (MIT), Copyright (c) 2023 LobeHub.
 https://github.com/lobehub/lobe-icons
 License: lobe-icons-LICENSE.txt
+The menu bar / tray icons (src-tauri/icons/tray-codex.svg and
+tray-antigravity.svg) are adapted from the same files: the OpenAI path and the
+Antigravity outline mask are kept, colors and effects are removed to form
+monochrome template images.
 Brand names and marks identify their respective services.
