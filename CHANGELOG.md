@@ -2,6 +2,18 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.25.5](https://github.com/sunpm/codex-quota/releases/tag/v0.25.5)
+
+<!-- Release notes generated using configuration in .github/release.yml at 575f53912a4f3d31db6ee272482724ccee3c0a2b -->
+
+### What's Changed
+#### 更新内容
+* feat(antigravity): 增加额度监测与公开重置动态 by @sunpm in https://github.com/sunpm/codex-quota/pull/44
+* fix(antigravity): 隐藏未就绪的额度卡片 by @sunpm in https://github.com/sunpm/codex-quota/pull/45
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.25.4...v0.25.5
+
 ## [0.25.4](https://github.com/sunpm/codex-quota/releases/tag/v0.25.4)
 
 <!-- Release notes generated using configuration in .github/release.yml at 34975b8c875c5c415472afa3dd3ad25996ebab9f -->
