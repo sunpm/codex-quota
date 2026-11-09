@@ -184,3 +184,13 @@ cp work/dark-app-icon.iconset/icon_512x512@2x.png src-tauri/icons/dock-dark.png
 生成后清理 `work/app-icon.iconset`、`work/app-icons`、`work/tray-icons` 和 `work/dark-app-icon.iconset`。托盘使用独立的单色图形，不从带背景的应用图标裁切。
 
 发布流程与签名配置统一见 [打包、更新与发布](updating.md)。第三方来源与许可见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)。
+
+### 官方定价维护
+
+`crates/quota-core/src/official_pricing.rs` 解析 OpenAI / Google / Anthropic 官方 Markdown，在线更新与内置快照生成共用同一实现。OpenAI 读取 Standard 与已确认的 Fast / Ultrafast 文字 Token 表，只有全部 Token 单价和长上下文档位比例一致时生成速度倍率；未提供长上下文 Fast 价或无法统一倍率的条目保持未知。Google 仅读取已确认文字模型的 Standard 付费列，区分 200K 上下文分档和带生效日期的促销价，不读免费、Batch、存储与工具价格。Claude 读取基准、缓存写入 / 命中价格及 Haiku 5.5 的 100K 分档。Antigravity 不推断实际订阅计费档位或缓存时长。
+
+运行 `node scripts/update-prices.mjs` 下载公开文档并通过 `src-tauri/examples/update-prices.rs` 生成 `official-pricing.json`，同步 `BUNDLED_PRICE_DATE` 后审查 diff；不要手工修改生成 JSON。旧 `pricing-catalog.json` 只为当前官方页面未列出的历史模型提供兼容价格。旧设置的 models.dev 下载目录不覆盖新官方快照，自定义价格仍优先；`official_pricing` 标记新下载目录。当前官方快照核验日期为 2026-11-09，包含 86 条服务/模型价格。
+
+官方页面没有本项目可直接使用的统一价格 JSON API，解析结构变化时更新会报错并保留原目录。2026-11-09 查阅 AIHOT 公开 OpenAPI，未找到模型价格查询端点；其价格榜单未作为机器更新来源。价格日期是快照核验/更新日期，不是历史账单日期；Google 促销到期后需更新，不在本地猜测未公布的未来价格。
+
+本次验收：`bash scripts/test.sh` 的前端类型检查、构建及 Rust 编译通过；用维护生成器经实际 HTTP 客户端下载三方官方文档并解析成功（56 / 11 / 19 条服务/模型价格）。Chrome 一次离线关键流程通过 Codex 范围筛选、两服务切换、搜索、同名阻止、新增/移除自定义、Gemini/Claude 单价、长上下文显隐、Esc 返回、Tab/方向键、默认/聚焦/失焦及相邻控件对齐；重名错误随输入清除的修复已复查。Antigravity 的“含未定价”筛选因浏览器被切换未单独完成；桌面命令持久化与费用重算、外链、其他平台和多尺寸未实机验收。未新增或修改自动化测试，仓库当前验证入口仅做编译与构建。

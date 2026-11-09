@@ -293,6 +293,8 @@ pub struct SavedState {
     pub antigravity_schedule: RefreshSchedule,
     pub antigravity_announcements: SavedAnnouncements,
     pub catalog: BTreeMap<String, ModelPricing>,
+    #[serde(default)]
+    pub official_pricing: bool,
     pub overrides: BTreeMap<String, ModelPricing>,
     pub price_date: String,
     pub next_update_check: f64,
@@ -312,6 +314,7 @@ impl Default for SavedState {
             antigravity_schedule: RefreshSchedule::default(),
             antigravity_announcements: SavedAnnouncements::default(),
             catalog: quota_core::bundled_prices(),
+            official_pricing: true,
             overrides: BTreeMap::new(),
             price_date: quota_core::BUNDLED_PRICE_DATE.into(),
             next_update_check: 0.0,
@@ -400,6 +403,7 @@ impl SavedState {
             if let Some(value) = data("usage.pricing.catalog.v1")? {
                 saved.catalog =
                     serde_json::from_value(value).map_err(|_| "旧版定价目录无法迁移。")?;
+                saved.official_pricing = false;
             }
             if let Some(value) = data("usage.pricing.overrides.v1")? {
                 saved.overrides =
@@ -420,7 +424,9 @@ impl SavedState {
 
     pub fn prices(&self) -> BTreeMap<String, ModelPricing> {
         let mut prices = quota_core::bundled_prices();
-        prices.extend(self.catalog.clone());
+        if self.official_pricing {
+            prices.extend(self.catalog.clone());
+        }
         prices.extend(self.overrides.clone());
         prices.retain(|_, price| ["codex", "antigravity"].contains(&price.service.as_str()));
         prices
@@ -533,6 +539,10 @@ impl Store {
         self.snapshot
             .prices
             .sort_by(|left, right| left.price.model.cmp(&right.price.model));
-        self.snapshot.price_date = self.saved.price_date.clone();
+        self.snapshot.price_date = if self.saved.official_pricing {
+            self.saved.price_date.clone()
+        } else {
+            quota_core::BUNDLED_PRICE_DATE.into()
+        };
     }
 }

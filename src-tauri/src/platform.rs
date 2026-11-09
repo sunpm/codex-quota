@@ -251,7 +251,9 @@ pub fn open_external(app: &AppHandle, value: &str) -> Result<(), String> {
                     .strip_prefix("/thsottiaux/status/").or_else(|| url.path().strip_prefix("/_mohansolo/status/"))
                     .is_some_and(|v| !v.is_empty() && v.bytes().all(|c| c.is_ascii_digit()))
             || url.host_str() == Some("aihot.news")
-                && ["/codex-reset", "/antigravity-reset", "/terms"].contains(&url.path()));
+                && ["/codex-reset", "/antigravity-reset", "/terms"].contains(&url.path())
+            || [("developers.openai.com", "/api/docs/pricing"), ("ai.google.dev", "/gemini-api/docs/pricing"), ("platform.claude.com", "/docs/en/about-claude/pricing")]
+                .iter().any(|(host, path)| url.host_str() == Some(host) && url.path() == *path));
     if !allowed {
         return Err("此链接不属于应用的数据来源。".into());
     }

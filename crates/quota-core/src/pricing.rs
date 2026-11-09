@@ -263,15 +263,6 @@ pub fn decode_catalog(data: &[u8]) -> Result<BTreeMap<String, ModelPricing>, Str
                 price.context_threshold = Some(200_000);
                 price.long_context_rates = Some(decode_rates(long));
             }
-            if service == "codex"
-                && ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"]
-                    .contains(&name.as_str())
-            {
-                price.fast_multiplier = Some(Decimal::from(2u32));
-            }
-            if service == "codex" && ["gpt-6-astra", "gpt-6.1-sol"].contains(&name.as_str()) {
-                price.ultrafast_multiplier = Some(Decimal::from(6u32));
-            }
             if price.is_valid() {
                 result.insert(price.key(), price);
             }
@@ -302,6 +293,12 @@ fn decode_rates(value: &Value) -> TokenRates {
 }
 
 pub fn bundled_prices() -> BTreeMap<String, ModelPricing> {
-    // Public text-token API rates from models.dev (MIT), retrieved 2026-11-09.
-    decode_catalog(include_bytes!("pricing-catalog.json")).expect("bundled model price catalog")
+    // Retain the older catalog for historical models absent from current official pages.
+    let mut prices = decode_catalog(include_bytes!("pricing-catalog.json")).expect("legacy model price catalog");
+    prices.extend(official_prices());
+    prices
+}
+
+pub fn official_prices() -> BTreeMap<String, ModelPricing> {
+    serde_json::from_slice(include_bytes!("official-pricing.json")).expect("official model price catalog")
 }

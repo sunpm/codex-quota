@@ -812,9 +812,8 @@ fn canonical_signature(value: &Value) -> String {
 }
 
 fn token_counts(values: &Map<String, Value>) -> Option<UsageTokens> {
-    let count = |key| {
-        values
-            .get(key)
+    let count = |value: Option<&Value>| {
+        value
             .and_then(|v| {
                 v.as_u64().or_else(|| {
                     v.as_f64()
@@ -824,12 +823,24 @@ fn token_counts(values: &Map<String, Value>) -> Option<UsageTokens> {
             })
             .filter(|n| *n < i64::MAX as u64 / 16)
     };
-    let input = count("input_tokens")?;
-    let output = count("output_tokens")?;
-    let cached = count("cached_input_tokens")
-        .or_else(|| count("cache_read_input_tokens"))
+    let input = count(values.get("input_tokens"))?;
+    let output = count(values.get("output_tokens"))?;
+    let details = values.get("input_tokens_details");
+    let cached = count(values.get("cached_input_tokens"))
+        .or_else(|| count(values.get("cache_read_input_tokens")))
+        .or_else(|| count(details.and_then(|v| v.get("cached_tokens"))))
         .unwrap_or(0);
-    let write = count("cache_write_input_tokens").or_else(|| count("cache_write_tokens"));
+    let mut write = count(values.get("cache_write_input_tokens"))
+        .or_else(|| count(values.get("cache_write_tokens")))
+        .or_else(|| count(details.and_then(|v| v.get("cache_write_tokens"))));
+    let mut cache_write_long = 0;
+    if let Some(ttl) = details.and_then(|v| v.get("cache_write_tokens_details")) {
+        let short = count(ttl.get("ttl_30m_tokens"))?;
+        cache_write_long = count(ttl.get("ttl_12h_tokens"))?;
+        let total = short + cache_write_long;
+        if write.is_some_and(|count| count != total) { return None; }
+        write = Some(total);
+    }
     let cache_write = write.unwrap_or(0);
     if cached + cache_write > input {
         return None;
@@ -839,7 +850,7 @@ fn token_counts(values: &Map<String, Value>) -> Option<UsageTokens> {
         output,
         cached,
         cache_write,
-        cache_write_long: 0,
+        cache_write_long,
         cache_write_reported: Some(write.is_some()),
         ..Default::default()
     })

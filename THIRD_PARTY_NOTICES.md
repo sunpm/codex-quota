@@ -113,7 +113,7 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 
 旧版 Antigravity 本地用量曾参考并改编 cc-switch `6d6b7162f122ac0ce1356a14688c8c4f712db3c8` 的 `src-tauri/src/services/session_usage_agy.rs`、`src-tauri/src/session_manager/providers/agy.rs` 及 `tests/fixtures/sessions/agy.jsonl`（2026-10-28）；旧实现已移除，本轮原生读取的参考范围与来源见“Antigravity 本地用量”。
 
-内置模型价格快照与手动更新来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI、Google 与 Anthropic 公开文字模型条目，当前快照日期 2026-11-09（范围见上节）。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
+历史模型价格兼容快照来源：[models.dev](https://models.dev/api.json)，[anomalyco/models.dev](https://github.com/anomalyco/models.dev)，取自 OpenAI、Google 与 Anthropic 公开文字模型条目，当前快照日期 2026-11-09（范围见上节）。Copyright (c) 2025 models.dev。MIT License 原文保存在 `Resources/ThirdPartyNotices/models-dev-LICENSE.txt`，随应用分发。
 
 旧版软件更新接入参考 cc-bar `530ef49f3b5808e268181a55311e0c83cc40adff` 的 `Core/AppUpdater.swift`、`scripts/build.sh` 与发布流水线（2026-10-29）：使用 Sparkle 下载、验证、安装并重启，保留本项目双架构 DMG 与手动安装确认。嵌套签名流程按该项目改编，相关脚本现仅保存在 Git 历史中。更新说明的原生逐行 Markdown 渲染改编自 `Main/AppUpdateWindow.swift` 的 `UpdateMarkdownView`，沿用随包分发的 cc-bar MIT 许可与版权声明。
 
@@ -122,3 +122,11 @@ Git worktree 的 `.git` / `commondir` 解析改编自 cc-bar `530ef49` 的 `Core
 旧 Swift 应用曾使用 [Sparkle 2.10.1](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.1) 和 [Zstandard v1.5.7](https://github.com/facebook/zstd/tree/v1.5.7) 单文件解码器。Sparkle 主体采用 MIT，并包含 BSD、zlib 等组件；Zstandard 当时选择 BSD 许可。两者的旧源码、锁定版本及完整许可保存在 [迁移前版本](https://github.com/sunpm/codex-quota/tree/752a5f9b430a39a1b42d873c08151eb845acf690)，历史升级验收见 [归档说明](docs/archive/updating-sparkle.md)。
 
 当前应用使用 Tauri updater 与 Rust `zstd` 依赖，不再分发 Sparkle 或旧 CZstd 源码；当前压缩依赖及其底层库的版本、来源和完整许可由 `scripts/collect-licenses.mjs` 从锁定的 Cargo 依赖生成并随包分发。
+
+### 官方价格数据
+
+当前文字 Token 单价以 OpenAI、Google 与 Anthropic 官方文档为准，核验于 2026-11-09；仅提取价格事实与模型标识，解析器由本项目实现，未复制官方示例代码。内置 `official-pricing.json` 由维护脚本生成；models.dev 的历史快照及 MIT 声明保留，用于当前官方页面未列出的旧模型。
+
+- https://developers.openai.com/api/docs/pricing
+- https://ai.google.dev/gemini-api/docs/pricing
+- https://platform.claude.com/docs/en/about-claude/pricing

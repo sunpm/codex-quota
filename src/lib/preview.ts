@@ -1,4 +1,5 @@
 import type { AppSnapshot, UsageRecord } from '@/types'
+import officialPrices from '../../crates/quota-core/src/official-pricing.json'
 import { version } from '../../package.json'
 export function emptySnapshot(): AppSnapshot {
   return {
@@ -52,8 +53,8 @@ export function previewSnapshot(): AppSnapshot {
   }
   state.quota.lastSuccess = now
   state.quota.resetCredits = { availableCount: 1, credits: [{ id: 'sample-credit', resetType: 'codexRateLimits', status: 'available', expiresAt: now + 360000 }] }
-  state.prices = models.map(model => ({ model, service: 'codex', rates: { input: '2.5', output: '15', cached: '0.25', cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: '2', ultrafastMultiplier: null }))
-  state.prices.push({ model: 'gemini-3.8-flash', service: 'antigravity', rates: { input: '0.5', output: '3', cached: '0.05', cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })
+  state.prices = Object.values(officialPrices)
+  state.prices.push({ model: 'unknown', service: 'antigravity', rates: { input: null, output: null, cached: null, cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })
   // Explicit offline scenes exercise the displayed states without starting a local CLI.
   const antigravityScene = new URLSearchParams(location.search).get('antigravity')
   if (antigravityScene === 'stale') {

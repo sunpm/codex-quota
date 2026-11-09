@@ -310,11 +310,21 @@ th svg { display: inline; vertical-align: middle; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; align-items: center; margin-top: 6px; }
 .detail-dialog .table-scroll { flex: 1; }
 .detail-dialog th, .detail-dialog td { padding: 9px 10px; }
-.pricing-toolbar { display: flex; gap: 8px; align-items: center; }
-.pricing-toolbar .search-box { flex: 1; }
+.pricing-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pricing-toolbar .search-box { flex: 1; min-width: 120px; }
 .pricing-toolbar .search-box input { max-width: none; }
+.pricing-meta { display: flex; justify-content: space-between; font-size: 11px; }
+.pricing-sources { display: flex; gap: 12px; }
+.pricing-sources button { text-decoration: underline; text-underline-offset: 3px; }
+.pricing-rule { display: block; margin-top: 3px; font-size: 11px; }
 .pricing-dialog > .muted { font-size: 11px; }
-.price-editor { display: grid; gap: 16px; overflow: auto; }
+.price-editor { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.price-editor-fields { display: grid; gap: 20px; min-height: 0; overflow: auto; }
+.price-section { min-width: 0; }
+.price-section legend { margin-bottom: 10px; font-size: 12px; font-weight: 600; }
+.price-context-note { margin: 12px 0; font-size: 12px; }
+.price-editor input[type=number] { font-size: 13px; font-variant-numeric: tabular-nums; }
+.price-editor input[readonly] { color: var(--muted); }
 .field { display: grid; gap: 7px; font-size: 12px; }
 .field input { width: 100%; }
 .price-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
