@@ -247,6 +247,7 @@ th svg { display: inline; vertical-align: middle; }
 .app-notice, .browser-notice { margin: 12px 24px 0; }
 .app-notice > button { margin-left: auto; }
 .quota-page, .settings-page { display: grid; gap: 16px; }
+.quota-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .quota-window { padding-top: 8px; --quota-color: var(--quota-normal); }
 .quota-window + .quota-window { margin-top: 22px; }
 .quota-window.warning { --quota-color: var(--quota-warning); }
