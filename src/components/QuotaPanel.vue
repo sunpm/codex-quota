@@ -8,10 +8,13 @@ import Chart from './Chart.vue'
 import AntigravityPanel from './AntigravityPanel.vue'
 import AnnouncementPanel from './AnnouncementPanel.vue'
 import SlidingSelection from './SlidingSelection.vue'
+import antigravityIcon from '@/assets/antigravity.svg'
 
 const props = defineProps<{ state: AppSnapshot; now: number }>()
+const services = [{ id: 'codex', name: 'Codex' }, { id: 'antigravity', name: 'Antigravity' }] as const
 const period = ref(24)
 const showCodex = computed(() => quotaService.value === 'all' || quotaService.value === 'codex')
+const showAntigravity = computed(() => quotaService.value === 'antigravity' || (quotaService.value === 'all' && Boolean(props.state.antigravity.groups.length)))
 const availableCredits = computed(() => (props.state.quota.resetCredits?.credits ?? []).filter(credit => credit.status === 'available' && credit.resetType === 'codexRateLimits').sort((a, b) => (a.expiresAt ?? Infinity) - (b.expiresAt ?? Infinity)))
 const nextExpiringCredit = computed(() => availableCredits.value.find(credit => credit.expiresAt !== null && credit.expiresAt > props.now))
 function deadlineTone(deadline: number | null) {
@@ -48,48 +51,99 @@ function trend(series: QuotaSeries): EChartsCoreOption {
 }
 const quotaCharts = computed(() => Object.values(props.state.quota.history).map(series => ({ series, option: trend(series), latest: visiblePoints(series).at(-1) })))
 </script>
+
 <template>
   <div class="quota-page">
     <div class="quota-toolbar">
-      <SlidingSelection v-slot="{ highlight }" :selection="quotaService" class="segmented quota-service-filter" role="group" aria-label="服务筛选">
+      <SlidingSelection v-slot="{ highlight }" :selection="quotaService" class="segmented service-filter" role="group" aria-label="服务筛选">
         <component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="quotaService === 'all'">
-          <input v-if="!highlight" v-model="quotaService" class="sr-only" type="radio" name="quota-service" value="all" />全部
+          <input v-if="!highlight" v-model="quotaService" class="sr-only" type="radio" name="quota-service" value="all" aria-label="全部服务" />全部
         </component>
-        <component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="quotaService === 'codex'">
-          <input v-if="!highlight" v-model="quotaService" class="sr-only" type="radio" name="quota-service" value="codex" />Codex
-        </component>
-        <component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="quotaService === 'antigravity'">
-          <input v-if="!highlight" v-model="quotaService" class="sr-only" type="radio" name="quota-service" value="antigravity" />Antigravity
+        <component :is="highlight ? 'span' : 'label'" v-for="service in services" :key="service.id" class="segment-option service-option" :data-selected="quotaService === service.id" :title="service.name">
+          <input v-if="!highlight" v-model="quotaService" class="sr-only" type="radio" name="quota-service" :value="service.id" :aria-label="service.name" />
+          <span v-if="service.id === 'codex'" class="service-icon codex-icon" aria-hidden="true" />
+          <img v-else class="service-icon" :src="antigravityIcon" alt="" aria-hidden="true" />
         </component>
       </SlidingSelection>
     </div>
+
     <template v-if="showCodex">
       <div v-if="!state.settings.monitoringEnabled" class="notice">Codex 监测已关闭，可在设置中开启。</div>
       <div v-if="state.quota.error" class="notice warning" role="status">{{ state.quota.error }}<span v-if="state.quota.lastSuccess"> 上次读数已过期。</span></div>
-      <section class="surface quota-surface"><div class="section-heading"><h2>Codex</h2><span>剩余</span></div>
+      <section class="surface quota-surface">
+        <div class="section-heading">
+          <div class="service-title-group">
+            <span class="service-icon codex-icon" aria-hidden="true" />
+            <h2>Codex</h2>
+          </div>
+          <span>剩余</span>
+        </div>
         <div v-if="!state.quota.windows.length" class="empty-state">{{ state.settings.monitoringEnabled ? '尚无可用额度数据，请确认 Codex 已登录。' : '暂无额度数据' }}</div>
-        <div v-for="window in state.quota.windows" :key="window.id" class="quota-window" :class="tone(window.usedPercent)">
-          <div class="quota-label-row"><h3>{{ quotaLabel(window.durationMinutes, window.label) }}<small v-if="window.bucket !== 'codex'">{{ window.name }}</small></h3><strong>{{ Math.floor(100 - window.usedPercent) }}%</strong></div>
-          <div class="quota-track" aria-hidden="true"><div :style="{ width: `${100 - window.usedPercent}%` }" /></div>
-          <div class="quota-time-row"><span v-if="countdown(window.resetsAt, now)" class="deadline-countdown" :data-tone="deadlineTone(window.resetsAt)">{{ countdown(window.resetsAt, now) }}</span><span v-if="window.resetsAt" class="muted">重置 · {{ dateText(window.resetsAt) }}</span></div>
+        <div v-else class="quota-windows-grid">
+          <div v-for="window in state.quota.windows" :key="window.id" class="quota-window" :class="tone(window.usedPercent)">
+            <div class="quota-label-row">
+              <div>
+                <h3>{{ quotaLabel(window.durationMinutes, window.label) }}</h3>
+                <small v-if="window.bucket !== 'codex'">{{ window.name }}</small>
+              </div>
+              <strong>{{ Math.floor(100 - window.usedPercent) }}%</strong>
+            </div>
+            <div class="quota-track" aria-hidden="true"><div :style="{ width: `${100 - window.usedPercent}%` }" /></div>
+            <div class="quota-time-row">
+              <span v-if="countdown(window.resetsAt, now)" class="deadline-countdown" :data-tone="deadlineTone(window.resetsAt)">{{ countdown(window.resetsAt, now) }}</span>
+              <span v-if="window.resetsAt" class="muted">重置 · {{ dateText(window.resetsAt) }}</span>
+            </div>
+          </div>
         </div>
         <div v-if="state.quota.resetCredits" class="credits">
           <div class="section-heading"><h3>重置卡</h3><span>{{ state.quota.resetCredits.availableCount }} 张可用</span></div>
           <div v-for="credit in availableCredits" :key="credit.id" class="credit-row">
             <span>{{ credit.expiresAt != null && credit.expiresAt <= now ? '已到期' : '可用重置卡' }}</span>
-            <span class="credit-expiry"><span v-if="credit.id === nextExpiringCredit?.id && countdown(credit.expiresAt, now)" class="deadline-countdown" :data-tone="deadlineTone(credit.expiresAt)">{{ countdown(credit.expiresAt, now) }}</span><span class="muted">{{ credit.expiresAt != null ? `到期 · ${dateText(credit.expiresAt)}` : '到期时间未知' }}</span></span>
+            <span class="credit-expiry"><span v-if="credit.id === nextExpiringCredit?.id && countdown(credit.expiresAt, now)" class="deadline-countdown" :data-tone="deadlineTone(credit.expiresAt)">{{ countdown(credit.expiresAt, now) }}</span><span v-if="credit.expiresAt != null" class="muted">到期 · {{ dateText(credit.expiresAt) }}</span><span v-else class="muted">到期时间未知</span></span>
           </div>
           <p v-if="availableCredits.length < state.quota.resetCredits.availableCount" class="muted">到期明细不完整</p>
         </div>
         <div class="quota-trends">
-          <div class="section-heading"><h3>Codex 额度消耗趋势</h3><SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented equal-options" role="group" aria-label="额度趋势时间范围"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="period === 24"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="quota-period" :value="24" />24 小时</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="period === 168"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="quota-period" :value="168" />7 天</component></SlidingSelection></div>
+          <div class="section-heading">
+            <h3>Codex 额度消耗趋势</h3>
+            <SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented equal-options" role="group" aria-label="额度趋势时间范围">
+              <component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="period === 24"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="quota-period" :value="24" />24 小时</component>
+              <component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="period === 168"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="quota-period" :value="168" />7 天</component>
+            </SlidingSelection>
+          </div>
           <div v-if="!Object.keys(state.quota.history).length" class="empty-state chart-empty">成功读取额度后开始积累趋势</div>
-          <div v-for="{ series, option, latest } in quotaCharts" :key="series.window.id" class="quota-chart"><div class="quota-chart-heading"><span>{{ quotaLabel(series.window.durationMinutes, series.window.label) }}</span><span v-if="hovered[series.window.id]">{{ dateText(hovered[series.window.id]!.date) }} · {{ hovered[series.window.id]!.used === null ? '无采样' : `已用 ${hovered[series.window.id]!.used!.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%` }}</span><span v-else>{{ latest ? `已用 ${latest.usedPercent.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%` : '无采样' }}</span></div><Chart :option="option" time-hover @time-hover="inspectSample(series, $event)" :label="`${quotaLabel(series.window.durationMinutes, series.window.label)}已用百分比趋势；中断时段不连接`" :height="120" :animations="state.settings.animations" /></div>
+          <div v-for="{ series, option, latest } in quotaCharts" :key="series.window.id" class="quota-chart">
+            <div class="quota-chart-heading">
+              <span>{{ quotaLabel(series.window.durationMinutes, series.window.label) }}</span>
+              <span v-if="hovered[series.window.id]">{{ dateText(hovered[series.window.id]!.date) }} · {{ hovered[series.window.id]!.used === null ? '无采样' : `已用 ${hovered[series.window.id]!.used!.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%` }}</span>
+              <span v-else>{{ latest ? `已用 ${latest.usedPercent.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%` : '无采样' }}</span>
+            </div>
+            <Chart :option="option" time-hover @time-hover="inspectSample(series, $event)" :label="`${quotaLabel(series.window.durationMinutes, series.window.label)}已用百分比趋势；中断时段不连接`" :height="120" :animations="state.settings.animations" />
+          </div>
         </div>
       </section>
     </template>
-    <AntigravityPanel v-if="quotaService === 'antigravity' || (quotaService === 'all' && state.antigravity.groups.length)" :state="state" :now="now" />
-    <AnnouncementPanel v-if="showCodex" :feed="state.announcements" service="Codex" :now="now" />
-    <AnnouncementPanel v-if="quotaService === 'antigravity' || (quotaService === 'all' && (state.settings.antigravityEnabled || state.antigravityAnnouncements.events.length))" :feed="state.antigravityAnnouncements" service="Antigravity" :now="now" />
+
+    <AntigravityPanel v-if="showAntigravity" :state="state" :now="now" />
+
+    <AnnouncementPanel
+      v-if="quotaService === 'all'"
+      service="all"
+      :codex-feed="state.announcements"
+      :antigravity-feed="state.antigravityAnnouncements"
+      :now="now"
+    />
+    <AnnouncementPanel
+      v-else-if="quotaService === 'codex'"
+      service="Codex"
+      :feed="state.announcements"
+      :now="now"
+    />
+    <AnnouncementPanel
+      v-else-if="quotaService === 'antigravity' && (state.settings.antigravityEnabled || state.antigravityAnnouncements.events.length)"
+      service="Antigravity"
+      :feed="state.antigravityAnnouncements"
+      :now="now"
+    />
   </div>
 </template>
