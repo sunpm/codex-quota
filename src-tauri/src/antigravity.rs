@@ -405,12 +405,9 @@ fn classify_failure(stderr: &[u8], timed_out: bool) -> AntigravityError {
         return AntigravityError::new("Antigravity 需要登录，请在终端运行 agy 登录后重试。", true);
     }
     if timed_out {
-        AntigravityError::new("读取超时，请在终端确认 agy 登录及网络后重试。", true)
+        AntigravityError::new("Antigravity CLI 读取超时。", false)
     } else {
-        AntigravityError::new(
-            "Antigravity CLI 未能返回额度，请在终端确认 agy 登录及网络后重试。",
-            true,
-        )
+        AntigravityError::new("Antigravity CLI 未能返回额度。", false)
     }
 }
 
