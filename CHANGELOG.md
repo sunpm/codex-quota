@@ -2,6 +2,17 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.25.8](https://github.com/sunpm/codex-quota/releases/tag/v0.25.8)
+
+<!-- Release notes generated using configuration in .github/release.yml at 5f8a5db65c1f04cbe3bfd7a2e0b317b15fc4474b -->
+
+### What's Changed
+#### 更新内容
+* feat: 优化额度筛选、托盘展示与公开重置动态 by @sunpm in https://github.com/sunpm/codex-quota/pull/48
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.25.7...v0.25.8
+
 ## [0.25.7](https://github.com/sunpm/codex-quota/releases/tag/v0.25.7)
 
 <!-- Release notes generated using configuration in .github/release.yml at 7f906ccdb593c2cebb826fced65f925c5d96fe88 -->
