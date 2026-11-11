@@ -87,15 +87,15 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
     if let Some(tray) = app.tray_by_id(CODEX_TRAY) {
         let _ = tray.set_visible(codex_visible);
         if codex_visible {
-            let (title, description) = codex_tray_content(snapshot);
-            apply_tray_content(app, &tray, "Codex", title, &description);
+            let content = codex_tray_content(snapshot);
+            apply_tray_content(app, &tray, "Codex", content);
         }
     }
     if let Some(tray) = app.tray_by_id(ANTIGRAVITY_TRAY) {
         let _ = tray.set_visible(antigravity_visible);
         if antigravity_visible {
-            let (title, description) = antigravity_tray_content(snapshot);
-            apply_tray_content(app, &tray, "Antigravity", title, &description);
+            let content = antigravity_tray_content(snapshot);
+            apply_tray_content(app, &tray, "Antigravity", content);
         }
     }
     #[cfg(target_os = "macos")]
@@ -114,7 +114,197 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
     }
 }
 
-fn codex_tray_content(snapshot: &AppSnapshot) -> (String, Vec<String>) {
+/// 托盘下拉菜单中各个条目的规格说明
+enum TrayMenuItemSpec {
+    /// 带有彩色进度条的额度行，点击可唤起主面板
+    Quota {
+        id: String,
+        label: String,
+        remaining_percent: Option<f64>,
+    },
+    /// 可点击的辅助信息行（如重置卡数量），点击唤起面板
+    ActionNote(String),
+    /// 静态只读信息行（如错误、提示或刷新状态）
+    Info(String),
+}
+
+struct TrayContent {
+    title: String,
+    tooltip: String,
+    items: Vec<TrayMenuItemSpec>,
+}
+
+/// 绘制菜单项中的彩色胶囊/环形进度条图标。
+/// macOS 上生成 88×36 像素（Retina 对应 44×18 pt 菜单项）的圆角胶囊进度条；
+/// 非 macOS（如 Windows）上生成 32×32 像素（对应 16×16 pt）的迷你环形进度圈。
+fn create_progress_capsule_icon(remaining_percent: Option<f64>) -> tauri::image::Image<'static> {
+    #[cfg(target_os = "macos")]
+    {
+        const WIDTH: usize = 88;
+        const HEIGHT: usize = 36;
+        let mut rgba = vec![0u8; WIDTH * HEIGHT * 4];
+
+        // 胶囊几何参数：水平宽度 84px，高度 14px，圆角半径 7px，垂直居中
+        let x_start = 2.0_f64;
+        let x_end = 86.0_f64;
+        let bar_width = x_end - x_start;
+        let radius = 7.0_f64;
+        let y_center = 18.0_f64;
+        let seg_x0 = x_start + radius;
+        let seg_x1 = x_end - radius;
+
+        let (fill_w, fill_color) = match remaining_percent {
+            Some(p) => {
+                let clamped = p.clamp(0.0, 100.0);
+                let fill = bar_width * (clamped / 100.0);
+                // 状态色统一遵循设计系统：<=20% 警示红；<=50% 预警橙；>50% 优雅主蓝
+                let color = if clamped <= 20.0 {
+                    (220u8, 53u8, 69u8)
+                } else if clamped <= 50.0 {
+                    (217u8, 119u8, 6u8)
+                } else {
+                    (49u8, 120u8, 183u8)
+                };
+                (fill, Some(color))
+            }
+            None => (0.0, None),
+        };
+
+        let track_color = (135u8, 140u8, 150u8);
+        let track_base_alpha = 0.28_f64;
+
+        for py in 0..HEIGHT {
+            for px in 0..WIDTH {
+                let x = px as f64 + 0.5;
+                let y = py as f64 + 0.5;
+
+                let clamped_x = x.clamp(seg_x0, seg_x1);
+                let dx = x - clamped_x;
+                let dy = y - y_center;
+                let dist = (dx * dx + dy * dy).sqrt();
+
+                let sdf_track = dist - radius;
+                let alpha_track = (0.5 - sdf_track).clamp(0.0, 1.0);
+                if alpha_track <= 0.0 {
+                    continue;
+                }
+
+                let fill_alpha = if fill_color.is_some() {
+                    if fill_w >= bar_width {
+                        alpha_track
+                    } else if fill_w <= 0.0 {
+                        0.0
+                    } else {
+                        let fill_x = x_start + fill_w;
+                        let cutoff_alpha = (fill_x - x + 0.5).clamp(0.0, 1.0);
+                        alpha_track * cutoff_alpha
+                    }
+                } else {
+                    0.0
+                };
+
+                let track_a = track_base_alpha * alpha_track;
+                let fill_a = 0.95_f64 * fill_alpha;
+
+                let (out_r, out_g, out_b, out_a) = if fill_a > 0.0 {
+                    let (fr, fg, fb) = fill_color.unwrap();
+                    let combined_a = fill_a + track_a * (1.0 - fill_a);
+                    let r = (fr as f64 * fill_a + track_color.0 as f64 * track_a * (1.0 - fill_a)) / combined_a;
+                    let g = (fg as f64 * fill_a + track_color.1 as f64 * track_a * (1.0 - fill_a)) / combined_a;
+                    let b = (fb as f64 * fill_a + track_color.2 as f64 * track_a * (1.0 - fill_a)) / combined_a;
+                    (r, g, b, combined_a)
+                } else {
+                    (track_color.0 as f64, track_color.1 as f64, track_color.2 as f64, track_a)
+                };
+
+                let idx = (py * WIDTH + px) * 4;
+                rgba[idx] = out_r.round() as u8;
+                rgba[idx + 1] = out_g.round() as u8;
+                rgba[idx + 2] = out_b.round() as u8;
+                rgba[idx + 3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+
+        tauri::image::Image::new_owned(rgba, WIDTH as u32, HEIGHT as u32)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        const SIZE: usize = 32;
+        let mut rgba = vec![0u8; SIZE * SIZE * 4];
+        let center = 16.0_f64;
+        let r_mid = 10.0_f64;
+        let half_width = 2.5_f64;
+
+        let (fill_frac, fill_color) = match remaining_percent {
+            Some(p) => {
+                let clamped = p.clamp(0.0, 100.0);
+                let color = if clamped <= 20.0 {
+                    (220u8, 53u8, 69u8)
+                } else if clamped <= 50.0 {
+                    (217u8, 119u8, 6u8)
+                } else {
+                    (49u8, 120u8, 183u8)
+                };
+                (clamped / 100.0, Some(color))
+            }
+            None => (0.0, None),
+        };
+
+        let track_color = (135u8, 140u8, 150u8);
+        let track_base_alpha = 0.35_f64;
+
+        for py in 0..SIZE {
+            for px in 0..SIZE {
+                let x = px as f64 + 0.5;
+                let y = py as f64 + 0.5;
+
+                let dx = x - center;
+                let dy = y - center;
+                let dist = (dx * dx + dy * dy).sqrt();
+
+                let sdf_ring = (dist - r_mid).abs() - half_width;
+                let alpha_ring = (0.5 - sdf_ring).clamp(0.0, 1.0);
+                if alpha_ring <= 0.0 {
+                    continue;
+                }
+
+                let angle = (-dy).atan2(-dx) + std::f64::consts::PI;
+                let frac = ((angle + std::f64::consts::FRAC_PI_2) % (2.0 * std::f64::consts::PI)) / (2.0 * std::f64::consts::PI);
+
+                let fill_alpha = if fill_color.is_some() && frac <= fill_frac {
+                    alpha_ring
+                } else {
+                    0.0
+                };
+
+                let track_a = track_base_alpha * alpha_ring;
+                let fill_a = 0.95_f64 * fill_alpha;
+
+                let (out_r, out_g, out_b, out_a) = if fill_a > 0.0 {
+                    let (fr, fg, fb) = fill_color.unwrap();
+                    let combined_a = fill_a + track_a * (1.0 - fill_a);
+                    let r = (fr as f64 * fill_a + track_color.0 as f64 * track_a * (1.0 - fill_a)) / combined_a;
+                    let g = (fg as f64 * fill_a + track_color.1 as f64 * track_a * (1.0 - fill_a)) / combined_a;
+                    let b = (fb as f64 * fill_a + track_color.2 as f64 * track_a * (1.0 - fill_a)) / combined_a;
+                    (r, g, b, combined_a)
+                } else {
+                    (track_color.0 as f64, track_color.1 as f64, track_color.2 as f64, track_a)
+                };
+
+                let idx = (py * SIZE + px) * 4;
+                rgba[idx] = out_r.round() as u8;
+                rgba[idx + 1] = out_g.round() as u8;
+                rgba[idx + 2] = out_b.round() as u8;
+                rgba[idx + 3] = (out_a * 255.0).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+
+        tauri::image::Image::new_owned(rgba, SIZE as u32, SIZE as u32)
+    }
+}
+
+fn codex_tray_content(snapshot: &AppSnapshot) -> TrayContent {
     let has_codex = snapshot.quota.windows.iter().any(|window| window.bucket == "codex");
     let mut windows = snapshot.quota.windows.iter()
         .filter(|window| !has_codex || window.bucket == "codex")
@@ -133,71 +323,169 @@ fn codex_tray_content(snapshot: &AppSnapshot) -> (String, Vec<String>) {
     if snapshot.quota.error.is_some() {
         title.push_str(" !");
     }
-    let mut description = snapshot.quota.windows.iter().map(|window| {
-        let name = if window.bucket == "codex" {
-            window.display_label()
-        } else {
-            format!("{} · {}", window.name, window.display_label())
-        };
-        let reset = window.resets_at
-            .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
-            .map(|date| format!("，{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
-            .unwrap_or_default();
-        format!("{name}：剩余 {}%{reset}", window.remaining().floor() as u64)
-    }).collect::<Vec<_>>();
-    if description.is_empty() {
-        description.push("等待额度数据".into());
+
+    let mut items = Vec::new();
+    let mut tooltip_lines = Vec::new();
+
+    if windows.is_empty() {
+        items.push(TrayMenuItemSpec::Info("等待额度数据".into()));
+        tooltip_lines.push("等待额度数据".into());
+    } else {
+        for window in &windows {
+            let name = if window.bucket == "codex" {
+                window.display_label()
+            } else {
+                format!("{} · {}", window.name, window.display_label())
+            };
+            let remaining = window.remaining().floor() as u64;
+            let reset_str = window.resets_at
+                .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
+                .map(|date| format!(" · {} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
+                .unwrap_or_default();
+
+            items.push(TrayMenuItemSpec::Quota {
+                id: format!("open:quota:codex:{}", window.id),
+                label: format!("{name} · 剩余 {remaining}%{reset_str}"),
+                remaining_percent: Some(window.remaining()),
+            });
+
+            tooltip_lines.push(format!("{name}：剩余 {remaining}%{reset_str}"));
+        }
     }
+
+    if let Some(credits) = &snapshot.quota.reset_credits {
+        if credits.available_count > 0 {
+            items.push(TrayMenuItemSpec::ActionNote(format!("重置卡 · {} 张可用", credits.available_count)));
+            tooltip_lines.push(format!("可用重置卡：{} 张", credits.available_count));
+        }
+    }
+
     if let Some(error) = &snapshot.quota.error {
-        description.push(format!("额度可能已过期：{error}"));
+        items.push(TrayMenuItemSpec::Info(format!("⚠️ 额度可能已过期：{error}")));
+        tooltip_lines.push(format!("额度可能已过期：{error}"));
     }
-    (title, description)
+
+    TrayContent {
+        title,
+        tooltip: format!("Codex Quota · Codex\n{}", tooltip_lines.join("\n")),
+        items,
+    }
 }
 
-fn antigravity_tray_content(snapshot: &AppSnapshot) -> (String, Vec<String>) {
-    let mut description = Vec::new();
+fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
     let quota = &snapshot.antigravity;
     let buckets: Vec<_> = quota.groups.iter().flat_map(|group| &group.buckets).filter(|bucket| !bucket.disabled).collect();
     let minimum = buckets.iter().filter_map(|bucket| bucket.remaining_percent).reduce(f64::min);
     let value = minimum.map(|value| format!("{}%", value.floor() as u64)).unwrap_or_else(|| "--".into());
     let status = if quota.error.is_some() { " !" } else if quota.refreshing { " …" } else if buckets.iter().any(|bucket| bucket.remaining_percent.is_none()) { " ?" } else { "" };
     let title = format!("{value}{status}");
-    description.push(format!("最低已知剩余 {value}{status}"));
+
+    let mut items = Vec::new();
+    let mut tooltip_lines = Vec::new();
+
+    tooltip_lines.push(format!("最低已知剩余 {value}{status}"));
+
     for group in &quota.groups {
         for bucket in &group.buckets {
-            let window = match bucket.window.as_deref() { Some("5h") => "五小时额度", Some("weekly") => "周额度", _ => "额度" };
-            let remaining = if bucket.disabled { "未启用".into() } else { bucket.remaining_percent.map(|value| format!("剩余 {}%", value.floor() as u64)).unwrap_or_else(|| "剩余额度未知".into()) };
-            let reset = bucket.resets_at.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
-                .map(|date| format!("{} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
-                .unwrap_or_else(|| "重置时间未知".into());
-            description.push(format!("{} · {window} · {} [{}]：{remaining}，{reset}", group.name, bucket.name, bucket.id));
+            let window = match bucket.window.as_deref() {
+                Some("5h") => "五小时额度",
+                Some("weekly") => "周额度",
+                _ => "额度",
+            };
+            let reset_str = bucket.resets_at
+                .and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0))
+                .map(|date| format!(" · {} 重置", date.with_timezone(&chrono::Local).format("%m-%d %H:%M")))
+                .unwrap_or_default();
+
+            let display_name = if group.name == bucket.name || group.name.is_empty() {
+                bucket.name.clone()
+            } else {
+                format!("{} · {}", group.name, bucket.name)
+            };
+
+            if bucket.disabled {
+                items.push(TrayMenuItemSpec::Quota {
+                    id: format!("open:quota:ag:{}", bucket.id),
+                    label: format!("{display_name} · {window} · 未启用"),
+                    remaining_percent: None,
+                });
+                tooltip_lines.push(format!("{} · {window} · {} [{}]：未启用", group.name, bucket.name, bucket.id));
+            } else if let Some(p) = bucket.remaining_percent {
+                let rem_int = p.floor() as u64;
+                items.push(TrayMenuItemSpec::Quota {
+                    id: format!("open:quota:ag:{}", bucket.id),
+                    label: format!("{display_name} · {window} · 剩余 {rem_int}%{reset_str}"),
+                    remaining_percent: Some(p),
+                });
+                tooltip_lines.push(format!("{} · {window} · {} [{}]：剩余 {rem_int}%{reset_str}", group.name, bucket.name, bucket.id));
+            } else {
+                items.push(TrayMenuItemSpec::Quota {
+                    id: format!("open:quota:ag:{}", bucket.id),
+                    label: format!("{display_name} · {window} · 剩余未知"),
+                    remaining_percent: None,
+                });
+                tooltip_lines.push(format!("{} · {window} · {} [{}]：剩余未知", group.name, bucket.name, bucket.id));
+            }
         }
     }
-    if let Some(error) = &quota.error { description.push(format!("Antigravity：{error}")); }
-    if let Some(time) = quota.last_success.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0)) {
-        description.push(format!("Antigravity 上次读取{}：{}", if quota.error.is_some() { "（已过期）" } else { "" }, time.with_timezone(&chrono::Local).format("%m-%d %H:%M")));
+
+    if let Some(error) = &quota.error {
+        items.push(TrayMenuItemSpec::Info(format!("⚠️ Antigravity：{error}")));
+        tooltip_lines.push(format!("Antigravity：{error}"));
     }
-    (title, description)
+
+    if let Some(time) = quota.last_success.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0)) {
+        let tag = if quota.error.is_some() { "（已过期）" } else { "" };
+        let formatted = time.with_timezone(&chrono::Local).format("%m-%d %H:%M");
+        items.push(TrayMenuItemSpec::Info(format!("上次读取{tag}：{formatted}")));
+        tooltip_lines.push(format!("Antigravity 上次读取{tag}：{formatted}"));
+    }
+
+    TrayContent {
+        title,
+        tooltip: format!("Codex Quota · Antigravity\n{}", tooltip_lines.join("\n")),
+        items,
+    }
 }
 
 /// 写入单个状态项的菜单、提示与标题；Windows 托盘不支持标题，仅使用图标与提示。
-fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &str, title: String, description: &[String]) {
-    // Windows tooltips are length-limited; the menu retains every returned bucket.
+fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &str, content: TrayContent) {
     let menu = (|| -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
-        use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+        use tauri::menu::{IconMenuItem, Menu, MenuItem, PredefinedMenuItem};
         let menu = Menu::new(app)?;
-        menu.append(&MenuItem::new(app, service, false, None::<&str>)?)?;
-        for line in description { menu.append(&MenuItem::new(app, line, false, None::<&str>)?)?; }
+        menu.append(&MenuItem::new(app, format!("{service} 额度"), false, None::<&str>)?)?;
+
+        for spec in &content.items {
+            match spec {
+                TrayMenuItemSpec::Quota { id, label, remaining_percent } => {
+                    let icon = create_progress_capsule_icon(*remaining_percent);
+                    let item = IconMenuItem::with_id(app, id, label, true, Some(icon), None::<&str>)?;
+                    menu.append(&item)?;
+                }
+                TrayMenuItemSpec::ActionNote(text) => {
+                    let item = MenuItem::with_id(app, "open", text, true, None::<&str>)?;
+                    menu.append(&item)?;
+                }
+                TrayMenuItemSpec::Info(text) => {
+                    let item = MenuItem::new(app, text, false, None::<&str>)?;
+                    menu.append(&item)?;
+                }
+            }
+        }
+
         menu.append(&PredefinedMenuItem::separator(app)?)?;
         menu.append(&MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?)?;
         menu.append(&MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?)?;
         Ok(menu)
     })();
-    if let Ok(menu) = menu { let _ = tray.set_menu(Some(menu)); }
-    let _ = tray.set_tooltip(Some(format!("Codex Quota · {service}\n{}", description.join("\n"))));
+
+    if let Ok(menu) = menu {
+        let _ = tray.set_menu(Some(menu));
+    }
+    let _ = tray.set_tooltip(Some(content.tooltip));
     #[cfg(target_os = "macos")]
     {
-        let _ = tray.set_title(Some(title));
+        let _ = tray.set_title(Some(content.title));
         let _ = tray.with_inner_tray_icon(|tray| {
             use objc2::MainThreadMarker;
             use objc2_app_kit::{NSFont, NSFontWeightRegular};
@@ -214,7 +502,7 @@ fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &s
         });
     }
     #[cfg(not(target_os = "macos"))]
-    let _ = title;
+    let _ = content.title;
 }
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
@@ -296,7 +584,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         "refresh" => {
             let _ = app.emit("refresh-usage", ());
         }
-        "open" => open_window(app),
+        s if s.starts_with("open") => open_window(app),
         // 两个状态项菜单共用全局事件，避免各自注册导致重复处理。
         "quit" => app.exit(0),
         _ => {}

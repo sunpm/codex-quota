@@ -1,6 +1,7 @@
 export type Page = 'overview' | 'details' | 'quota' | 'settings'
 export type Metric = 'tokens' | 'cost'
 export type UsageService = 'codex' | 'antigravity'
+export type QuotaService = UsageService | 'all'
 export interface ChartTimeHover { timestamp: number; tolerance: number }
 export interface NotificationStatus {
   permission: 'system' | 'granted' | 'denied' | 'prompt'

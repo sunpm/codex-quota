@@ -1,7 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { toRefs, useLocalStorage } from '@vueuse/core'
 import { isPlainObject, isString } from '@pmun/utils'
-import type { Metric, Page, UsageService } from '@/types'
+import type { Metric, Page, QuotaService, UsageService } from '@/types'
 import { dayKey, shiftDay } from './usage'
 
 export const usageRanges = [{ value: 'today', label: '今天' }, { value: 'yesterday', label: '昨天' }, { value: '7', label: '7 天' }, { value: '30', label: '30 天' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }] as const
@@ -47,6 +47,9 @@ const options = { writeDefaults: false, serializer: { read: (raw: string) => rea
 const details = useLocalStorage('usage.filters.sessions.v1', { ...initialDefaults }, options)
 const overview = ref<UsageFilters>({ ...initialDefaults })
 export const usageService = useLocalStorage<UsageService | 'all'>('usage.service.v1', 'all', {
+  serializer: { read: value => value === 'codex' || value === 'antigravity' ? value : 'all', write: value => value },
+})
+export const quotaService = useLocalStorage<QuotaService>('quota.service.v1', 'all', {
   serializer: { read: value => value === 'codex' || value === 'antigravity' ? value : 'all', write: value => value },
 })
 watch(usageService, () => { details.value.model = 'all'; overview.value.model = 'all' })
