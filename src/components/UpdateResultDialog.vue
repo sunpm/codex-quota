@@ -1,24 +1,31 @@
 <script setup lang="ts">
 import { shallowRef, watch } from 'vue'
 import type { UpdateState } from '@/types'
-import { execute, manualUpdateCheck, openExternal, snapshot } from '@/lib/app'
+import { execute, manualUpdateCheck, notificationGuideOpen, openExternal, snapshot } from '@/lib/app'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import ReleaseNotes from './ReleaseNotes.vue'
 
 const result = shallowRef<UpdateState | null>(null)
+let promptedVersion: string | null = null
 watch(() => snapshot.value.update, update => {
-  if (!manualUpdateCheck.value || !['available', 'current', 'error'].includes(update.status)) return
+  if (!['available', 'current', 'error'].includes(update.status)) return
+  const manual = manualUpdateCheck.value
   manualUpdateCheck.value = false
-  if (update.status === 'available') result.value = { ...update }
-})
+  if (update.status === 'available' && (manual || update.version !== promptedVersion)) {
+    promptedVersion = update.version
+    result.value = { ...update }
+  }
+}, { immediate: true })
 </script>
 <template>
-  <Dialog :open="result !== null" @update:open="value => { if (!value) result = null }">
-    <DialogContent>
+  <Dialog :open="result !== null && snapshot.installedReleaseNotes === null && !notificationGuideOpen" @update:open="value => { if (!value) result = null }">
+    <DialogContent class="update-result-dialog">
       <DialogHeader>
         <DialogTitle>发现新版本 {{ result?.version }}</DialogTitle>
         <DialogDescription>当前版本 {{ snapshot.version }}</DialogDescription>
       </DialogHeader>
+      <div v-if="result?.notes" class="update-notes-content"><ReleaseNotes :notes="result.notes" /></div>
       <div class="dialog-actions">
         <Button variant="outline" @click="result = null">{{ result?.canInstall ? '稍后' : '好' }}</Button>
         <Button v-if="result?.canInstall" @click="result = null; execute('install_update')">更新并重启</Button>
@@ -27,3 +34,8 @@ watch(() => snapshot.value.update, update => {
     </DialogContent>
   </Dialog>
 </template>
+
+<style scoped>
+.update-result-dialog { width: min(640px, calc(100vw - 48px)); max-width: none; }
+.update-notes-content { max-height: min(480px, calc(100vh - 220px)); overflow: auto; }
+</style>
