@@ -54,13 +54,17 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 构建顺序为：生成依赖许可 → Tauri `beforeBuildCommand` 执行一次 `pnpm build` → Cargo 使用 `--locked` 编译 → Tauri 打包 → 核验并复制产物。前端和 Rust 编译失败都会终止打包，不需要先手动再构建一次前端。依赖许可由 `collect-licenses.mjs` 从已安装 pnpm 依赖和 Cargo metadata 生成，写入随包的 `Resources/ThirdPartyNotices/dependencies-LICENSES.txt`；不要手工修改。
 
-普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。构建始终使用 `package.json` 的版本号，并校验 Cargo 版本一致。`RELEASE_TAG` 非空时必须等于 `v` 加源码版本，同时提供更新签名密钥及 `CODEX_QUOTA_RELEASE_NOTES_FILE` 指向的本版本 Markdown 变更说明；不再以标签静默覆盖源码版本。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
+普通本地构建无需更新签名密钥，不生成 `.sig` 或签名更新归档。构建始终使用 `package.json` 的版本号，并校验 Cargo 版本一致。`RELEASE_TAG` 非空时必须等于 `v` 加源码版本，同时提供更新签名密钥及 `RELEASE_NOTES_FILE` 指向的本版本 Markdown 变更说明；不再以标签静默覆盖源码版本。`release-assets-<平台>.json` 是构建脚本输出给汇总步骤的内部清单，不是用户安装包。
 
-本地可选设置 `CODEX_QUOTA_RELEASE_NOTES_FILE`（相对于构建命令的工作目录或绝对路径），构建脚本会将 UTF-8 Markdown 嵌入安装包。该版本首次打开时展示，关闭后沿用 `updates.lastShownReleaseNotesVersion` 记录已读；未提供说明时不弹窗。说明使用标题、列表、代码、链接与 `details` / `summary` 折叠排版；HTML 注释正常隐藏，代码示例中的注释保持原文。Markdown 渲染后统一清理 HTML，仅保留排版标签与必要属性，不加载图片或执行脚本，链接沿用应用的外部来源限制。此文件应为对应版本的实际变更，不使用 `docs/release-notes.md` 中的通用安装提示代替。
+本地可选设置 `RELEASE_NOTES_FILE`（相对于构建命令的工作目录或绝对路径），兼容原 `CODEX_QUOTA_RELEASE_NOTES_FILE`；两者同时非空时优先使用前者，构建脚本转换为 Rust 构建入口沿用的原变量，将 UTF-8 Markdown 嵌入安装包。该版本首次打开时展示，关闭后沿用 `updates.lastShownReleaseNotesVersion` 记录已读；未提供说明时不弹窗。说明使用标题、列表、代码、链接与 `details` / `summary` 折叠排版；HTML 注释正常隐藏，代码示例中的注释保持原文。Markdown 渲染后统一清理 HTML，仅保留排版标签与必要属性，不加载图片或执行脚本，链接沿用应用的外部来源限制。此文件应为对应版本的实际变更，不使用 `docs/release-notes.md` 中的通用安装提示代替。
 
 ## CI 打包与发布
 
-现有 `Release` workflow 共用三平台矩阵：Apple Silicon Mac、Intel Mac、Windows x64，均调用 `node scripts/build.mjs --target <目标>`。前端检查与 Rust 编译由统一构建入口完成，不再编译旧 Swift 应用或执行其测试。
+本项目的 `Release` workflow 固定完整提交 SHA 调用 [tauri-release-workflows](https://github.com/sunpm/tauri-release-workflows) 的 `tauri-release.yml`。共享仓库维护平台编排、CHANGELOG 提取、完整更新清单与 Release 发布；本项目保留版本准备命令、构建脚本、产品配置、安装提示和签名密钥，Releases 与更新地址仍属于本项目。
+
+当前使用共享流程默认的三平台矩阵：Apple Silicon Mac、Intel Mac、Windows x64，均调用 `node scripts/build.mjs --target <目标>`。前端检查与 Rust 编译由统一构建入口完成，不再编译旧 Swift 应用或执行其测试。共享流程通过 `RELEASE_NOTES_FILE` 传入同一份变更说明，仅构建步骤获得调用方显式传入的签名私钥。
+
+共享流程升级时审阅变更，再更新 `.github/workflows/release.yml` 的完整 SHA；其内部 action 通过 `$/` 引用同一提交，不跟随共享仓库的 `main`。通用发布逻辑在共享仓库修改，不在本项目恢复重复脚本；其他项目接入参数和产物清单约定见共享仓库 README。
 
 | 入口 | 结果 |
 | --- | --- |
@@ -72,9 +76,9 @@ Mac 双架构构建前用 `rustup target add aarch64-apple-darwin x86_64-apple-d
 
 标签发布依次执行：
 
-1. `release-notes.mjs` 校验标签等于源码版本，从 CHANGELOG 提取该版本段落并保存为 artifact；缺少对应段落或内容为空时停止。不在 CI 重新生成说明。
+1. 共享流程的 `prepare` action 校验标签等于源码版本，从 CHANGELOG 提取该版本段落并保存为 artifact；缺少对应段落或内容为空时停止。不在 CI 重新生成说明。
 2. 三平台安装锁定依赖，下载同一份说明，注入公钥及说明路径，校验标签与源码版本一致后运行统一构建入口；安装产物上传为 workflow artifact。
-3. `prepare-release.mjs` 检查三套产物、版本与签名附件，生成 `latest.json` 和 `SHA256SUMS.txt`；读取 `docs/release-notes.md` 并附上本次变更，生成 `dist/release-notes.md`。应用内更新清单只包含本次变更，不重复安装提示。
+3. 共享流程的 `publish` action 根据预期平台和本项目输出的 `release-assets-<平台>.json` 检查三套产物、版本与签名附件，生成 `latest.json` 和 `SHA256SUMS.txt`；读取 `docs/release-notes.md` 并附上本次变更，生成 `dist/release-notes.md`。应用内更新清单只包含本次变更，不重复安装提示。
 4. 安装包、签名、完整清单和校验值上传 draft Release，全部成功后才公开。预发布不替换 latest。
 
 三平台构建从同一 artifact 嵌入版本说明，汇总步骤将同一内容写入 `latest.json`，并与通用安装提示组合为 Release 正文，避免安装后与更新前看到不同说明。

@@ -60,7 +60,7 @@
 - 人工验收按本次改动覆盖菜单栏 / 托盘、额度空态 / 错误态、设置持久化、系统通知及退出清理；没有环境或真实账号授权的平台、系统版本和架构明确列为未验收。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
 - `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64，普通 PR 合并不发版。`pnpm release <版本>` 是手动发布入口：按最近正式版生成 GitHub 原生变更说明写入 CHANGELOG，同步 package/Cargo 版本与锁文件，经检查和终端确认后提交并推送标签。Tauri 配置与网页预览读取 `package.json` 版本，构建必须校验标签与源码一致，不用临时版本覆盖。
-- `release.yml` 手动运行只生成三平台安装包 artifacts；版本标签推送后从 CHANGELOG 提取说明并生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在 CI 发布流程中预先重复编译。预发布不替换 latest。推送版本标签即触发发布，仍需用户对应授权；实现发布脚本不等于授权执行发布。
+- `release.yml` 固定完整提交 SHA 调用 `sunpm/tauri-release-workflows` 的共享 Tauri 工作流；通用编排、CHANGELOG 提取和产物汇总在共享仓库维护，本项目保留版本准备、构建脚本、安装提示、签名密钥和 Releases。构建脚本接收共享的 `RELEASE_NOTES_FILE`，兼容原 `CODEX_QUOTA_RELEASE_NOTES_FILE`。手动运行只生成三平台安装包 artifacts；版本标签推送后从 CHANGELOG 提取说明并生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在 CI 发布流程中预先重复编译。预发布不替换 latest。推送版本标签即触发发布，仍需用户对应授权；实现发布脚本不等于授权执行发布。
 
 ## Git 提交规范
 
