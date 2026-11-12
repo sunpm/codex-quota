@@ -25,8 +25,8 @@ const platform = platforms[target]
 if (!platform || platform.os !== process.platform) throw new Error('请在 macOS 构建 Mac 包，在 Windows 构建 Windows x64 包。')
 const bundles = (values.bundles ?? platform.bundles).split(',')
 if (bundles.some(bundle => !platform.bundles.split(',').includes(bundle))) throw new Error('当前平台不支持指定的安装包格式。')
-const notesFile = process.env.CODEX_QUOTA_RELEASE_NOTES_FILE
-if (tag && !notesFile) throw new Error('发布构建必须提供 CODEX_QUOTA_RELEASE_NOTES_FILE。')
+const notesFile = process.env.RELEASE_NOTES_FILE || process.env.CODEX_QUOTA_RELEASE_NOTES_FILE
+if (tag && !notesFile) throw new Error('发布构建必须提供 RELEASE_NOTES_FILE。')
 if (notesFile) {
   process.env.CODEX_QUOTA_RELEASE_NOTES_FILE = resolve(notesFile)
   if (!readFileSync(process.env.CODEX_QUOTA_RELEASE_NOTES_FILE, 'utf8').trim()) throw new Error('本版本更新说明不能为空。')
