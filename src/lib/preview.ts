@@ -1,4 +1,5 @@
 import type { AppSnapshot, CostBreakdown, UsageRecord, UsageTokens } from '@/types'
+import officialPrices from '../../crates/quota-core/src/official-pricing.json'
 import { version } from '../../package.json'
 const usageExamples: { model: string; tokens: UsageTokens; tier: string; detail: CostBreakdown }[] = [
   {
@@ -36,7 +37,15 @@ const usageExamples: { model: string; tokens: UsageTokens; tier: string; detail:
   },
 ]
 export function previewCostBreakdown(record: UsageRecord): CostBreakdown {
-  return usageExamples.find(example => example.model === record.model)!.detail
+  if (record.service === 'codex') return usageExamples.find(example => example.model === record.model)!.detail
+  const unknown = record.model === 'unknown'
+  return { pricingModel: unknown ? null : record.model, longContext: false, contextThreshold: null, multiplier: '1', total: record.cost, components: [
+    { kind: 'input', tokens: 2100, rate: unknown ? null : '0.75', amount: unknown ? null : '0.001575' },
+    { kind: 'output', tokens: record.tokens.output, rate: unknown ? null : '3.75', amount: unknown || record.tokens.outputReported === false ? null : '0.0045' },
+    { kind: 'cached', tokens: 8400, rate: unknown ? null : '0.075', amount: unknown ? null : '0.00063' },
+    { kind: 'cacheWrite', tokens: 0, rate: null, amount: '0' },
+    { kind: 'cacheWriteLong', tokens: 0, rate: null, amount: '0' },
+  ] }
 }
 export function emptySnapshot(): AppSnapshot {
   return {
@@ -52,7 +61,6 @@ export function emptySnapshot(): AppSnapshot {
 export function previewSnapshot(): AppSnapshot {
   const state = emptySnapshot()
   const now = Date.now() / 1000
-  const models = usageExamples.map(example => example.model)
   const sessionTitles: Record<string, string> = {}
   const records: UsageRecord[] = []
   for (let day = 0; day < 371; day++) {
@@ -64,6 +72,11 @@ export function previewSnapshot(): AppSnapshot {
       if (day % 4 !== 3) sessionTitles[session] = ['优化额度卡片', '整理缓存统计', '修复分页交互'][Math.floor(event / 3)]!
       records.push({ id: `preview-${day}-${event}`, service: 'codex', session, project: `/Projects/${['workspace', 'design-system', 'notes'][event % 3]}`, model: example.model, date: Math.min(now, date.getTime() / 1000), tokens: { ...example.tokens }, serviceTier: example.tier, isUSOnly: false, serviceTierReported: true, estimatedDuration: 16 + event, estimatedFirstToken: 1.2, cost: example.detail.total })
     }
+  }
+  for (let i = 0; i < 18; i++) {
+    const base = records[i]!
+    const unknown = i % 3 === 0, incomplete = i % 3 === 2
+    records.push({ ...base, id: `preview-antigravity-${i}`, service: 'antigravity', session: `antigravity-sample-${Math.floor(i / 3)}`, model: unknown ? 'unknown' : 'gemini-3.8-flash', tokens: { input: 2100, output: incomplete ? 0 : 1200, cached: 8400, cacheWrite: 0, cacheWriteLong: 0, inputReported: true, outputReported: !incomplete, cachedReported: true, cacheWriteReported: true }, serviceTier: 'unknown', serviceTierReported: false, cost: unknown || incomplete ? null : '0.006705' })
   }
   state.usage = { records, projectRoots: {}, sessionTitles, warnings: [], scannedAt: now, fileCount: 312, refreshing: false, source: '离线示例日志' }
   state.quota.windows = [{ id: 'codex:primary:300', bucket: 'codex', name: 'Codex', usedPercent: 28, durationMinutes: 300, resetsAt: now + 12700, label: null }, { id: 'codex:secondary:10080', bucket: 'codex', name: 'Codex', usedPercent: 63, durationMinutes: 10080, resetsAt: now + 276000, label: null }]
@@ -89,7 +102,8 @@ export function previewSnapshot(): AppSnapshot {
   }
   state.quota.lastSuccess = now
   state.quota.resetCredits = { availableCount: 1, credits: [{ id: 'sample-credit', resetType: 'codexRateLimits', status: 'available', expiresAt: now + 360000 }] }
-  state.prices = models.map(model => ({ model, service: 'codex', rates: { input: '2.5', output: model === 'gpt-6-luna' ? null : '15', cached: '0.25', cacheWrite: null, cacheWriteLong: null }, contextThreshold: model === 'gpt-6.1-terra' ? 200000 : null, longContextRates: model === 'gpt-6.1-terra' ? { input: '5', output: '30', cached: '0.5', cacheWrite: null, cacheWriteLong: null } : null, fastMultiplier: '2', ultrafastMultiplier: null }))
+  state.prices = Object.values(officialPrices)
+  state.prices.push({ model: 'unknown', service: 'antigravity', rates: { input: null, output: null, cached: null, cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })
   // Explicit offline scenes exercise the displayed states without starting a local CLI.
   const quotaScene = new URLSearchParams(location.search).get('quota')
   if (quotaScene === 'stale') {
@@ -97,11 +111,20 @@ export function previewSnapshot(): AppSnapshot {
     state.quota.lastSuccess = now - 600
   } else if (quotaScene === 'refreshing') state.quota.refreshing = true
   const antigravityScene = new URLSearchParams(location.search).get('antigravity')
-  if (antigravityScene === 'stale') {
+  if (antigravityScene === 'weekly-only') {
+    state.antigravity.groups = state.antigravity.groups.slice(0, 2).map(group => ({ ...group, buckets: group.buckets.filter(bucket => bucket.window === 'weekly') }))
+  } else if (antigravityScene === 'stale') {
     state.antigravity.error = 'Antigravity 网络连接失败，请检查网络。60 秒后重试。'
     state.antigravity.lastSuccess = now - 600
   } else if (antigravityScene === 'refreshing') state.antigravity.refreshing = true
-  else if (antigravityScene === 'empty') state.antigravity.groups = []
+  else if (['empty', 'disabled', 'missing-cli', 'initial-loading'].includes(antigravityScene ?? '')) {
+    state.settings.antigravityEnabled = antigravityScene !== 'disabled'
+    state.antigravity = {
+      groups: [], lastSuccess: null,
+      error: antigravityScene === 'missing-cli' ? '未找到 Antigravity CLI。请先安装并登录 agy；自定义位置可通过 CODEX_QUOTA_AGY 指定。' : null,
+      refreshing: antigravityScene === 'initial-loading', requiresAction: antigravityScene === 'missing-cli',
+    }
+  }
   state.priceDate = '离线示例'
   return state
 }

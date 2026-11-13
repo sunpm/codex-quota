@@ -53,9 +53,17 @@ async fn refresh_antigravity(app: AppHandle) -> AppSnapshot {
 }
 
 #[tauri::command]
-async fn scan_usage(app: AppHandle, rescan: bool) -> AppSnapshot {
-    monitor::scan_usage(&app, rescan).await;
-    get_snapshot(app)
+async fn scan_usage(app: AppHandle, rescan: bool, service: Option<String>) -> Result<AppSnapshot, String> {
+    if rescan {
+        if let Some(service) = &service {
+            let reader = controller(&app).reader.clone();
+            let service = service.clone();
+            tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().invalidate_service(&service))
+                .await.map_err(|_| "重新扫描未完成。")??;
+        }
+    }
+    monitor::scan_usage(&app, rescan && service.is_none()).await;
+    Ok(get_snapshot(app))
 }
 
 #[tauri::command]
@@ -145,7 +153,7 @@ fn save_prices(
 ) -> Result<AppSnapshot, String> {
     if prices
         .iter()
-        .any(|price| price.service != "codex" || !price.is_valid())
+        .any(|price| !["codex", "antigravity"].contains(&price.service.as_str()) || !price.is_valid())
     {
         return Err("模型价格无效，请检查名称、非负单价、倍率和上下文阈值。".into());
     }
@@ -153,10 +161,11 @@ fn save_prices(
     {
         let mut store = state.store.lock().unwrap();
         let mut saved = store.saved.clone();
-        for price in prices {
+        for mut price in prices {
+            price.model = price.model.trim().to_string();
             saved
                 .overrides
-                .insert(format!("codex:{}", price.model.to_lowercase()), price);
+                .insert(price.key(), price);
         }
         store.commit(saved)?;
         store.reprice();
@@ -166,14 +175,15 @@ fn save_prices(
 }
 
 #[tauri::command]
-fn reset_price(app: AppHandle, model: String) -> Result<AppSnapshot, String> {
+fn reset_price(app: AppHandle, service: String, model: String) -> Result<AppSnapshot, String> {
+    if !["codex", "antigravity"].contains(&service.as_str()) { return Err("服务无效。".into()); }
     let state = controller(&app);
     {
         let mut store = state.store.lock().unwrap();
         let mut saved = store.saved.clone();
         saved
             .overrides
-            .remove(&format!("codex:{}", model.to_lowercase()));
+            .remove(&format!("{service}:{}", model.to_lowercase()));
         store.commit(saved)?;
         store.reprice();
     }
@@ -192,20 +202,20 @@ async fn update_prices(app: AppHandle) -> Result<AppSnapshot, String> {
         store.updating_prices = true;
     }
     let result = async {
-        let response = state
-            .http
-            .get("https://models.dev/api.json")
-            .send()
-            .await
-            .map_err(|_| "无法下载公开价格，请检查网络。")?
-            .error_for_status()
-            .map_err(|_| "公开价格服务暂不可用。")?;
-        let bytes = response.bytes().await.map_err(|_| "公开价格下载未完成。")?;
-        let catalog = quota_core::decode_catalog(&bytes)?;
+        let date = chrono::Utc::now().date_naive();
+        let mut catalog = std::collections::BTreeMap::new();
+        for (provider, url) in quota_core::OFFICIAL_PRICE_SOURCES {
+            let response = state.http.get(url).header(reqwest::header::ACCEPT, "text/markdown").send().await
+                .map_err(|_| format!("无法下载 {provider} 官方价格，请检查网络。"))?
+                .error_for_status().map_err(|_| format!("{provider} 官方价格暂不可用。"))?;
+            let text = response.text().await.map_err(|_| "官方价格下载未完成。")?;
+            catalog.extend(quota_core::decode_official_prices(provider, &text, date)?);
+        }
         let mut store = state.store.lock().unwrap();
         let mut saved = store.saved.clone();
         saved.catalog = catalog;
-        saved.price_date = chrono::Local::now().format("%Y-%m-%d").to_string();
+        saved.official_pricing = true;
+        saved.price_date = date.to_string();
         store.commit(saved)?;
         store.reprice();
         Ok::<(), String>(())
@@ -218,15 +228,16 @@ async fn update_prices(app: AppHandle) -> Result<AppSnapshot, String> {
 }
 
 #[tauri::command]
-async fn clear_history(app: AppHandle) -> Result<AppSnapshot, String> {
+async fn clear_history(app: AppHandle, service: String) -> Result<AppSnapshot, String> {
     let state = controller(&app);
     let reader = state.reader.clone();
-    tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().clear_history())
+    let selected = service.clone();
+    tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().clear_history(&selected))
         .await
         .map_err(|_| "清除历史未完成。")??;
     {
         let mut store = state.store.lock().unwrap();
-        store.snapshot.usage.records.clear();
+        store.snapshot.usage.records.retain(|record| record.service != service);
         store.snapshot.usage.scanned_at = None;
         store.reprice();
     }
@@ -413,6 +424,10 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             if let tauri::WindowEvent::ThemeChanged(theme) = event {
                 platform::update_app_icon(window.app_handle(), *theme);
+            }
+            #[cfg(windows)]
+            if let tauri::WindowEvent::ThemeChanged(_) = event {
+                platform::taskbar_theme::sync(window.app_handle());
             }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();

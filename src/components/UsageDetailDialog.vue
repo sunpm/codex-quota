@@ -23,11 +23,11 @@ const tiers = computed(() => {
 <template>
   <Dialog :open="true" @update:open="value => { if (!value) emit('close') }"><DialogContent class="detail-dialog"><DialogHeader><DialogTitle>{{ title }}</DialogTitle><DialogDescription>{{ records.length }} 条用量记录 · 当前筛选范围</DialogDescription></DialogHeader>
     <div class="detail-context">
-      <div class="detail-totals"><strong>{{ total.tokens.toLocaleString('zh-CN') }} Tokens</strong><span>{{ costLabel(total) }} <strong :class="{ 'unpriced-text': total.count && !total.priced }" :title="costTooltip(total)">{{ summaryMoney(total) }}</strong><span class="muted"> · API 等价估算</span><span v-if="total.unpriced" class="unpriced-text"> · {{ total.unpriced.toLocaleString('zh-CN') }} 条未定价</span></span></div>
+      <div class="detail-totals"><strong>{{ total.tokens.toLocaleString('zh-CN') }} Tokens</strong><span>{{ costLabel(total) }} <strong :class="{ 'unpriced-text': total.count && !total.priced }" :title="costTooltip(total)">{{ summaryMoney(total) }}</strong><span class="muted"> · API 等价估算</span></span></div>
       <div v-if="sessions.length === 1" class="session-identity"><span class="muted">会话 ID</span><code>{{ sessions[0] }}</code></div>
       <details v-else><summary>会话 ID（{{ sessions.length }}）</summary><code v-for="session in sessions" :key="session" class="session-id">{{ session }}</code></details>
       <details v-if="directories.length"><summary>工作目录</summary><div v-for="{ directory, root } in directories" :key="directory" class="directory"><code>{{ directory }}</code><div v-if="root !== directory" class="muted">主项目：<code>{{ root }}</code></div></div></details>
-      <div v-if="tiers.length > 1" class="tier-summary"><div v-for="item in tiers" :key="item.tier"><h3>{{ item.tier }}</h3><span :title="item.total.tokens.toLocaleString()">{{ shortTokens(item.total.tokens) }} Tokens</span><span class="muted" :title="costTooltip(item.total)">{{ costLabel(item.total) }} {{ summaryMoney(item.total) }}<template v-if="item.total.unpriced"> · <span class="unpriced-text">{{ item.total.unpriced.toLocaleString('zh-CN') }} 条未定价</span></template></span></div></div>
+      <div v-if="tiers.length > 1" class="tier-summary"><div v-for="item in tiers" :key="item.tier"><h3>{{ item.tier }}</h3><span :title="item.total.tokens.toLocaleString()">{{ shortTokens(item.total.tokens) }} Tokens</span><span class="muted" :title="costTooltip(item.total)">{{ costLabel(item.total) }} {{ summaryMoney(item.total) }}</span></div></div>
     </div>
     <UsageRecordTable :records="records" :state="state" />
     <div class="dialog-actions"><Button @click="emit('close')">完成</Button></div>

@@ -21,9 +21,17 @@ pub struct UsageTokens {
     #[serde(default)]
     pub cache_write_long: u64,
     pub cache_write_reported: Option<bool>,
+    pub input_reported: Option<bool>,
+    pub output_reported: Option<bool>,
+    pub cached_reported: Option<bool>,
 }
 
 impl UsageTokens {
+    pub fn complete(&self) -> bool {
+        self.input_reported != Some(false)
+            && self.output_reported != Some(false)
+            && self.cached_reported != Some(false)
+    }
     pub fn total(&self) -> u64 {
         self.input + self.output + self.cached + self.cache_write
     }
@@ -35,7 +43,7 @@ impl UsageTokens {
         (self.cache_write_reported == Some(true) || self.cache_write > 0)
             .then_some(self.cache_write)
     }
-    fn valid_history(&self) -> bool {
+    pub(crate) fn valid_history(&self) -> bool {
         [self.input, self.output, self.cached, self.cache_write]
             .iter()
             .all(|n| *n < i64::MAX as u64 / 16)
@@ -133,10 +141,13 @@ impl UsageHistory {
         }
         Ok(history)
     }
-    fn codex_records(&self) -> Result<BTreeMap<String, UsageRecord>, String> {
+    fn supported_records(&self) -> Result<BTreeMap<String, UsageRecord>, String> {
         let mut records = BTreeMap::new();
         for (key, value) in &self.records {
-            if value.get("service").and_then(Value::as_str) != Some("codex") {
+            let service = value.get("service").and_then(Value::as_str);
+            if service != Some("codex")
+                && !(service == Some("antigravity") && key.starts_with("antigravity:v2:"))
+            {
                 continue;
             }
             let mut record: UsageRecord = serde_json::from_value(value.clone())
@@ -199,10 +210,11 @@ pub struct LocalUsageReader {
     saved_history: UsageHistory,
     history_loaded: bool,
     records: BTreeMap<String, UsageRecord>,
+    antigravity: crate::antigravity_usage::AntigravityUsageReader,
 }
 
 impl LocalUsageReader {
-    pub fn new(codex_home: PathBuf, history_path: PathBuf) -> Self {
+    pub fn new(codex_home: PathBuf, gemini_home: PathBuf, history_path: PathBuf) -> Self {
         Self {
             codex_home,
             history_path,
@@ -211,14 +223,19 @@ impl LocalUsageReader {
             saved_history: UsageHistory::default(),
             history_loaded: false,
             records: BTreeMap::new(),
+            antigravity: crate::antigravity_usage::AntigravityUsageReader::new(gemini_home),
         }
     }
-    pub fn clear_history(&mut self) -> Result<(), String> {
+    pub fn clear_history(&mut self, service: &str) -> Result<(), String> {
+        if !["codex", "antigravity"].contains(&service) {
+            return Err("请选择要清除历史的服务。".into());
+        }
         let mut history = UsageHistory::load(&self.history_path)?;
-        history.codex_records()?;
+        let mut retained = history.supported_records()?;
+        retained.retain(|_, record| record.service != service);
         history
             .records
-            .retain(|_, value| value.get("service").and_then(Value::as_str) != Some("codex"));
+            .retain(|_, value| value.get("service").and_then(Value::as_str) != Some(service));
         let projects: BTreeSet<_> = history
             .records
             .values()
@@ -240,8 +257,10 @@ impl LocalUsageReader {
         self.history = history.clone();
         self.saved_history = history;
         self.history_loaded = true;
-        self.records.clear();
-        self.cache.clear();
+        self.records.retain(|_, record| record.service != service);
+        for (id, record) in retained { self.records.entry(id).or_insert(record); }
+        if service == "codex" { self.cache.clear(); }
+        else { self.antigravity.clear_cache(); }
         Ok(())
     }
     pub fn scan(&mut self, rescan: bool) -> UsageScan {
@@ -251,7 +270,7 @@ impl LocalUsageReader {
         let mut result = UsageScan::default();
         if !self.history_loaded {
             match UsageHistory::load(&self.history_path)
-                .and_then(|history| history.codex_records().map(|records| (history, records)))
+                .and_then(|history| history.supported_records().map(|records| (history, records)))
             {
                 Ok((history, records)) => {
                     self.history = history.clone();
@@ -306,9 +325,25 @@ impl LocalUsageReader {
         }
         self.cache.retain(|file, _| alive.contains(file));
         for record in records.values_mut() {
-            if let Some(thread) = continuations.get(&record.session) {
+            if let Some(thread) = continuations.get(&record.session).filter(|_| record.service == "codex") {
                 record.session = thread.clone();
             }
+        }
+        let antigravity = self.antigravity.scan(rescan);
+        result.file_count += antigravity.file_count;
+        result.warnings.extend(antigravity.warnings);
+        for id in antigravity.replaced_ids {
+            records.remove(&id);
+            self.history.records.remove(&id);
+        }
+        for mut record in antigravity.records {
+            if let Some(old) = records.get(&record.id) {
+                if record.model == "unknown" { record.model = old.model.clone(); }
+                if record.project.is_empty() { record.project = old.project.clone(); }
+                record.estimated_duration = record.estimated_duration.or(old.estimated_duration);
+                record.estimated_first_token = record.estimated_first_token.or(old.estimated_first_token);
+            }
+            records.insert(record.id.clone(), record);
         }
         let projects: BTreeSet<_> = records
             .values()
@@ -344,14 +379,22 @@ impl LocalUsageReader {
         if failures > 0 {
             result
                 .warnings
-                .push(format!("{failures} 处日志无法读取，统计可能不完整"));
+                .push(format!("Codex：{failures} 处日志无法读取，统计可能不完整"));
         }
         if invalid > 0 {
             result
                 .warnings
-                .push(format!("{invalid} 条记录格式无效，已跳过"));
+                .push(format!("Codex：{invalid} 条记录格式无效，已跳过"));
         }
         result
+    }
+    pub fn invalidate_service(&mut self, service: &str) -> Result<(), String> {
+        match service {
+            "codex" => self.cache.clear(),
+            "antigravity" => self.antigravity.clear_cache(),
+            _ => return Err("请选择要重新扫描的服务。".into()),
+        }
+        Ok(())
     }
     fn read_file(&self, path: &Path) -> io::Result<Option<CachedFile>> {
         let metadata = fs::metadata(path)?;
@@ -451,7 +494,7 @@ fn merge_record(records: &mut BTreeMap<String, UsageRecord>, record: &UsageRecor
     records.insert(record.id.clone(), record.clone());
 }
 
-fn is_uuid(value: &str) -> bool {
+pub(crate) fn is_uuid(value: &str) -> bool {
     value.len() == 36
         && value.bytes().enumerate().all(|(i, byte)| {
             if [8, 13, 18, 23].contains(&i) {
@@ -762,9 +805,8 @@ fn canonical_signature(value: &Value) -> String {
 }
 
 fn token_counts(values: &Map<String, Value>) -> Option<UsageTokens> {
-    let count = |key| {
-        values
-            .get(key)
+    let count = |value: Option<&Value>| {
+        value
             .and_then(|v| {
                 v.as_u64().or_else(|| {
                     v.as_f64()
@@ -774,12 +816,24 @@ fn token_counts(values: &Map<String, Value>) -> Option<UsageTokens> {
             })
             .filter(|n| *n < i64::MAX as u64 / 16)
     };
-    let input = count("input_tokens")?;
-    let output = count("output_tokens")?;
-    let cached = count("cached_input_tokens")
-        .or_else(|| count("cache_read_input_tokens"))
+    let input = count(values.get("input_tokens"))?;
+    let output = count(values.get("output_tokens"))?;
+    let details = values.get("input_tokens_details");
+    let cached = count(values.get("cached_input_tokens"))
+        .or_else(|| count(values.get("cache_read_input_tokens")))
+        .or_else(|| count(details.and_then(|v| v.get("cached_tokens"))))
         .unwrap_or(0);
-    let write = count("cache_write_input_tokens").or_else(|| count("cache_write_tokens"));
+    let mut write = count(values.get("cache_write_input_tokens"))
+        .or_else(|| count(values.get("cache_write_tokens")))
+        .or_else(|| count(details.and_then(|v| v.get("cache_write_tokens"))));
+    let mut cache_write_long = 0;
+    if let Some(ttl) = details.and_then(|v| v.get("cache_write_tokens_details")) {
+        let short = count(ttl.get("ttl_30m_tokens"))?;
+        cache_write_long = count(ttl.get("ttl_12h_tokens"))?;
+        let total = short + cache_write_long;
+        if write.is_some_and(|count| count != total) { return None; }
+        write = Some(total);
+    }
     let cache_write = write.unwrap_or(0);
     if cached + cache_write > input {
         return None;
@@ -789,8 +843,9 @@ fn token_counts(values: &Map<String, Value>) -> Option<UsageTokens> {
         output,
         cached,
         cache_write,
-        cache_write_long: 0,
+        cache_write_long,
         cache_write_reported: Some(write.is_some()),
+        ..Default::default()
     })
 }
 

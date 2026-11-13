@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{watch, Mutex as AsyncMutex};
 
 pub struct Controller {
+    pub codex_home: std::path::PathBuf,
     pub store: Mutex<Store>,
     pub reader: Arc<Mutex<LocalUsageReader>>,
     pub client: AsyncMutex<CodexClient>,
@@ -43,6 +44,11 @@ impl Controller {
             .or_else(|| dirs::home_dir().map(|p| p.join(".codex")))
             .ok_or("无法找到 Codex 目录")?;
         let path = data_dir.join("desktop-state.json");
+        let gemini_home = std::env::var_os("GEMINI_CLI_HOME")
+            .filter(|value| !value.is_empty())
+            .map(std::path::PathBuf::from)
+            .or_else(|| dirs::home_dir().map(|home| home.join(".gemini")))
+            .ok_or("无法找到 Antigravity 数据目录")?;
         let (mut saved, error) = match SavedState::load(&path) {
             Ok(saved) => (saved, None),
             Err(error) => (SavedState::default(), Some(error)),
@@ -59,6 +65,9 @@ impl Controller {
         }
         if !settings.antigravity_enabled {
             saved.antigravity_announcements.tracker.has_baseline = false;
+        } else if saved.antigravity_schedule.failures == 0 {
+            // Quota snapshots are memory-only; a normal poll deadline must not delay startup.
+            saved.antigravity_schedule.next_attempt = 0.0;
         }
         let snapshot = AppSnapshot {
             antigravity: AntigravitySnapshot::default(),
@@ -86,7 +95,7 @@ impl Controller {
                 ..Default::default()
             },
             usage: UsageSnapshot {
-                source: codex_home.to_string_lossy().into_owned(),
+                source: format!("Codex: {}\nAntigravity: {}", codex_home.display(), gemini_home.display()),
                 ..Default::default()
             },
             prices: Vec::new(),
@@ -115,9 +124,11 @@ impl Controller {
         let (active, _) = watch::channel(settings.monitoring_enabled && !preview);
         let (antigravity_active, _) = watch::channel(settings.antigravity_enabled && !preview);
         Ok(Self {
+            codex_home: codex_home.clone(),
             store: Mutex::new(store),
             reader: Arc::new(Mutex::new(LocalUsageReader::new(
                 codex_home,
+                gemini_home,
                 data_dir.join("usage-history.json"),
             ))),
             client: AsyncMutex::new(CodexClient::default()),
@@ -426,20 +437,20 @@ pub async fn refresh_antigravity(app: &AppHandle, force: bool) {
 
 pub async fn scan_usage(app: &AppHandle, rescan: bool) {
     let state = controller(app);
-    let codex_home = {
+    let codex_home = state.codex_home.clone();
+    {
         let mut store = state.store.lock().unwrap();
         if state.preview || store.snapshot.usage.refreshing {
             return;
         }
         store.snapshot.usage.refreshing = true;
-        std::path::PathBuf::from(&store.snapshot.usage.source)
-    };
+    }
     state.emit(app);
     let reader = state.reader.clone();
     let scan = tauri::async_runtime::spawn_blocking(move || {
         let scan = reader.lock().unwrap().scan(rescan);
         let (mut titles, warnings) = crate::session_titles::read(&codex_home);
-        let sessions: std::collections::BTreeSet<_> = scan.records.iter().map(|record| &record.session).collect();
+        let sessions: std::collections::BTreeSet<_> = scan.records.iter().filter(|record| record.service == "codex").map(|record| &record.session).collect();
         titles.retain(|session, _| sessions.contains(session));
         (scan, titles, warnings)
     }).await;

@@ -1,7 +1,7 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toRefs, useLocalStorage } from '@vueuse/core'
 import { isPlainObject, isString } from '@pmun/utils'
-import type { Metric, Page } from '@/types'
+import type { Metric, Page, QuotaService, UsageService } from '@/types'
 import type { SortDirection } from './table'
 import { dayKey, shiftDay } from './usage'
 
@@ -52,7 +52,14 @@ const options = { writeDefaults: false, serializer: { read: (raw: string) => rea
 // Retain the original session preferences as the shared detail filters.
 const details = useLocalStorage('usage.filters.sessions.v1', { ...initialDefaults }, options)
 const overview = ref<UsageFilters>({ ...initialDefaults })
-export const overviewGroupBy = ref<'model' | 'project'>('model')
+export const usageService = useLocalStorage<UsageService | 'all'>('usage.service.v1', 'all', {
+  serializer: { read: value => value === 'codex' || value === 'antigravity' ? value : 'all', write: value => value },
+})
+export const quotaService = useLocalStorage<QuotaService>('quota.service.v1', 'all', {
+  serializer: { read: value => value === 'codex' || value === 'antigravity' ? value : 'all', write: value => value },
+})
+watch(usageService, () => { details.value.model = 'all'; overview.value.model = 'all' })
+export const overviewGroupBy = ref<'model' | 'project' | 'session'>('model')
 
 export function syncOverviewToDetails(view: 'session' | 'project' = 'session') {
   details.value = { ...overview.value, view, search: '' }

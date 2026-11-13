@@ -1,0 +1,31 @@
+Antigravity local usage adapter — source review 2026-11-09
+
+CC Switch (MIT), Copyright (c) 2025 Jason Young
+https://github.com/farion1231/cc-switch/tree/8656ebd91f3eba631837126e29df71e8353b7e43
+session_usage_agy.rs, session_usage_agy/native_models.rs, providers/agy.rs
+Adapted native step-to-generation model/timing field associations and fresh-input /
+thinking-inclusive-output semantics. Reviewed #8693 (merged), #8914 (not merged),
+and #8941 (closed, index-shadowing fix present).
+License: cc-switch-LICENSE.txt
+
+TokenUsageInsights (MIT), Copyright (c) 2026 wengct, Will 保哥
+https://github.com/doggy8088/TokenUsageInsights/tree/6574fdf2201e1b720444aa3825ad95b24fdeb9aa
+src/antigravity.rs, src/antigravity_metadata.rs
+Adapted trajectory workspace field associations. Native generations are counted
+without adding parent/subagent summary messages.
+License: TokenUsageInsights-LICENSE.txt
+
+CodexBar (MIT), Copyright (c) 2026 Peter Steinberger
+https://github.com/steipete/CodexBar/tree/7447bc77c2497323d9c41e40164ce705533493c8
+docs/antigravity.md, AntigravityLocalSQLite.swift
+Read-only SQLite discovery, partial coverage, and event-time provenance informed
+this adapter. No credential, local-server export, or decryption route is included.
+License: CodexBar-LICENSE.txt
+
+models.dev (MIT), Copyright (c) 2025 models.dev
+https://github.com/anomalyco/models.dev/tree/7e4631a92c6459f4508371fe42dd1f499f9060d8
+Google and OpenAI complete provider objects retrieved from the public v1 API;
+Anthropic text prices derived from pinned provider TOML entries for Sonnet/Opus
+4.5, 4.6, 5 and 5.5. Snapshot date: 2026-11-09.
+Only recorded, recognized model IDs are matched. Unknown suffixes remain unpriced.
+License: models-dev-LICENSE.txt

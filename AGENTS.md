@@ -18,7 +18,7 @@
 
 ## 项目结构
 
-- Codex 与 Antigravity 的桌面额度应用，保留 Codex 用量分析，支持 macOS 13+（Apple Silicon / Intel）与 Windows x64；主窗口为主体，菜单栏 / 托盘可选。
+- Codex 与 Antigravity 的桌面额度与本地用量分析应用，支持 macOS 13+（Apple Silicon / Intel）与 Windows x64；主窗口为主体，菜单栏 / 托盘可选。
 - `src/`：Vue 3、TypeScript 与 shadcn-vue 界面，Vite 构建，Apache ECharts 按需加载图表。
 - `src-tauri/`：Rust 桌面入口、Codex / Antigravity 子进程、监测调度、系统集成、设置迁移与 Tauri updater。
 - `crates/quota-core/`：额度、日志解析、增量扫描、历史、Decimal 定价与通知判定；保持与桌面运行时分离。
@@ -35,8 +35,8 @@
 - 聚焦使用边框变色和内侧 ring / 描边，保留清晰的键盘焦点，不增加控件外轮廓或改变高度。检查默认、聚焦、失焦及键盘操作，并与相邻控件对照；不要把焦点外扩当作布局错位来修正。
 - 设置中的多选入口直接展示已选项目名称，不仅显示数量；空选时明确显示“不显示”。
 - 百分比和倒计时使用等宽数字。额度状态色统一使用 `quotaColor`；品牌识别与额度状态分开。
-- 额度接入范围为 Codex + Antigravity；Token、项目与费用分析仍只包含 Codex。不接入其他服务，不实现多账号管理或自动切换。旧服务历史保留存储，不参与新统计。
-- Antigravity 首版仅通过官方 `agy -p /usage --output-format json` 取数，由 CLI 处理登录；不提取、复制或保存 Google 凭据，不并行实现本地接口或其他取数路线。默认关闭，使用独立的 `antigravity.cli.*` 设置，不恢复旧版接入或凭据。
+- 额度与本地 Token、会话、项目及费用分析范围均为 Codex + Antigravity。不接入其他服务，不实现多账号管理或自动切换。其他旧服务历史保留存储，不参与新统计。
+- Antigravity 额度仅通过官方 `agy -p /usage --output-format json` 取数，由 CLI 处理登录；不提取、复制或保存 Google 凭据，不并行实现本地接口或其他额度取数路线。默认关闭，使用独立的 `antigravity.cli.*` 设置，不恢复旧版额度接入或凭据。
 - Antigravity 按服务返回的分组名称和桶 ID / 名称展示，不固定模型分组；仅明确的 `window` 字段区分五小时与周额度，缺失或未知时显示“额度”。CLI 未提供可靠身份时只保留内存中的当前快照，不积累历史或触发个人额度恢复提醒。
 - Antigravity 子进程单独禁用自动更新、禁止后台交互登录并限制运行时间；登录或兼容性问题需用户处理时停止自动重试。平台实现及最低 CLI 版本见 `docs/development.md`，不得将编译通过写成静默查询实机验收通过。
 - 启动显示主窗口和 Dock 图标；关闭窗口继续后台监测，有菜单栏额度入口时隐藏 Dock 图标，否则保留 Dock 入口。重新打开复用同一窗口并恢复 Dock 图标；`⌘Q` 或菜单栏退出项彻底退出。菜单栏显示偏好与额度监测开关独立。
@@ -47,7 +47,7 @@
 - 恢复通知依据真实观测值，不能由显示舍入或倒计时归零触发；维持按 Codex 账号、窗口去重及跨重启行为。
 - 通知开关只控制提醒，关闭期间仍更新观测基线，避免重新开启时补发旧事件。
 - 仅在启用额度监测时复用 Codex 登录态；凭据不输出到日志、错误、测试夹具或 UserDefaults，不改写 Codex 登录态。
-- 用量分析只读取 Codex 日志；旧版其他服务的历史和自定义价格保留存储，不参与统计或展示。“清除已保存历史”只清除 Codex 历史，不删除源日志或其他服务旧记录。
+- 用量分析只读 Codex 日志及 Antigravity CLI / 桌面端的本地 JSONL、SQLite；不依赖额度开关、运行中的界面或 hook。只统计来源确认的真实计数，缺失字段保持未知；Antigravity 输入不含缓存，输出已含思考。旧 .pb 不解密，旧版 Antigravity 历史保留但不自动纳入新统计，可从现存源文件重新导入。其他服务历史与价格继续保留但不展示。重新扫描与清除历史按所选服务处理，不删除源日志、其他服务记录或模型价格。
 - 引用或改编外部代码、图标时保留来源和许可，并同步 `THIRD_PARTY_NOTICES.md` 与打包资源。
 - 应用内更新由 Tauri updater 负责下载、验签、安装和重启，默认自动检查，安装必须由用户确认；公钥由构建环境注入，私钥仅用于发布签名。旧 Sparkle 版本需手动迁移一次，不将新更新包写入旧 appcast。多平台清单、独立密钥配置和发布约定见 `docs/updating.md`。
 
@@ -60,7 +60,7 @@
 - 人工验收按本次改动覆盖菜单栏 / 托盘、额度空态 / 错误态、设置持久化、系统通知及退出清理；没有环境或真实账号授权的平台、系统版本和架构明确列为未验收。
 - 不直接替换 `/Applications` 中用户正在使用的安装；在 `dist/` 或临时目录检查产物。
 - `.github/workflows/check.yml` 在日常提交 / PR 编译 Mac 双架构和 Windows x64，普通 PR 合并不发版。`pnpm release <版本>` 是手动发布入口：按最近正式版生成 GitHub 原生变更说明写入 CHANGELOG，同步 package/Cargo 版本与锁文件，经检查和终端确认后提交并推送标签。Tauri 配置与网页预览读取 `package.json` 版本，构建必须校验标签与源码一致，不用临时版本覆盖。
-- `release.yml` 手动运行只生成三平台安装包 artifacts；版本标签推送后从 CHANGELOG 提取说明并生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在 CI 发布流程中预先重复编译。预发布不替换 latest。推送版本标签即触发发布，仍需用户对应授权；实现发布脚本不等于授权执行发布。
+- `release.yml` 固定完整提交 SHA 调用 `sunpm/tauri-release-workflows` 的共享 Tauri 工作流；通用编排、CHANGELOG 提取和产物汇总在共享仓库维护，本项目保留版本准备、构建脚本、安装提示、签名密钥和 Releases。构建脚本接收共享的 `RELEASE_NOTES_FILE`，兼容原 `CODEX_QUOTA_RELEASE_NOTES_FILE`。手动运行只生成三平台安装包 artifacts；版本标签推送后从 CHANGELOG 提取说明并生成签名包，汇总安装包、签名、`latest.json` 与 SHA256 后才公开 Release。统一构建入口通过 Tauri 执行一次前端构建和锁定依赖的 Rust 编译，不在 CI 发布流程中预先重复编译。预发布不替换 latest。推送版本标签即触发发布，仍需用户对应授权；实现发布脚本不等于授权执行发布。
 
 ## Git 提交规范
 

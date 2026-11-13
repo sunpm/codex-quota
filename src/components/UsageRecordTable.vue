@@ -4,7 +4,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { isPlainObject } from '@pmun/utils'
 import { ChevronRight } from '@lucide/vue'
 import type { AppSnapshot, UsageRecord } from '@/types'
-import { basename, billingTierLabel, costLabel, dateText, exactMoney, money, shortTokens, summarize } from '@/lib/usage'
+import { basename, billingTierLabel, costLabel, dateText, exactMoney, money, reportedTokenCount, serviceName, shortTokens, summarize } from '@/lib/usage'
 import { compareTableNumbers, useTablePagination, type SortDirection } from '@/lib/table'
 import DetailColumnsMenu from './DetailColumnsMenu.vue'
 import TablePagination from './TablePagination.vue'
@@ -22,18 +22,19 @@ interface Column {
 const allColumns = computed<Column[]>(() => [
   { id: 'time', label: '时间', width: 120, min: 100, sortValue: r => r.date, value: (r: UsageRecord) => dateText(r.date), title: (r: UsageRecord) => dateText(r.date, true) },
   ...(props.showIdentity ? [
-    { id: 'session', label: '对话', width: 210, min: 120, value: (r: UsageRecord) => props.state.usage.sessionTitles[r.session] || `${basename(props.state.usage.projectRoots[r.project] ?? r.project)} · ${r.session.slice(0, 12)}`, title: (r: UsageRecord) => `${props.state.usage.sessionTitles[r.session] || r.session}\n${r.session}` },
+    { id: 'session', label: '对话', width: 210, min: 120, value: (r: UsageRecord) => (r.service === 'codex' ? props.state.usage.sessionTitles[r.session] : undefined) || `${basename(props.state.usage.projectRoots[r.project] ?? r.project)} · ${r.session.slice(0, 12)}`, title: (r: UsageRecord) => `${(r.service === 'codex' ? props.state.usage.sessionTitles[r.session] : undefined) || r.session}\n${r.session}` },
     { id: 'project', label: '项目', width: 160, min: 100, value: (r: UsageRecord) => basename(props.state.usage.projectRoots[r.project] ?? r.project), title: (r: UsageRecord) => r.project },
   ] : []),
+  { id: 'service', label: '服务', width: 110, min: 90, value: (r: UsageRecord) => serviceName(r.service) },
   { id: 'model', label: '模型', width: 200, min: 100, value: (r: UsageRecord) => r.model },
-  { id: 'input', label: '新增输入', width: 90, min: 75, numeric: true, sortValue: r => r.tokens.input, value: (r: UsageRecord) => shortTokens(r.tokens.input), title: (r: UsageRecord) => r.tokens.input.toLocaleString() },
-  { id: 'output', label: '输出', width: 80, min: 64, numeric: true, sortValue: r => r.tokens.output, value: (r: UsageRecord) => shortTokens(r.tokens.output), title: (r: UsageRecord) => r.tokens.output.toLocaleString() },
-  { id: 'cached', label: '缓存命中', width: 90, min: 75, numeric: true, sortValue: r => r.tokens.cached, value: (r: UsageRecord) => shortTokens(r.tokens.cached), title: (r: UsageRecord) => r.tokens.cached.toLocaleString() },
+  { id: 'input', label: '新增输入', width: 90, min: 75, numeric: true, sortValue: r => reportedTokenCount(r, 'input'), value: (r: UsageRecord) => r.tokens.inputReported === false ? '—' : shortTokens(r.tokens.input), title: (r: UsageRecord) => r.tokens.inputReported === false ? '来源未报告' : r.tokens.input.toLocaleString() },
+  { id: 'output', label: '输出', width: 80, min: 64, numeric: true, sortValue: r => reportedTokenCount(r, 'output'), value: (r: UsageRecord) => r.tokens.outputReported === false ? '—' : shortTokens(r.tokens.output), title: (r: UsageRecord) => r.tokens.outputReported === false ? '来源未报告' : r.tokens.output.toLocaleString() },
+  { id: 'cached', label: '缓存命中', width: 90, min: 75, numeric: true, sortValue: r => reportedTokenCount(r, 'cached'), value: (r: UsageRecord) => r.tokens.cachedReported === false ? '—' : shortTokens(r.tokens.cached), title: (r: UsageRecord) => r.tokens.cachedReported === false ? '来源未报告' : r.tokens.cached.toLocaleString() },
   { id: 'cacheWrite', label: '缓存写入', width: 90, min: 75, numeric: true, optional: true, sortValue: r => (r.tokens.cacheWriteReported || r.tokens.cacheWrite > 0) ? r.tokens.cacheWrite : null, value: (r: UsageRecord) => (r.tokens.cacheWriteReported || r.tokens.cacheWrite > 0) ? shortTokens(r.tokens.cacheWrite) : '—', title: (r: UsageRecord) => (r.tokens.cacheWriteReported || r.tokens.cacheWrite > 0) ? r.tokens.cacheWrite.toLocaleString() : '日志未报告' },
   { id: 'cost', label: costLabel(total.value), width: 105, min: 100, numeric: true, sortValue: r => r.cost === null ? null : Number(r.cost), value: (r: UsageRecord) => money(r.cost), title: (r: UsageRecord) => exactMoney(r.cost) },
-  { id: 'speed', label: '速度', width: 100, min: 85, numeric: true, optional: true, sortValue: r => r.tokens.output >= 200 && (r.estimatedDuration ?? 0) >= 1 ? r.tokens.output / r.estimatedDuration! : null, value: (r: UsageRecord) => r.tokens.output >= 200 && (r.estimatedDuration ?? 0) >= 1 ? `≈${(r.tokens.output / r.estimatedDuration!).toFixed(1)} t/s` : '—' },
+  { id: 'speed', label: '速度', width: 100, min: 85, numeric: true, optional: true, sortValue: r => (reportedTokenCount(r, 'output') ?? 0) >= 200 && (r.estimatedDuration ?? 0) >= 1 ? r.tokens.output / r.estimatedDuration! : null, value: (r: UsageRecord) => (reportedTokenCount(r, 'output') ?? 0) >= 200 && (r.estimatedDuration ?? 0) >= 1 ? `≈${(r.tokens.output / r.estimatedDuration!).toFixed(1)} t/s` : '—' },
   { id: 'firstToken', label: '首字', width: 80, min: 64, numeric: true, optional: true, sortValue: r => r.estimatedFirstToken ?? null, value: (r: UsageRecord) => r.estimatedFirstToken != null ? `≈${r.estimatedFirstToken.toFixed(2)}s` : '—' },
-  { id: 'billingTier', label: '计费档位', width: 150, min: 100, optional: true, value: (r: UsageRecord) => billingTierLabel(r) },
+  { id: 'billingTier', label: '计费档位', width: 150, min: 100, optional: true, value: (r: UsageRecord) => r.service === 'antigravity' ? '—' : billingTierLabel(r) },
 ])
 const columns = computed(() => allColumns.value.filter(column => !column.optional || props.state.settings.detailColumns.includes(column.id)))
 const widths = useLocalStorage<Record<string, number>>('usage.detail.widths.v1', {}, {
