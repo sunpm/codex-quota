@@ -177,8 +177,8 @@ input[type=date], input[type=datetime-local] { height: 28px; padding: 3px 9px; f
 .breakdown-item strong { font-size: 13px; font-variant-numeric: tabular-nums; }
 .card-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; padding-top: 10px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .efficiency-footer { flex-direction: column; align-items: stretch; gap: 7px; }
-.hit-rate-track { height: 5px; }
-.hit-rate-track > div { height: 100%; background: var(--primary); border-radius: inherit; transition: width .2s ease-out; }
+.hit-rate-track { --quota-color: var(--primary); }
+.hit-rate-track > div { transition: width .2s ease-out; }
 .efficiency-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .summary-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 28px; padding: 11px 16px; }
 .summary-bar-item { display: inline-flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
@@ -284,8 +284,8 @@ th svg { display: inline; vertical-align: middle; }
 .announcement-service-tag.tag-codex { background: color-mix(in srgb, #3279bd 12%, transparent); color: #3279bd; }
 .announcement-service-tag.tag-antigravity { background: color-mix(in srgb, #448d86 12%, transparent); color: #448d86; }
 .announcement-empty { padding: 18px 12px; }
-.credit-row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 10px; }
-.credit-expiry { display: inline-flex; align-items: baseline; gap: 12px; font-variant-numeric: tabular-nums; }
+.credit-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; font-size: 12px; margin-top: 10px; }
+.credit-expiry { display: inline-flex; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; margin-left: auto; gap: 4px 12px; font-variant-numeric: tabular-nums; }
 .credits p { font-size: 12px; margin-top: 8px; }
 .announcement + .announcement { border-top: 1px solid var(--border); padding-top: 15px; margin-top: 15px; }
 .announcement .section-heading { margin-bottom: 6px; }

@@ -80,7 +80,7 @@ export function previewSnapshot(): AppSnapshot {
   }
   state.usage = { records, projectRoots: {}, sessionTitles, warnings: [], scannedAt: now, fileCount: 312, refreshing: false, source: '离线示例日志' }
   state.quota.windows = [{ id: 'codex:primary:300', bucket: 'codex', name: 'Codex', usedPercent: 28, durationMinutes: 300, resetsAt: now + 12700, label: null }, { id: 'codex:secondary:10080', bucket: 'codex', name: 'Codex', usedPercent: 63, durationMinutes: 10080, resetsAt: now + 276000, label: null }]
-  for (const window of state.quota.windows) state.quota.history[window.id] = { window, points: Array.from({ length: 32 }, (_, index) => ({ date: now - (31 - index) * 900, usedPercent: Math.max(0, window.usedPercent - (31 - index) * .7), segment: index === 0 ? 1 : 2 })).filter((_, index) => index === 0 || index >= 8) }
+  for (const window of state.quota.windows) state.quota.history[window.id] = { window, points: Array.from({ length: 32 }, (_, index) => ({ date: now - (31 - index) * 900, usedPercent: index < 12 ? Math.min(100, 60 + index * 5) : Math.max(0, window.usedPercent - (31 - index) * .7), segment: index < 12 ? 1 : 2 })).filter((_, index) => index < 12 || index >= 16) }
   state.settings.antigravityEnabled = true
   state.antigravity = {
     groups: [
@@ -101,7 +101,7 @@ export function previewSnapshot(): AppSnapshot {
     ], error: null, lastSuccess: now, refreshing: false, requiresAction: false,
   }
   state.quota.lastSuccess = now
-  state.quota.resetCredits = { availableCount: 1, credits: [{ id: 'sample-credit', resetType: 'codexRateLimits', status: 'available', expiresAt: now + 360000 }] }
+  state.quota.resetCredits = { availableCount: 3, credits: [2400, 64800, 360000].map((remaining, index) => ({ id: `sample-credit-${index}`, resetType: 'codexRateLimits', status: 'available', expiresAt: now + remaining })) }
   state.prices = Object.values(officialPrices)
   state.prices.push({ model: 'unknown', service: 'antigravity', rates: { input: null, output: null, cached: null, cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })
   // Explicit offline scenes exercise the displayed states without starting a local CLI.

@@ -26,7 +26,6 @@ const period = ref(24)
 const showCodex = computed(() => quotaService.value === 'all' || quotaService.value === 'codex')
 const showAntigravity = computed(() => quotaService.value === 'antigravity' || (quotaService.value === 'all' && Boolean(props.state.antigravity.groups.length)))
 const availableCredits = computed(() => (props.state.quota.resetCredits?.credits ?? []).filter(credit => credit.status === 'available' && credit.resetType === 'codexRateLimits').sort((a, b) => (a.expiresAt ?? Infinity) - (b.expiresAt ?? Infinity)))
-const nextExpiringCredit = computed(() => availableCredits.value.find(credit => credit.expiresAt !== null && credit.expiresAt > props.now))
 function deadlineTone(deadline: number | null) {
   if (deadline === null) return undefined
   const remaining = deadline - props.now
@@ -56,7 +55,11 @@ function trend(series: QuotaSeries): EChartsCoreOption {
     tooltip: { trigger: 'axis', showContent: false, axisPointer: { type: 'line', snap: false } },
     xAxis: { type: 'time', min: (chartNow.value - period.value * 3600) * 1000, max: chartEnd.value * 1000, axisPointer: { triggerEmphasis: false }, axisTick: { show: false }, axisLine: { show: false }, axisLabel: { hideOverlap: true, showMinLabel: false, showMaxLabel: false, formatter: (value: number) => new Date(value).toLocaleString('zh-CN', period.value === 24 ? { hour: '2-digit', minute: '2-digit' } : { month: '2-digit', day: '2-digit' }) } },
     yAxis: { type: 'value', min: 0, max: 100, interval: 50, axisLabel: { formatter: '{value}%' }, splitLine: { lineStyle: { color: '#88888820' } } },
-    series: segments.map(segment => ({ name: quotaLabel(series.window.durationMinutes, series.window.label), type: 'line', symbol: 'circle', symbolSize: 4, showSymbol: true, connectNulls: false, lineStyle: { width: 2, color: series.window.usedPercent >= 100 ? '#c33f53' : series.window.usedPercent >= 80 ? '#b87530' : '#647d93' }, itemStyle: { color: series.window.usedPercent >= 100 ? '#c33f53' : series.window.usedPercent >= 80 ? '#b87530' : '#647d93' }, data: points.filter(point => point.segment === segment).map(point => [point.date * 1000, point.usedPercent]) })),
+    visualMap: {
+      type: 'piecewise', show: false, dimension: 1,
+      pieces: [{ lt: 80, color: '#647d93' }, { gte: 80, lt: 100, color: '#b87530' }, { gte: 100, color: '#c33f53' }],
+    },
+    series: segments.map(segment => ({ name: quotaLabel(series.window.durationMinutes, series.window.label), type: 'line', symbol: 'circle', symbolSize: 4, showSymbol: true, connectNulls: false, lineStyle: { width: 2 }, data: points.filter(point => point.segment === segment).map(point => [point.date * 1000, point.usedPercent]) })),
   }
 }
 const quotaCharts = computed(() => Object.values(props.state.quota.history).map(series => ({ series, option: trend(series), latest: visiblePoints(series).at(-1) })))
@@ -107,9 +110,9 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
         </div>
         <div v-if="state.quota.resetCredits" class="credits">
           <div class="section-heading"><h3>重置卡</h3><span>{{ state.quota.resetCredits.availableCount }} 张可用</span></div>
-          <div v-for="credit in availableCredits" :key="credit.id" class="credit-row">
-            <span>{{ credit.expiresAt != null && credit.expiresAt <= now ? '已到期' : '可用重置卡' }}</span>
-            <span class="credit-expiry"><span v-if="credit.id === nextExpiringCredit?.id && countdown(credit.expiresAt, now)" class="deadline-countdown" :data-tone="deadlineTone(credit.expiresAt)">{{ countdown(credit.expiresAt, now) }}</span><span v-if="credit.expiresAt != null" class="muted">到期 · {{ dateText(credit.expiresAt) }}</span><span v-else class="muted">到期时间未知</span></span>
+          <div v-for="(credit, index) in availableCredits" :key="credit.id" class="credit-row">
+            <span>重置卡 {{ index + 1 }}<template v-if="credit.expiresAt != null && credit.expiresAt <= now"> · 已到期</template></span>
+            <span class="credit-expiry"><span v-if="credit.expiresAt != null && credit.expiresAt > now && countdown(credit.expiresAt, now)" class="deadline-countdown" :data-tone="deadlineTone(credit.expiresAt)">{{ countdown(credit.expiresAt, now) }}</span><span v-if="credit.expiresAt != null" class="muted">到期 · {{ dateText(credit.expiresAt) }}</span><span v-else class="muted">到期时间未知</span></span>
           </div>
           <p v-if="availableCredits.length < state.quota.resetCredits.availableCount" class="muted">到期明细不完整</p>
         </div>
