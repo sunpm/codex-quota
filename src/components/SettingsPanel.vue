@@ -76,25 +76,25 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
         </div>
         <div class="setting-group">
           <div class="setting-row"><span id="low-quota-label">低额度提醒</span><Switch id="low-quota" aria-labelledby="low-quota-label" :model-value="state.settings.lowQuotaNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('lowQuotaNotifications', $event)" /></div>
-          <div v-if="state.settings.lowQuotaNotifications" class="dependent-settings" role="group" aria-labelledby="low-quota-label">
-            <form class="setting-row" @submit.prevent="changeSettings({ lowQuotaThreshold: Number(lowQuotaDraft) })">
+          <fieldset class="dependent-settings" aria-labelledby="low-quota-label" :disabled="!state.settings.lowQuotaNotifications">
+            <form class="setting-row low-quota-setting" @submit.prevent="changeSettings({ lowQuotaThreshold: Number(lowQuotaDraft) })">
               <label for="low-quota-threshold">剩余额度阈值（%）</label>
               <div class="low-quota-inputs"><input id="low-quota-threshold" v-model.number="lowQuotaDraft" type="number" min="1" max="99" step="1" required /><Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || lowQuotaDraft === state.settings.lowQuotaThreshold">保存</Button></div>
             </form>
-          </div>
+          </fieldset>
         </div>
         <div class="setting-group">
           <div class="setting-row"><span id="credits-label">重置卡到期前提醒</span><Switch id="credits" aria-labelledby="credits-label" :model-value="state.settings.resetCreditReminders" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('resetCreditReminders', $event)" /></div>
-          <div v-if="state.settings.resetCreditReminders" class="dependent-settings" role="group" aria-labelledby="credits-label">
-            <ReminderSchedule id="credits-reminder" labelledby="credits-label" :minutes="state.settings.resetCreditReminderMinutes" setting="resetCreditReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
-          </div>
+          <fieldset class="dependent-settings" aria-labelledby="credits-label" :disabled="!state.settings.resetCreditReminders">
+            <ReminderSchedule id="credits-reminder" labelledby="credits-label" :minutes="state.settings.resetCreditReminderMinutes" setting="resetCreditReminderMinutes" :disabled="!state.settings.monitoringEnabled || !state.settings.resetCreditReminders" />
+          </fieldset>
         </div>
         <div class="setting-group">
           <div class="setting-row"><span id="quota-reset-label">额度重置前提醒</span><Switch id="quota-reset" aria-labelledby="quota-reset-label" :model-value="state.settings.quotaResetReminders" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('quotaResetReminders', $event)" /></div>
-          <div v-if="state.settings.quotaResetReminders" class="dependent-settings" role="group" aria-labelledby="quota-reset-label">
-            <ReminderSchedule id="quota-reset-reminder" labelledby="quota-reset-label" :minutes="state.settings.quotaResetReminderMinutes" setting="quotaResetReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
+          <fieldset class="dependent-settings" aria-labelledby="quota-reset-label" :disabled="!state.settings.quotaResetReminders">
+            <ReminderSchedule id="quota-reset-reminder" labelledby="quota-reset-label" :minutes="state.settings.quotaResetReminderMinutes" setting="quotaResetReminderMinutes" :disabled="!state.settings.monitoringEnabled || !state.settings.quotaResetReminders" />
             <p class="muted reminder-note">仅提醒未用完的额度；提前时间须短于额度周期。</p>
-          </div>
+          </fieldset>
         </div>
         <div class="setting-group">
           <div class="setting-row"><span id="announcement-notifications-label">Codex 重置动态通知</span><Switch id="announcement-notifications" aria-labelledby="announcement-notifications-label" :model-value="state.settings.announcementNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('announcementNotifications', $event)" /></div>
@@ -129,6 +129,7 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
 </template>
 
 <style scoped>
+.low-quota-setting { justify-content: flex-start; gap: 12px; }
 .low-quota-inputs { display: flex; align-items: center; gap: 8px; }
 .low-quota-inputs input { width: 84px; font-variant-numeric: tabular-nums; }
 .release-notes { white-space: normal; }
