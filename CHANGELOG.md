@@ -2,6 +2,20 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.25.9](https://github.com/sunpm/codex-quota/releases/tag/v0.25.9)
+
+<!-- Release notes generated using configuration in .github/release.yml at 2d6cbb8c070fb67f2b58d6eb6ab37b3420a20bac -->
+
+### What's Changed
+#### 更新内容
+* fix(updates): 修复自动更新提示并展示更新说明 by @sunpm in https://github.com/sunpm/codex-quota/pull/49
+* refactor(release): 接入共享 Tauri 发布流程 by @sunpm in https://github.com/sunpm/codex-quota/pull/50
+* fix(quota): 修复反重力单额度分组排列 by @sunpm in https://github.com/sunpm/codex-quota/pull/51
+* feat: 支持精确时间筛选、图表明细跳转与低额度提醒 by @sunpm in https://github.com/sunpm/codex-quota/pull/52
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.25.8...v0.25.9
+
 ## [0.25.8](https://github.com/sunpm/codex-quota/releases/tag/v0.25.8)
 
 <!-- Release notes generated using configuration in .github/release.yml at 5f8a5db65c1f04cbe3bfd7a2e0b317b15fc4474b -->
