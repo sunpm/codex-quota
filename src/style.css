@@ -200,7 +200,7 @@ input[type=date], input[type=datetime-local] { height: 28px; padding: 3px 9px; f
 .heatmap-section { padding-bottom: 12px; }
 .heatmap-section .section-heading { margin-bottom: 3px; }
 .heatmap-legend { color: var(--muted); display: flex; justify-content: flex-end; align-items: center; gap: 6px; font-size: 10px; margin-top: 7px; }
-.heatmap-scale { width: 54px; height: 8px; background: linear-gradient(90deg, #88888815, #33786c); border-radius: 2px; }
+.heatmap-scale { width: 54px; height: 8px; background: linear-gradient(90deg, var(--secondary), #33786c); border-radius: 2px; }
 .table-surface { padding: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 150px; }
 .table-surface > .section-heading { flex-shrink: 0; padding: 14px 16px; margin: 0; }
 .table-page .table-surface { min-height: 0; }
