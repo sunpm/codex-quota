@@ -61,6 +61,16 @@ bash scripts/test.sh
 
 生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
 
+## Codex 低额度提醒（2026-11-13）
+
+低额度判定位于 `quota-core::LowQuotaTracker`，只接收 Codex 成功读取后的已校验窗口。复用现有账号指纹、`SavedState` 原子保存及系统通知通道；先持久化观测和周期去重记录，再发送通知，保存失败不发送。观测基线与已消费周期分开保存，切换开关或修改阈值只重建基线；切换账号不比较不同账号的读数，同时保留仍未到期的各账号周期记录。
+
+设置键为 `quota.lowNotifications`（默认 `false`）和 `quota.lowThreshold`（默认 `20`，范围 `1–99` 的整数百分比），旧设置自动使用默认值。阈值在偏好读取和保存命令各自的入口校验，内部按类型传递。触发规则见[提醒与公开动态](usage.md#提醒与公开动态)。
+
+本次 `bash scripts/test.sh` 的 TypeScript 检查、Vite 构建和本机 Rust 编译通过，保留既有 chunk 大小提示。Chrome 完成一次离线设置关键流程：默认关闭、开启后阈值 `20`、保存 `25` 并切页保留、输入 `100` 被原生校验阻止，以及关闭监测时的禁用状态。Tab、方向键及 Enter 操作通过；默认、聚焦、失焦状态和相邻控件对齐均已观察。界面复用现有 Switch、Button、原生数字输入和主题，未引入设计系统变更。
+
+本轮未验证真实额度越线、跨重启的桌面磁盘持久化及系统通知投递，也未做其他平台编译或实机验收。仓库当前没有自动化测试，本次未新增测试、临时断言或测试夹具；编译和离线界面结果不代表通知运行时验收。
+
 ## Antigravity CLI 接入边界
 
 首版只使用官方 CLI 的 `agy -p /usage --output-format json`，不启动模型任务、不解析 TUI、不接入本地接口或自行获取 Google 凭据。执行前校验正式版版本：macOS 至少 1.1.11，Windows 至少 1.4.10；后者用于限定已核对的 headless 认证行为。通过 `CODEX_QUOTA_AGY`、`PATH`、用户安装目录查找原生可执行文件，Windows 只执行 `.exe`，不通过 shell、`.cmd` 或 WSL。

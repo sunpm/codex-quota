@@ -78,6 +78,12 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
         let mut store = state.store.lock().unwrap();
         let mut saved = store.saved.clone();
         settings.save_into(&mut saved.preferences);
+        if settings.monitoring_enabled != previous.monitoring_enabled
+            || settings.low_quota_notifications != previous.low_quota_notifications
+            || settings.low_quota_threshold != previous.low_quota_threshold
+        {
+            saved.low_quota.reset_baseline();
+        }
         if settings.monitoring_enabled != previous.monitoring_enabled {
             saved.recovery.state = None;
             saved.announcements.tracker.has_baseline = false;
@@ -281,6 +287,7 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
         .clone();
     if !(settings.monitoring_enabled
         && (settings.recovery_notifications
+            || settings.low_quota_notifications
             || settings.reset_credit_reminders
             || settings.quota_reset_reminders
             || settings.announcement_notifications)
@@ -297,7 +304,7 @@ async fn test_notification(app: AppHandle) -> Result<(), String> {
     platform::send_notification(
         &app,
         "Codex 通知测试",
-        "通知已就绪，将按设置发送额度恢复、重置前、重置卡到期或重置动态提醒。",
+        "通知已就绪，将按设置发送额度不足、恢复、重置前、重置卡到期或重置动态提醒。",
         None,
     )
     .await
