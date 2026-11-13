@@ -28,23 +28,25 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
     <p v-if="!state.settings.antigravityEnabled" class="notice">Antigravity 监测已关闭，可在设置中开启。</p>
     <p v-if="state.antigravity.error" class="notice warning" role="status">{{ state.antigravity.error }}<span v-if="state.antigravity.lastSuccess"> 上次读数已过期。</span></p>
     <div v-if="!state.antigravity.groups.length" class="empty-state">{{ state.antigravity.refreshing ? '正在读取 Antigravity 额度…' : state.settings.antigravityEnabled ? '尚无可用额度数据，请确认已在终端登录 agy。' : '暂无额度数据' }}</div>
-    <div v-for="(group, index) in state.antigravity.groups" :key="index" class="antigravity-group">
-      <h3 class="antigravity-group-title">{{ group.name }}</h3>
-      <div class="quota-windows-grid">
-        <div v-for="bucket in group.buckets" :key="bucket.id" class="quota-window" :class="tone(bucket.remainingPercent)" :title="`额度桶：${bucket.id}`">
-          <div class="quota-label-row">
-            <div>
-              <h4>{{ windowLabel(bucket.window) }}</h4>
-              <small>{{ bucket.name }}</small>
+    <div v-else class="antigravity-groups" :class="{ 'single-bucket-groups': state.antigravity.groups.every(group => group.buckets.length === 1) }">
+      <div v-for="(group, index) in state.antigravity.groups" :key="index" class="antigravity-group">
+        <h3 class="antigravity-group-title">{{ group.name }}</h3>
+        <div class="quota-windows-grid">
+          <div v-for="bucket in group.buckets" :key="bucket.id" class="quota-window" :class="tone(bucket.remainingPercent)" :title="`额度桶：${bucket.id}`">
+            <div class="quota-label-row">
+              <div>
+                <h4>{{ windowLabel(bucket.window) }}</h4>
+                <small>{{ bucket.name }}</small>
+              </div>
+              <strong>{{ bucket.disabled ? '未启用' : bucket.remainingPercent === null ? '未知' : `${Math.floor(bucket.remainingPercent)}%` }}</strong>
             </div>
-            <strong>{{ bucket.disabled ? '未启用' : bucket.remainingPercent === null ? '未知' : `${Math.floor(bucket.remainingPercent)}%` }}</strong>
-          </div>
-          <div v-if="bucket.remainingPercent !== null" class="quota-track" aria-hidden="true">
-            <div :style="{ width: `${bucket.remainingPercent}%` }" />
-          </div>
-          <div class="quota-time-row">
-            <span v-if="countdown(bucket.resetsAt, now)" class="deadline-countdown">{{ countdown(bucket.resetsAt, now) }}</span>
-            <span v-if="bucket.resetsAt !== null" class="muted">重置 · {{ dateText(bucket.resetsAt) }}</span>
+            <div v-if="bucket.remainingPercent !== null" class="quota-track" aria-hidden="true">
+              <div :style="{ width: `${bucket.remainingPercent}%` }" />
+            </div>
+            <div class="quota-time-row">
+              <span v-if="countdown(bucket.resetsAt, now)" class="deadline-countdown">{{ countdown(bucket.resetsAt, now) }}</span>
+              <span v-if="bucket.resetsAt !== null" class="muted">重置 · {{ dateText(bucket.resetsAt) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -57,8 +59,14 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
 </template>
 
 <style scoped>
-.antigravity-group { margin-top: 20px; }
+.antigravity-groups { display: grid; gap: 20px; margin-top: 20px; }
+.antigravity-group { min-width: 0; }
 .antigravity-group + .antigravity-group { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); padding-top: 18px; }
+.antigravity-group:only-child, .quota-window:only-child { grid-column: 1 / -1; }
+@media (min-width: 821px) {
+  .single-bucket-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+  .single-bucket-groups > .antigravity-group + .antigravity-group { border-top: 0; padding-top: 0; }
+}
 .antigravity-group-title { font-size: 13px; font-weight: 500; color: var(--foreground); margin-bottom: 10px; }
 .quota-label-row > div { min-width: 0; overflow-wrap: anywhere; }
 .unknown { --quota-color: var(--muted); }

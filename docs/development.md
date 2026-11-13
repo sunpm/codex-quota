@@ -35,6 +35,8 @@ pnpm dev
 
 浏览器不能访问桌面进程与本机数据。显式加 `?preview` 可查看标注为离线预览的匿名示例，不会连接真实 Codex 或 Antigravity。
 
+`?preview&antigravity=weekly-only` 提供两个模型组各一项周额度的离线场景，用于检查普通身份的额度排列；默认预览保留多额度与单额度组混合的场景。
+
 应用版本以 `package.json` 为准，Tauri 配置与网页预览直接读取该字段。正式发版使用 `pnpm release <版本>` 同步 Cargo 版本、锁文件和 CHANGELOG；普通 PR 无需递增版本，也不会触发发布。操作步骤见 [手动发布](updating.md#手动发布)。
 
 原生窗口离线验收需同时开启预览模式并使用新的空数据目录：
