@@ -24,7 +24,7 @@
 | [rust_decimal](https://github.com/paupino/rust-decimal) | 十进制定价计算 | MIT |
 | [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
 
-以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
+以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect、Pagination）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
 
 `@pmun/utils` 0.17.0 与 Day.js 的 MIT 许可于 2026-11-07 核对，随生成的依赖声明分发；工具方法的使用边界见 [开发说明](docs/development.md#通用工具方法)。
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useMutationObserver } from '@vueuse/core'
 import { groupBy as groupRecords } from '@pmun/utils'
 import { ChevronLeft, ChevronRight, CircleHelp, Search } from '@lucide/vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
@@ -24,6 +25,12 @@ const emit = defineEmits<{ navigate: [page: Page] }>()
 const { view, period, metric, sort, direction, model, search, start, end } = useUsageFilters(() => props.page)
 const groupBy = overviewGroupBy
 const trendMetric = overviewTrendMetric
+function readHeatmapColors() {
+  const styles = getComputedStyle(document.documentElement)
+  return { background: styles.getPropertyValue('--card').trim(), empty: styles.getPropertyValue('--secondary').trim() }
+}
+const heatmapColors = ref(readHeatmapColors())
+useMutationObserver(document.documentElement, () => { heatmapColors.value = readHeatmapColors() }, { attributes: true, attributeFilter: ['class'] })
 const services = [{ id: 'codex', name: 'Codex', color: '#3279bd' }, { id: 'antigravity', name: 'Antigravity', color: '#448d86' }] as const
 const selectedServices = computed(() => services.filter(service => usageService.value === 'all' || service.id === usageService.value))
 const grouping = computed(() => props.page === 'details' ? view.value : groupBy.value)
@@ -176,12 +183,16 @@ const heatmap = computed<EChartsCoreOption>(() => {
   const first = new Date(Math.min(new Date(`${earliest}T00:00:00`).getTime(), shiftDay(last, -370).getTime()))
   const data = heatmapDays.value
   return {
-    tooltip: { renderMode: 'richText', formatter: (params: { dataIndex: number }) => {
+    tooltip: { renderMode: 'html', appendTo: 'body', formatter: (params: { dataIndex: number }) => {
       const day = data[params.dataIndex]!, summary = day.summary
-      return `${day.value[0]}\n${summary.tokens.toLocaleString('zh-CN')} Tokens\n${costLabel(summary)}：${summaryMoney(summary)}`
+      return `${day.value[0]}<br>${summary.tokens.toLocaleString('zh-CN')} Tokens<br>${costLabel(summary)}：${summaryMoney(summary)}`
     } },
-    visualMap: { show: false, min: 0, max: Math.max(1, ...data.map(item => Number(item.value[1]))), inRange: { color: ['#88888815', '#a3d1ca', '#679e94', '#33786c'] } },
-    calendar: { top: 28, left: 32, right: 8, bottom: 4, range: [dayKey(first), dayKey(last)], cellSize: ['auto', 15], splitLine: { show: false }, itemStyle: { borderWidth: 2, borderColor: 'transparent' }, yearLabel: { show: false }, dayLabel: { firstDay: 1, nameMap: 'ZH', fontSize: 10, color: '#888' }, monthLabel: { nameMap: 'ZH', color: '#888', fontSize: 11 } },
+    visualMap: { show: false, min: 0, max: Math.max(1, ...data.map(item => item.summary.tokens)), inRange: { color: [heatmapColors.value.empty, '#a3d1ca', '#679e94', '#33786c'] } },
+    calendar: {
+      top: 28, left: 32, right: 8, bottom: 4, range: [dayKey(first), dayKey(last)], cellSize: ['auto', 15],
+      splitLine: { show: false }, itemStyle: { color: heatmapColors.value.empty, borderWidth: 2, borderColor: heatmapColors.value.background }, yearLabel: { show: false },
+      dayLabel: { firstDay: 1, nameMap: 'ZH', fontSize: 10, color: '#888' }, monthLabel: { nameMap: 'ZH', color: '#888', fontSize: 11 },
+    },
     series: [{ type: 'heatmap', coordinateSystem: 'calendar', data }],
   }
 })
@@ -339,7 +350,12 @@ function openHeatmapRecords(index: number) {
       <TablePagination v-model:page="tablePage" v-model:page-size="pageSize" :total="groups.length" />
       </template>
     </section>
-    <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>每日用量</h2></div><Chart v-if="hasReadableUsage && records.length" :option="heatmap" label="当前时间范围内每日 Tokens 用量热力图，点击日期查看当天记录" :height="150" :animations="false" @select="openHeatmapRecords" /><div v-else class="empty-state">{{ hasReadableUsage ? '此时间范围没有用量记录' : '尚未读取本机日志' }}</div><p v-if="hasReadableUsage && records.length" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p></section>
+    <section v-if="page === 'overview'" class="surface heatmap-section">
+      <div class="section-heading"><h2>每日用量</h2></div>
+      <Chart v-if="hasReadableUsage && heatmapDays.length" :option="heatmap" label="当前时间范围内每日 Tokens 用量热力图，点击日期查看当天记录" :height="150" :animations="false" @select="openHeatmapRecords" />
+      <div v-else class="empty-state">{{ hasReadableUsage ? '此时间范围没有用量记录' : '尚未读取本机日志' }}</div>
+      <p v-if="hasReadableUsage && heatmapDays.length" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p>
+    </section>
     <UsageDetailDialog v-if="detail" :title="detail.title" :records="detail.records" :state="state" @close="detail = null" />
   </div>
 </template>

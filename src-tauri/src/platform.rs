@@ -1,4 +1,5 @@
 use crate::{monitor::controller, state::AppSnapshot};
+use std::{collections::HashMap, sync::Mutex, time::Duration};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
 
@@ -89,6 +90,8 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
         if codex_visible {
             let content = codex_tray_content(snapshot);
             apply_tray_content(app, &tray, "Codex", content);
+        } else {
+            app.state::<TrayCountdowns>().0.lock().unwrap().remove("Codex");
         }
     }
     if let Some(tray) = app.tray_by_id(ANTIGRAVITY_TRAY) {
@@ -96,6 +99,8 @@ pub fn update_tray(app: &AppHandle, snapshot: &AppSnapshot) {
         if antigravity_visible {
             let content = antigravity_tray_content(snapshot);
             apply_tray_content(app, &tray, "Antigravity", content);
+        } else {
+            app.state::<TrayCountdowns>().0.lock().unwrap().remove("Antigravity");
         }
     }
     #[cfg(target_os = "macos")]
@@ -124,6 +129,7 @@ enum TrayMenuItemSpec {
     },
     /// 可点击的辅助信息行（如重置卡数量），点击唤起面板
     ActionNote(String),
+    Deadline { label: String, timestamp: Option<f64>, expires: bool },
     /// 静态只读信息行（如错误、提示或刷新状态）
     Info(String),
 }
@@ -132,6 +138,39 @@ struct TrayContent {
     title: String,
     tooltip: String,
     items: Vec<TrayMenuItemSpec>,
+}
+
+#[derive(Default)]
+struct TrayCountdowns(Mutex<HashMap<String, Vec<TrayCountdown>>>);
+
+struct TrayCountdown {
+    item: tauri::menu::MenuItem<tauri::Wry>,
+    label: String,
+    timestamp: Option<f64>,
+    expires: bool,
+    text: String,
+}
+
+fn deadline_text(label: &str, timestamp: Option<f64>, expires: bool, now: f64) -> String {
+    let action = if expires { "到期" } else { "重置" };
+    let prefix = if label.is_empty() { String::new() } else { format!("{label} · ") };
+    let Some(date) = timestamp.and_then(|time| chrono::DateTime::from_timestamp(time as i64, 0)) else {
+        return format!("{prefix}{action}时间未知");
+    };
+    let remaining = (timestamp.unwrap() - now).ceil().max(0.0) as u64;
+    let duration = if remaining == 0 {
+        if expires { "已到期".into() } else { "等待实际重置".into() }
+    } else {
+        let value = if remaining > 86400 {
+            format!("{} 天 {} 小时", remaining / 86400, remaining % 86400 / 3600)
+        } else if remaining > 3600 {
+            format!("{} 小时 {:02} 分", remaining / 3600, remaining % 3600 / 60)
+        } else {
+            format!("{} 分 {:02} 秒", remaining / 60, remaining % 60)
+        };
+        format!("{value}后{action}")
+    };
+    format!("{prefix}{duration} · {}", date.with_timezone(&chrono::Local).format("%m-%d %H:%M"))
 }
 
 /// 绘制菜单项中的彩色胶囊/环形进度条图标。
@@ -345,9 +384,10 @@ fn codex_tray_content(snapshot: &AppSnapshot) -> TrayContent {
 
             items.push(TrayMenuItemSpec::Quota {
                 id: format!("open:quota:codex:{}", window.id),
-                label: format!("{name} · 剩余 {remaining}%{reset_str}"),
+                label: format!("{name} · 剩余 {remaining}%"),
                 remaining_percent: Some(window.remaining()),
             });
+            items.push(TrayMenuItemSpec::Deadline { label: String::new(), timestamp: window.resets_at, expires: false });
 
             tooltip_lines.push(format!("{name}：剩余 {remaining}%{reset_str}"));
         }
@@ -357,6 +397,15 @@ fn codex_tray_content(snapshot: &AppSnapshot) -> TrayContent {
         if credits.available_count > 0 {
             items.push(TrayMenuItemSpec::ActionNote(format!("重置卡 · {} 张可用", credits.available_count)));
             tooltip_lines.push(format!("可用重置卡：{} 张", credits.available_count));
+            let available = credits.available_credits();
+            for (index, credit) in available.iter().enumerate() {
+                items.push(TrayMenuItemSpec::Deadline {
+                    label: format!("重置卡 {}", index + 1), timestamp: credit.expires_at, expires: true,
+                });
+            }
+            if (available.len() as u64) < credits.available_count {
+                items.push(TrayMenuItemSpec::Info("到期明细不完整".into()));
+            }
         }
     }
 
@@ -414,7 +463,7 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
                 let rem_int = p.floor() as u64;
                 items.push(TrayMenuItemSpec::Quota {
                     id: format!("open:quota:ag:{}", bucket.id),
-                    label: format!("{display_name} · {window} · 剩余 {rem_int}%{reset_str}"),
+                    label: format!("{display_name} · {window} · 剩余 {rem_int}%"),
                     remaining_percent: Some(p),
                 });
                 tooltip_lines.push(format!("{} · {window} · {} [{}]：剩余 {rem_int}%{reset_str}", group.name, bucket.name, bucket.id));
@@ -425,6 +474,9 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
                     remaining_percent: None,
                 });
                 tooltip_lines.push(format!("{} · {window} · {} [{}]：剩余未知", group.name, bucket.name, bucket.id));
+            }
+            if !bucket.disabled {
+                items.push(TrayMenuItemSpec::Deadline { label: String::new(), timestamp: bucket.resets_at, expires: false });
             }
         }
     }
@@ -450,6 +502,7 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
 
 /// 写入单个状态项的菜单、提示与标题；Windows 托盘不支持标题，仅使用图标与提示。
 fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &str, content: TrayContent) {
+    let mut countdowns = Vec::new();
     let menu = (|| -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
         use tauri::menu::{IconMenuItem, Menu, MenuItem, PredefinedMenuItem};
         let menu = Menu::new(app)?;
@@ -466,6 +519,12 @@ fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &s
                     let item = MenuItem::with_id(app, "open", text, true, None::<&str>)?;
                     menu.append(&item)?;
                 }
+                TrayMenuItemSpec::Deadline { label, timestamp, expires } => {
+                    let text = deadline_text(label, *timestamp, *expires, crate::state::now());
+                    let item = MenuItem::with_id(app, "open", &text, true, None::<&str>)?;
+                    menu.append(&item)?;
+                    countdowns.push(TrayCountdown { item, label: label.clone(), timestamp: *timestamp, expires: *expires, text });
+                }
                 TrayMenuItemSpec::Info(text) => {
                     let item = MenuItem::new(app, text, false, None::<&str>)?;
                     menu.append(&item)?;
@@ -480,7 +539,9 @@ fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &s
     })();
 
     if let Ok(menu) = menu {
-        let _ = tray.set_menu(Some(menu));
+        if tray.set_menu(Some(menu)).is_ok() {
+            app.state::<TrayCountdowns>().0.lock().unwrap().insert(service.into(), countdowns);
+        }
     }
     let _ = tray.set_tooltip(Some(content.tooltip));
     #[cfg(target_os = "macos")]
@@ -507,6 +568,7 @@ fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &s
 
 pub fn setup(app: &AppHandle) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+    app.manage(TrayCountdowns::default());
     let open = MenuItem::with_id(app, "open", "打开面板", true, Some("CmdOrCtrl+0"))?;
     let quit = MenuItem::with_id(app, "quit", "退出 Codex Quota", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &PredefinedMenuItem::separator(app)?, &quit])?;
@@ -590,6 +652,28 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         _ => {}
     });
     power::install(app);
+    let countdown_app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = controller(&countdown_app);
+        let mut interval = tokio::time::interval(Duration::from_secs(1));
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+        loop {
+            interval.tick().await;
+            if state.paused.load(std::sync::atomic::Ordering::Relaxed) {
+                continue;
+            }
+            let app = countdown_app.clone();
+            let _ = countdown_app.run_on_main_thread(move || {
+                let time = crate::state::now();
+                for countdown in app.state::<TrayCountdowns>().0.lock().unwrap().values_mut().flatten() {
+                    let text = deadline_text(&countdown.label, countdown.timestamp, countdown.expires, time);
+                    if text != countdown.text && countdown.item.set_text(&text).is_ok() {
+                        countdown.text = text;
+                    }
+                }
+            });
+        }
+    });
     #[cfg(target_os = "macos")]
     if let Some(window) = app.get_webview_window("main") {
         update_app_icon(app, window.theme()?);
