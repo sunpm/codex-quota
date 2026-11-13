@@ -2,6 +2,17 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.26.1](https://github.com/sunpm/codex-quota/releases/tag/v0.26.1)
+
+<!-- Release notes generated using configuration in .github/release.yml at 460f38e9c79b7d4ef3c0e775f60e5e9a42df51ba -->
+
+### What's Changed
+#### 更新内容
+* fix(ui): 修复额度展示、分页与全年热力图 by @sunpm in https://github.com/sunpm/codex-quota/pull/53
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.26.0...v0.26.1
+
 ## [0.26.0](https://github.com/sunpm/codex-quota/releases/tag/v0.26.0)
 
 <!-- Release notes generated using configuration in .github/release.yml at fb0ec1b52fc099a4ad110fd5eb8b3540ff41440e -->
