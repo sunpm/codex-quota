@@ -57,7 +57,9 @@ export function previewSnapshot(): AppSnapshot {
   state.prices.push({ model: 'unknown', service: 'antigravity', rates: { input: null, output: null, cached: null, cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })
   // Explicit offline scenes exercise the displayed states without starting a local CLI.
   const antigravityScene = new URLSearchParams(location.search).get('antigravity')
-  if (antigravityScene === 'stale') {
+  if (antigravityScene === 'weekly-only') {
+    state.antigravity.groups = state.antigravity.groups.slice(0, 2).map(group => ({ ...group, buckets: group.buckets.filter(bucket => bucket.window === 'weekly') }))
+  } else if (antigravityScene === 'stale') {
     state.antigravity.error = 'Antigravity 网络连接失败，请检查网络。60 秒后重试。'
     state.antigravity.lastSuccess = now - 600
   } else if (antigravityScene === 'refreshing') state.antigravity.refreshing = true
