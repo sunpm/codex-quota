@@ -68,28 +68,53 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
 </script>
 <template>
   <div class="settings-page">
-    <section class="surface settings-section"><div class="section-heading"><h2 id="monitoring-label">Codex 额度监测</h2><Switch id="monitoring" aria-labelledby="monitoring-label" :model-value="state.settings.monitoringEnabled" @update:model-value="changeSettings({ monitoringEnabled: $event })" /></div><fieldset class="dependent-settings" :disabled="!state.settings.monitoringEnabled"><div class="setting-row"><span id="recovery-label">额度恢复时通知</span><Switch id="recovery" aria-labelledby="recovery-label" :model-value="state.settings.recoveryNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('recoveryNotifications', $event)" /></div>
-      <div class="setting-row"><span id="low-quota-label">低额度提醒</span><Switch id="low-quota" aria-labelledby="low-quota-label" :model-value="state.settings.lowQuotaNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('lowQuotaNotifications', $event)" /></div>
-      <form v-if="state.settings.lowQuotaNotifications" class="setting-row" @submit.prevent="changeSettings({ lowQuotaThreshold: Number(lowQuotaDraft) })">
-        <label for="low-quota-threshold">剩余额度阈值（%）</label>
-        <div class="low-quota-inputs"><input id="low-quota-threshold" v-model.number="lowQuotaDraft" type="number" min="1" max="99" step="1" required /><Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || lowQuotaDraft === state.settings.lowQuotaThreshold">保存</Button></div>
-      </form>
-      <div class="setting-row"><span id="credits-label">重置卡到期前提醒</span><Switch id="credits" aria-labelledby="credits-label" :model-value="state.settings.resetCreditReminders" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('resetCreditReminders', $event)" /></div>
-      <ReminderSchedule v-if="state.settings.resetCreditReminders" id="credits-reminder" labelledby="credits-label" :minutes="state.settings.resetCreditReminderMinutes" setting="resetCreditReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
-      <div class="setting-row"><span id="quota-reset-label">额度重置前提醒</span><Switch id="quota-reset" aria-labelledby="quota-reset-label" :model-value="state.settings.quotaResetReminders" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('quotaResetReminders', $event)" /></div>
-      <ReminderSchedule v-if="state.settings.quotaResetReminders" id="quota-reset-reminder" labelledby="quota-reset-label" :minutes="state.settings.quotaResetReminderMinutes" setting="quotaResetReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
-      <p v-if="state.settings.quotaResetReminders" class="muted reminder-note">仅提醒未用完的额度；提前时间须短于额度周期。</p>
-      <div class="setting-row"><span id="announcement-notifications-label">Codex 重置动态通知</span><Switch id="announcement-notifications" aria-labelledby="announcement-notifications-label" :model-value="state.settings.announcementNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('announcementNotifications', $event)" /></div></fieldset></section>
+    <section class="surface settings-section">
+      <div class="section-heading"><h2 id="monitoring-label">Codex 额度监测</h2><Switch id="monitoring" aria-labelledby="monitoring-label" :model-value="state.settings.monitoringEnabled" @update:model-value="changeSettings({ monitoringEnabled: $event })" /></div>
+      <fieldset class="dependent-settings" aria-labelledby="monitoring-label" :disabled="!state.settings.monitoringEnabled">
+        <div class="setting-group">
+          <div class="setting-row"><span id="recovery-label">额度恢复时通知</span><Switch id="recovery" aria-labelledby="recovery-label" :model-value="state.settings.recoveryNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('recoveryNotifications', $event)" /></div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-row"><span id="low-quota-label">低额度提醒</span><Switch id="low-quota" aria-labelledby="low-quota-label" :model-value="state.settings.lowQuotaNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('lowQuotaNotifications', $event)" /></div>
+          <div v-if="state.settings.lowQuotaNotifications" class="dependent-settings" role="group" aria-labelledby="low-quota-label">
+            <form class="setting-row" @submit.prevent="changeSettings({ lowQuotaThreshold: Number(lowQuotaDraft) })">
+              <label for="low-quota-threshold">剩余额度阈值（%）</label>
+              <div class="low-quota-inputs"><input id="low-quota-threshold" v-model.number="lowQuotaDraft" type="number" min="1" max="99" step="1" required /><Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || lowQuotaDraft === state.settings.lowQuotaThreshold">保存</Button></div>
+            </form>
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-row"><span id="credits-label">重置卡到期前提醒</span><Switch id="credits" aria-labelledby="credits-label" :model-value="state.settings.resetCreditReminders" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('resetCreditReminders', $event)" /></div>
+          <div v-if="state.settings.resetCreditReminders" class="dependent-settings" role="group" aria-labelledby="credits-label">
+            <ReminderSchedule id="credits-reminder" labelledby="credits-label" :minutes="state.settings.resetCreditReminderMinutes" setting="resetCreditReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-row"><span id="quota-reset-label">额度重置前提醒</span><Switch id="quota-reset" aria-labelledby="quota-reset-label" :model-value="state.settings.quotaResetReminders" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('quotaResetReminders', $event)" /></div>
+          <div v-if="state.settings.quotaResetReminders" class="dependent-settings" role="group" aria-labelledby="quota-reset-label">
+            <ReminderSchedule id="quota-reset-reminder" labelledby="quota-reset-label" :minutes="state.settings.quotaResetReminderMinutes" setting="quotaResetReminderMinutes" :disabled="!state.settings.monitoringEnabled" />
+            <p class="muted reminder-note">仅提醒未用完的额度；提前时间须短于额度周期。</p>
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-row"><span id="announcement-notifications-label">Codex 重置动态通知</span><Switch id="announcement-notifications" aria-labelledby="announcement-notifications-label" :model-value="state.settings.announcementNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('announcementNotifications', $event)" /></div>
+        </div>
+      </fieldset>
+    </section>
     <section class="surface settings-section">
       <div class="section-heading"><h2 id="antigravity-monitoring-label">Antigravity 额度监测</h2><Switch id="antigravity-monitoring" aria-labelledby="antigravity-monitoring-label" :model-value="state.settings.antigravityEnabled" @update:model-value="changeSettings({ antigravityEnabled: $event })" /></div>
-      <div class="setting-row"><span id="antigravity-announcements-label">Antigravity 重置动态通知</span><Switch aria-labelledby="antigravity-announcements-label" :model-value="state.settings.antigravityAnnouncementNotifications" :disabled="!state.settings.antigravityEnabled" @update:model-value="notifications('antigravityAnnouncementNotifications', $event)" /></div>
-      <div v-if="state.settings.antigravityEnabled && !state.antigravity.groups.length" class="antigravity-setup">
-        <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取 CLI 额度…' : state.antigravity.error ?? '请先安装官方 agy，并在终端运行 agy 登录。' }}</p>
-        <div class="setting-actions">
-          <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">安装说明 <ArrowUpRight :size="13" /></button>
-          <Button variant="outline" size="sm" :disabled="state.antigravity.refreshing" @click="execute('refresh_antigravity')">{{ state.antigravity.refreshing ? '读取中…' : '重新读取' }}</Button>
+      <fieldset class="dependent-settings" aria-labelledby="antigravity-monitoring-label" :disabled="!state.settings.antigravityEnabled">
+        <div class="setting-group">
+          <div class="setting-row"><span id="antigravity-announcements-label">Antigravity 重置动态通知</span><Switch aria-labelledby="antigravity-announcements-label" :model-value="state.settings.antigravityAnnouncementNotifications" :disabled="!state.settings.antigravityEnabled" @update:model-value="notifications('antigravityAnnouncementNotifications', $event)" /></div>
+          <div v-if="state.settings.antigravityEnabled && !state.antigravity.groups.length" class="antigravity-setup">
+            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取 CLI 额度…' : state.antigravity.error ?? '请先安装官方 agy，并在终端运行 agy 登录。' }}</p>
+            <div class="setting-actions">
+              <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">安装说明 <ArrowUpRight :size="13" /></button>
+              <Button variant="outline" size="sm" :disabled="state.antigravity.refreshing" @click="execute('refresh_antigravity')">{{ state.antigravity.refreshing ? '读取中…' : '重新读取' }}</Button>
+            </div>
+          </div>
         </div>
-      </div>
+      </fieldset>
     </section>
     <section class="surface settings-section"><div class="section-heading"><h2>系统通知</h2><span>{{ permissionText }}</span></div><div class="setting-actions"><Button variant="outline" size="sm" :disabled="!(state.settings.monitoringEnabled && (state.settings.recoveryNotifications || state.settings.lowQuotaNotifications || state.settings.resetCreditReminders || state.settings.quotaResetReminders || state.settings.announcementNotifications) || state.settings.antigravityEnabled && state.settings.antigravityAnnouncementNotifications)" @click="testNotification">测试通知</Button><Button v-if="(isPreview || state.platform === 'macos') && notificationStatus?.alertStyle !== 'persistent'" variant="outline" size="sm" @click="notificationGuideOpen = true">持久通知…</Button><Button variant="outline" size="sm" @click="systemCommand('open_notification_settings')">系统设置…</Button></div></section>
     <section class="surface settings-section"><h2>通用</h2><div class="setting-row"><label for="refresh-interval">刷新间隔</label><Popover v-model:open="intervalOpen"><PopoverAnchor as-child><NativeSelect id="refresh-interval" :model-value="intervalSelection" @change="selectInterval(($event.target as HTMLSelectElement).value)"><NativeSelectOption v-for="item in intervals" :key="item.value" :value="item.value">{{ item.label }}</NativeSelectOption><NativeSelectOption v-if="!intervals.some(item => item.value === state.settings.refreshInterval)" :value="state.settings.refreshInterval">{{ state.settings.refreshInterval }} 秒</NativeSelectOption><NativeSelectOption value="custom">自定义…</NativeSelectOption></NativeSelect></PopoverAnchor><PopoverContent class="interval-popover" align="end"><form @submit.prevent="saveInterval"><label class="field" for="custom-interval">刷新间隔（秒）<input id="custom-interval" v-model.number="intervalDraft" type="number" min="30" step="1" required autofocus /></label><p class="muted">最低 30 秒</p><div class="dialog-actions"><Button size="sm" type="button" variant="outline" @click="intervalOpen = false">取消</Button><Button size="sm" type="submit">保存</Button></div></form></PopoverContent></Popover></div><div class="setting-row"><span id="show-tray-label">{{ state.platform === 'windows' ? '系统托盘显示 Codex' : '菜单栏显示 Codex' }}</span><Switch id="show-tray" aria-labelledby="show-tray-label" :model-value="state.settings.showTray" @update:model-value="changeSettings({ showTray: $event })" /></div><div class="setting-row"><span id="antigravity-tray-label">{{ state.platform === 'windows' ? '系统托盘显示 Antigravity' : '菜单栏显示 Antigravity' }}</span><Switch aria-labelledby="antigravity-tray-label" :model-value="state.settings.antigravityShowTray" @update:model-value="changeSettings({ antigravityShowTray: $event })" /></div><div class="setting-row"><span id="autostart-label">登录时启动</span><Switch id="autostart" aria-labelledby="autostart-label" :model-value="state.settings.launchAtLogin" @update:model-value="changeSettings({ launchAtLogin: $event })" /></div><div class="setting-row"><span id="animations-label" title="图表与界面过渡动画；遵循系统减少动态效果设置。">动画特性</span><Switch id="animations" aria-labelledby="animations-label" :model-value="state.settings.animations" @update:model-value="changeSettings({ animations: $event })" /></div></section>
@@ -107,6 +132,6 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
 .low-quota-inputs { display: flex; align-items: center; gap: 8px; }
 .low-quota-inputs input { width: 84px; font-variant-numeric: tabular-nums; }
 .release-notes { white-space: normal; }
-.antigravity-setup { display: grid; gap: 8px; margin-top: 12px; }
-.reminder-note { margin: -4px 0 12px; font-size: 12px; }
+.antigravity-setup { display: grid; gap: 8px; }
+.reminder-note { font-size: 12px; }
 </style>

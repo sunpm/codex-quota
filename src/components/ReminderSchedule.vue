@@ -111,7 +111,7 @@ watch(() => props.disabled, disabled => { if (disabled) open.value = false })
 
 <style scoped>
 .reminder-schedule, .reminder-times, .reminder-time { display: flex; align-items: center; }
-.reminder-schedule { flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.reminder-schedule { flex-wrap: wrap; gap: 6px; }
 .reminder-times { flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .reminder-time { height: 28px; border: 1px solid var(--border); border-radius: 6px; padding-right: 2px; gap: 1px; font-variant-numeric: tabular-nums; }
 .reminder-time > :deep([data-slot=button][data-size=sm]) { height: 26px; padding: 2px 7px 2px 9px; border-radius: 5px 3px 3px 5px; }
