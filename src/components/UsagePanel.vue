@@ -5,8 +5,8 @@ import { ChevronRight, CircleHelp, Search } from '@lucide/vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { AppSnapshot, Metric, Page, UsageRecord } from '@/types'
-import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dayKey, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from '@/lib/usage'
-import { overviewGroupBy, syncOverviewToDetails, usageRanges, usageService, useUsageFilters, type UsageSort } from '@/lib/usage-filters'
+import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dateTimeKey, dayKey, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from '@/lib/usage'
+import { overviewGroupBy, parseUsageDateTime, syncOverviewToDetails, usageRanges, usageService, useUsageFilters, type UsageSort } from '@/lib/usage-filters'
 import { compareTableNumbers, useTablePagination } from '@/lib/table'
 import TablePagination from './TablePagination.vue'
 import TableSortButton from './TableSortButton.vue'
@@ -31,19 +31,25 @@ const detail = ref<{ title: string; records: UsageRecord[] } | null>(null)
 const tableScroll = ref<HTMLElement | null>(null)
 watch([() => props.page, grouping, usageService], () => { detail.value = null })
 watch(grouping, value => { if (value !== 'session' && sort.value === 'last') { sort.value = metric.value; direction.value = 'desc' } }, { immediate: true })
+const customRange = computed(() => {
+  const from = parseUsageDateTime(start.value), to = parseUsageDateTime(end.value)
+  return from !== null && to !== null && from < to ? { from, to } : null
+})
 const range = computed(() => {
   const today = startOfDay(new Date(props.clock.now * 1000))
   if (period.value === 'all') return { from: 0, to: props.clock.now + 1, days: 0 }
+  if (period.value === '24h') return { from: props.clock.now - 86400, to: props.clock.now, days: 0 }
+  if (period.value === 'custom') return { from: customRange.value?.from ?? 0, to: Math.min(customRange.value?.to ?? 0, props.clock.now + 1), days: 0 }
   let from = today, to = shiftDay(today, 1)
   if (period.value === 'yesterday') { from = shiftDay(today, -1); to = today }
   else if (period.value === '7' || period.value === '30') from = shiftDay(today, 1 - Number(period.value))
-  else if (period.value === 'custom') { from = new Date(`${start.value}T00:00:00`); to = shiftDay(new Date(`${end.value}T00:00:00`), 1) }
   const days = Math.round((Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) - Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) / 86400000)
   return { from: from.getTime() / 1000, to: Math.min(to.getTime() / 1000, props.clock.now + 1), days }
 })
 const rangeText = computed(() => {
   if (period.value === 'all') return ''
-  if (period.value === 'custom') return `${start.value} — ${end.value}`
+  if (period.value === 'custom') return customRange.value ? `${start.value.replace('T', ' ')} — ${end.value.replace('T', ' ')}` : ''
+  if (period.value === '24h') return `${dateTimeKey(new Date(range.value.from * 1000)).replace('T', ' ')} — ${dateTimeKey(new Date(range.value.to * 1000)).replace('T', ' ')}`
   const first = dayKey(new Date(range.value.from * 1000))
   const last = dayKey(shiftDay(new Date(range.value.from * 1000), Math.max(0, range.value.days - 1)))
   return first === last ? first : `${first} — ${last}`
@@ -55,9 +61,10 @@ const inModel = (record: UsageRecord) => model.value === 'all' || record.model =
 const records = computed(() => availableRecords.value.filter(record => record.date >= range.value.from && record.date < range.value.to && inModel(record)))
 const total = computed(() => summarize(records.value))
 const previous = computed(() => {
-  if (!range.value.days) return null
-  const from = shiftDay(new Date(range.value.from * 1000), -range.value.days).getTime() / 1000
-  const to = shiftDay(new Date(range.value.to * 1000), -range.value.days).getTime() / 1000
+  if (period.value === 'all' || range.value.to <= range.value.from) return null
+  const duration = period.value === 'custom' ? customRange.value!.to - customRange.value!.from : 86400
+  const from = range.value.days ? shiftDay(new Date(range.value.from * 1000), -range.value.days).getTime() / 1000 : range.value.from - duration
+  const to = range.value.days ? shiftDay(new Date(range.value.to * 1000), -range.value.days).getTime() / 1000 : range.value.to - duration
   return { from, to, total: summarize(availableRecords.value.filter(record => record.date >= from && record.date < to && inModel(record))) }
 })
 function changeText(kind: Metric) {
@@ -72,15 +79,23 @@ function changeText(kind: Metric) {
   const sign = delta > 0 ? '+' : '−'
   return { text: `${sign}${amount}（${(Math.abs(delta) / before * 100).toFixed(1)}%）`, title, direction }
 }
-const byHour = computed(() => period.value === 'today' || period.value === 'yesterday')
+const byHour = computed(() => period.value === 'today' || period.value === 'yesterday' || period.value === '24h' || period.value === 'custom' && customRange.value !== null && customRange.value.to - customRange.value.from <= 86400)
+const hourlyAcrossDays = computed(() => byHour.value && dayKey(new Date(range.value.from * 1000)) !== dayKey(new Date((range.value.to - 0.001) * 1000)))
 const buckets = computed(() => {
   const values = groupRecords(records.value, record => {
     const date = new Date(record.date * 1000)
-    return byHour.value ? `${String(date.getHours()).padStart(2, '0')}:00` : dayKey(date)
+    if (!byHour.value) return dayKey(date)
+    date.setMinutes(0, 0, 0)
+    return String(date.getTime() / 1000)
   })
-  if (byHour.value) for (let hour = 0; hour < 24; hour++) values[`${String(hour).padStart(2, '0')}:00`] ??= []
-  else if (period.value !== 'all' && range.value.days <= 366) for (let day = new Date(range.value.from * 1000); day.getTime() / 1000 < range.value.to; day = shiftDay(day, 1)) values[dayKey(day)] ??= []
-  return Object.entries(values).sort(([a], [b]) => a.localeCompare(b)).map(([key, records]) => ({
+  if (byHour.value) {
+    const first = new Date(range.value.from * 1000); first.setMinutes(0, 0, 0)
+    const to = period.value === 'today' || period.value === 'yesterday' ? shiftDay(startOfDay(first), 1).getTime() / 1000 : range.value.to
+    for (let hour = first.getTime() / 1000; hour < to; hour += 3600) values[String(hour)] ??= []
+  } else if (period.value !== 'all' && range.value.to - range.value.from <= 366 * 86400) {
+    for (let day = startOfDay(new Date(range.value.from * 1000)); day.getTime() / 1000 < range.value.to; day = shiftDay(day, 1)) values[dayKey(day)] ??= []
+  }
+  return Object.entries(values).sort(([a], [b]) => byHour.value ? Number(a) - Number(b) : a.localeCompare(b)).map(([key, records]) => ({
     key, total: summarize(records),
     codex: summarize(records.filter(record => record.service === 'codex')),
     antigravity: summarize(records.filter(record => record.service === 'antigravity')),
@@ -92,14 +107,14 @@ const trend = computed<EChartsCoreOption>(() => ({
   tooltip: { trigger: 'axis', renderMode: 'richText', formatter: (params: { dataIndex: number }[]) => {
     const bucket = buckets.value[params[0]?.dataIndex ?? -1]
     if (!bucket) return ''
-    const date = byHour.value ? `${dayKey(new Date(range.value.from * 1000))} ${bucket.key}` : bucket.key
+    const date = byHour.value ? dateTimeKey(new Date(Number(bucket.key) * 1000)).replace('T', ' ') : bucket.key
     const lines = selectedServices.value.map(service => {
       const summary = bucket[service.id]
       return `${service.name}：${summary.tokens.toLocaleString('zh-CN')} Tokens · ${summaryMoney(summary)}`
     })
     return [date, ...lines, ...(selectedServices.value.length > 1 ? [`合计：${bucket.total.tokens.toLocaleString('zh-CN')} Tokens · ${summaryMoney(bucket.total)}`] : [])].join('\n')
   } },
-  xAxis: { type: 'category', data: buckets.value.map(bucket => bucket.key), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { hideOverlap: true, formatter: (value: string) => byHour.value ? value : value.slice(5).replace('-', '/') } },
+  xAxis: { type: 'category', data: buckets.value.map(bucket => bucket.key), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { hideOverlap: true, formatter: (value: string) => byHour.value ? dateTimeKey(new Date(Number(value) * 1000)).slice(hourlyAcrossDays.value ? 5 : 11).replace('T', ' ').replace('-', '/') : value.slice(5).replace('-', '/') } },
   yAxis: { type: 'value', name: trendMetric.value === 'tokens' ? 'Tokens' : `${costLabel(total.value)} ($)`, min: 0, splitNumber: 3, axisLabel: { formatter: (value: number) => trendMetric.value === 'tokens' ? shortTokens(value) : money(String(value)) }, splitLine: { lineStyle: { color: '#88888820' } } },
   series: selectedServices.value.map(service => ({
     name: service.name, type: 'bar', stack: 'usage', barMaxWidth: 30, itemStyle: { color: service.color },
@@ -147,12 +162,13 @@ const recordFilterKey = computed(() => JSON.stringify([usageService.value, perio
 const summaryTotal = computed(() => recordView.value ? summarize(matchingRecords.value) : props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
 const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, group) => Math.max(width, group.total.tokens.toLocaleString('zh-CN').length), 14)}ch + 26px)`)
 const heatmap = computed<EChartsCoreOption>(() => {
-  const last = startOfDay(new Date(props.clock.now * 1000)), first = shiftDay(last, -370)
-  const days = groupRecords(availableRecords.value.filter(inModel), record => dayKey(new Date(record.date * 1000)))
-  const data = Array.from({ length: 371 }, (_, index) => {
-    const day = shiftDay(first, index)
-    const summary = summarize(days[dayKey(day)] ?? [])
-    return { value: [dayKey(day), summary.tokens], summary }
+  const last = startOfDay(new Date((range.value.to - 0.001) * 1000))
+  const earliest = period.value === 'all' ? records.value.reduce((date, record) => Math.min(date, record.date), range.value.to) : range.value.from
+  const first = new Date(Math.min(startOfDay(new Date(earliest * 1000)).getTime(), shiftDay(last, -370).getTime()))
+  const days = groupRecords(records.value, record => dayKey(new Date(record.date * 1000)))
+  const data = Object.entries(days).sort(([a], [b]) => a.localeCompare(b)).map(([day, records]) => {
+    const summary = summarize(records)
+    return { value: [day, summary.tokens], summary }
   })
   return {
     tooltip: { renderMode: 'richText', formatter: (params: { dataIndex: number }) => {
@@ -180,20 +196,23 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
             <img v-else class="service-icon" :src="antigravityIcon" alt="" aria-hidden="true" />
           </component>
         </SlidingSelection>
-        <SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented" role="group" aria-label="日期范围">
+        <SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented" role="group" aria-label="时间范围">
           <component :is="highlight ? 'span' : 'label'" v-for="item in usageRanges" :key="item.value" class="segment-option" :data-selected="period === item.value"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="date-range" :value="item.value" />{{ item.label }}</component>
         </SlidingSelection>
         <div class="filter-spacer" />
         <label class="sr-only" for="model-filter">模型</label>
         <NativeSelect id="model-filter" :model-value="model" @change="model = ($event.target as HTMLSelectElement).value"><NativeSelectOption value="all">全部模型</NativeSelectOption><NativeSelectOption v-for="item in models" :key="item" :value="item">{{ item }}</NativeSelectOption></NativeSelect>
       </div>
-      <div v-if="period === 'custom'" class="date-range"><label>开始 <input v-model="start" type="date" :max="end" /></label><span>—</span><label>结束 <input v-model="end" type="date" :min="start" :max="dayKey(new Date(props.clock.now * 1000))" /></label></div>
+      <template v-if="period === 'custom'">
+        <div class="date-range"><label>开始 <input v-model="start" type="datetime-local" :max="end" required :aria-invalid="!customRange" :aria-describedby="!customRange ? 'usage-range-error' : undefined" /></label><span>—</span><label>结束 <input v-model="end" type="datetime-local" :min="start" required :aria-invalid="!customRange" :aria-describedby="!customRange ? 'usage-range-error' : undefined" /></label></div>
+        <p v-if="!customRange" id="usage-range-error" class="date-range-error" role="alert">请输入完整的开始、结束时间，且结束时间须晚于开始时间。</p>
+      </template>
       <div class="source-line">
         <div class="source-label">
           <span :title="state.usage.source">本机日志<span v-if="rangeText"> · {{ rangeText }}</span></span>
           <TooltipProvider :delay-duration="200"><TooltipRoot>
             <TooltipTrigger as-child><Button variant="ghost" size="icon-xs" class="source-info-trigger" aria-label="统计范围说明"><CircleHelp :size="12" /></Button></TooltipTrigger>
-            <TooltipPortal><TooltipContent class="source-info-tooltip" side="bottom" align="start" :side-offset="6">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。</TooltipContent></TooltipPortal>
+            <TooltipPortal><TooltipContent class="source-info-tooltip" side="bottom" align="start" :side-offset="6">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。时间按本地时区计算，包含开始、不包含结束。</TooltipContent></TooltipPortal>
           </TooltipRoot></TooltipProvider>
         </div>
       </div>
@@ -220,7 +239,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
         <strong class="card-value" :class="{ 'unpriced-text': state.usage.scannedAt && summaryTotal.count && !summaryTotal.priced }">{{ hasReadableUsage ? summaryMoney(summaryTotal) : '—' }}</strong>
         <div class="card-footer">
           <span>API 等价估算</span>
-          <span v-if="state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - 1) }}</span>
+          <span v-if="state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - (range.days ? 1 : 0)) }}</span>
         </div>
       </div>
       <div class="surface summary-card efficiency-card">
@@ -296,7 +315,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
       <TablePagination v-model:page="tablePage" v-model:page-size="pageSize" :total="groups.length" />
       </template>
     </section>
-    <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>最近 53 周</h2></div><Chart v-if="state.usage.scannedAt !== null" :option="heatmap" label="最近53周每日 Tokens 用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">尚未读取本机日志</div><p v-if="state.usage.scannedAt !== null" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p></section>
+    <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>每日用量</h2></div><Chart v-if="hasReadableUsage && records.length" :option="heatmap" label="当前时间范围内每日 Tokens 用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">{{ hasReadableUsage ? '此时间范围没有用量记录' : '尚未读取本机日志' }}</div><p v-if="hasReadableUsage && records.length" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p></section>
     <UsageDetailDialog v-if="detail" :title="detail.title" :records="detail.records" :state="state" @close="detail = null" />
   </div>
 </template>

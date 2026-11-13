@@ -3,9 +3,9 @@ import { toRefs, useLocalStorage } from '@vueuse/core'
 import { isPlainObject, isString } from '@pmun/utils'
 import type { Metric, Page, QuotaService, UsageService } from '@/types'
 import type { SortDirection } from './table'
-import { dayKey, shiftDay } from './usage'
+import { dateTimeKey, dayKey, shiftDay, startOfDay } from './usage'
 
-export const usageRanges = [{ value: 'today', label: '今天' }, { value: 'yesterday', label: '昨天' }, { value: '7', label: '7 天' }, { value: '30', label: '30 天' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }] as const
+export const usageRanges = [{ value: 'today', label: '今天' }, { value: 'yesterday', label: '昨天' }, { value: '24h', label: '最近 24 小时' }, { value: '7', label: '7 天' }, { value: '30', label: '30 天' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }] as const
 
 export type UsageSort = Metric | 'last' | 'count' | 'hitRate'
 interface UsageFilters {
@@ -20,16 +20,29 @@ interface UsageFilters {
   end: string
 }
 
-function storedDate(value: unknown, fallback: string) {
-  return isString(value) && /^\d{4}-\d{2}-\d{2}$/.test(value) && dayKey(new Date(`${value}T00:00:00`)) === value ? value : fallback
+export function parseUsageDateTime(value: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) && dateTimeKey(date) === value ? date.getTime() / 1000 : null
+}
+
+function storedDateTime(value: unknown, fallback: string, end = false) {
+  if (!isString(value)) return fallback
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}T00:00:00`)
+    if (dayKey(date) !== value) return fallback
+    // Old date-only ranges included the entire end day.
+    return dateTimeKey(end ? shiftDay(date, 1) : date)
+  }
+  return parseUsageDateTime(value) !== null ? value : fallback
 }
 
 function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
   const parsed: unknown = JSON.parse(raw)
   if (!isPlainObject(parsed)) return { ...defaults }
   const saved: Record<string, unknown> = parsed
-  const start = storedDate(saved.start, defaults.start)
-  const end = storedDate(saved.end, defaults.end)
+  const start = storedDateTime(saved.start, defaults.start)
+  const end = storedDateTime(saved.end, defaults.end, true)
   return {
     view: saved.view === 'project' || saved.view === 'record' ? saved.view : 'session',
     period: usageRanges.find(range => range.value === saved.period)?.value ?? defaults.period,
@@ -38,13 +51,14 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
     direction: saved.direction === 'asc' ? 'asc' : 'desc',
     model: isString(saved.model) && saved.model ? saved.model : defaults.model,
     search: isString(saved.search) ? saved.search : defaults.search,
-    start: start <= end ? start : defaults.start,
-    end: start <= end ? end : defaults.end,
+    start: start < end ? start : defaults.start,
+    end: start < end ? end : defaults.end,
   }
 }
 
 function defaultFilters(): UsageFilters {
-  return { view: 'session', period: '7', metric: 'tokens', sort: 'tokens', direction: 'desc', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
+  const today = startOfDay(new Date())
+  return { view: 'session', period: '7', metric: 'tokens', sort: 'tokens', direction: 'desc', model: 'all', search: '', start: dateTimeKey(shiftDay(today, -6)), end: dateTimeKey(shiftDay(today, 1)) }
 }
 
 const initialDefaults = defaultFilters()
