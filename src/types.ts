@@ -13,6 +13,8 @@ export interface Settings {
   antigravityAnnouncementNotifications: boolean
   antigravityShowTray: boolean
   recoveryNotifications: boolean
+  lowQuotaNotifications: boolean
+  lowQuotaThreshold: number
   resetCreditReminders: boolean
   resetCreditReminderMinutes: number[]
   quotaResetReminders: boolean

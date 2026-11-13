@@ -184,6 +184,82 @@ impl RecoveryTracker {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct LowQuotaObservation {
+    remaining: f64,
+    resets_at: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LowQuotaBaseline {
+    account_fingerprint: String,
+    windows: BTreeMap<String, LowQuotaObservation>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct LowQuotaTracker {
+    baseline: Option<LowQuotaBaseline>,
+    observed_cycles: BTreeMap<String, BTreeMap<String, f64>>,
+}
+
+impl LowQuotaTracker {
+    pub fn reset_baseline(&mut self) {
+        self.baseline = None;
+    }
+
+    /// Observe successful samples even while notifications are disabled.
+    pub fn observe(
+        &mut self,
+        account: &str,
+        windows: &[QuotaWindow],
+        threshold: u8,
+        now: f64,
+    ) -> Vec<QuotaWindow> {
+        self.observed_cycles.retain(|_, windows| {
+            windows.retain(|_, deadline| *deadline > now);
+            !windows.is_empty()
+        });
+        let previous = self
+            .baseline
+            .as_ref()
+            .filter(|baseline| baseline.account_fingerprint == account);
+        let mut current = BTreeMap::new();
+        let mut crossed = Vec::new();
+        for window in windows {
+            let Some(resets_at) = window.resets_at.filter(|deadline| *deadline > now) else {
+                continue;
+            };
+            let remaining = window.remaining();
+            if previous
+                .and_then(|baseline| baseline.windows.get(&window.id))
+                .is_some_and(|old| {
+                    old.resets_at == resets_at
+                        && old.remaining > f64::from(threshold)
+                        && remaining <= f64::from(threshold)
+                })
+            {
+                let observed = self.observed_cycles.entry(account.into()).or_default();
+                if observed.get(&window.id) != Some(&resets_at) {
+                    observed.insert(window.id.clone(), resets_at);
+                    crossed.push(window.clone());
+                }
+            }
+            current.insert(
+                window.id.clone(),
+                LowQuotaObservation { remaining, resets_at },
+            );
+        }
+        self.baseline = Some(LowQuotaBaseline {
+            account_fingerprint: account.into(),
+            windows: current,
+        });
+        crossed
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct DeadlineReminderState {
     deadline: f64,
     observed_minutes: BTreeSet<u32>,

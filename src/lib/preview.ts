@@ -49,7 +49,7 @@ export function previewCostBreakdown(record: UsageRecord): CostBreakdown {
 }
 export function emptySnapshot(): AppSnapshot {
   return {
-    settings: { monitoringEnabled: true, antigravityEnabled: false, antigravityAnnouncementNotifications: false, antigravityShowTray: true, recoveryNotifications: true, resetCreditReminders: false, resetCreditReminderMinutes: [1440], quotaResetReminders: false, quotaResetReminderMinutes: [120], announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 60, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
+    settings: { monitoringEnabled: true, antigravityEnabled: false, antigravityAnnouncementNotifications: false, antigravityShowTray: true, recoveryNotifications: true, lowQuotaNotifications: false, lowQuotaThreshold: 20, resetCreditReminders: false, resetCreditReminderMinutes: [1440], quotaResetReminders: false, quotaResetReminderMinutes: [120], announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 60, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
     quota: { windows: [], resetCredits: null, history: {}, error: null, lastSuccess: null, refreshing: false },
     announcements: { events: [], error: null, sourceStatus: null, refreshing: false, lastSuccess: null },
     antigravity: { groups: [], error: null, lastSuccess: null, refreshing: false, requiresAction: false },

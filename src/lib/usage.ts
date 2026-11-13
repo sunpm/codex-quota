@@ -14,6 +14,14 @@ export const tokenCount = (record: UsageRecord) => record.tokens.input + record.
 export const shortTokens = (value: number) => value < 10000 ? value.toLocaleString('zh-CN') : new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 3 }).format(value)
 export const dateText = (seconds: number | null | undefined, full = false) => seconds == null ? '—' : new Date(seconds * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', ...(full ? { year: 'numeric', second: '2-digit' } : {}) })
 export const dayKey = (date: Date) => formatDate(date, 'YYYY-MM-DD')
+export function dateTimeKey(date: Date, precise = false) {
+  let value = `${dayKey(date)}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  if (precise && (date.getSeconds() || date.getMilliseconds())) {
+    value += `:${String(date.getSeconds()).padStart(2, '0')}`
+    if (date.getMilliseconds()) value += `.${String(date.getMilliseconds()).padStart(3, '0')}`
+  }
+  return value
+}
 export const startOfDay = (date: Date) => startOf(date, 'day')
 export const shiftDay = (date: Date, days: number) => addDays(date, days)
 export const basename = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) || '未知项目'

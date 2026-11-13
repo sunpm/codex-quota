@@ -61,6 +61,7 @@ impl Controller {
         }
         if !settings.monitoring_enabled {
             saved.recovery.state = None;
+            saved.low_quota.reset_baseline();
             saved.announcements.tracker.has_baseline = false;
         }
         if !settings.antigravity_enabled {
@@ -252,6 +253,28 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
                         "Codex 额度已恢复至 100%".to_string(),
                         format!("{labels}已恢复，可以继续使用。"),
                     ));
+                }
+                let low_windows = store.saved.low_quota.observe(
+                    &sample.fingerprint,
+                    &sample.windows,
+                    settings.low_quota_threshold,
+                    time,
+                );
+                if settings.low_quota_notifications && !low_windows.is_empty() {
+                    let details = low_windows
+                        .iter()
+                        .map(|window| {
+                            let remaining = window.remaining();
+                            let percent = if remaining > 0.0 && remaining < 0.1 {
+                                "不足 0.1".into()
+                            } else {
+                                format!("{remaining:.1}")
+                            };
+                            format!("{} · {}剩余 {percent}%。", window.name, window.display_label())
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    messages.push(("Codex 额度不足".into(), details));
                 }
                 store
                     .saved

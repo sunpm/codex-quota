@@ -1,5 +1,5 @@
 use quota_core::{
-    DeadlineReminderTracker, ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow,
+    DeadlineReminderTracker, LowQuotaTracker, ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow,
     RateLimitResetCredits, RecoveryTracker, RefreshSchedule, ResetAnnouncement,
     ResetAnnouncementFeed, ResetAnnouncementTracker, UsageRecord, SWIFT_EPOCH_OFFSET,
 };
@@ -22,6 +22,8 @@ pub struct Settings {
     pub antigravity_announcement_notifications: bool,
     pub antigravity_show_tray: bool,
     pub recovery_notifications: bool,
+    pub low_quota_notifications: bool,
+    pub low_quota_threshold: u8,
     pub reset_credit_reminders: bool,
     pub reset_credit_reminder_minutes: Vec<u32>,
     pub quota_reset_reminders: bool,
@@ -60,6 +62,12 @@ impl Settings {
             antigravity_announcement_notifications: flag("antigravity.cli.announcementNotifications", false),
             antigravity_show_tray: flag("antigravity.cli.showTray", true),
             recovery_notifications: flag("service.codex.notifications", true),
+            low_quota_notifications: flag("quota.lowNotifications", false),
+            low_quota_threshold: p
+                .get("quota.lowThreshold")
+                .and_then(Value::as_u64)
+                .filter(|value| (1..=99).contains(value))
+                .unwrap_or(20) as u8,
             reset_credit_reminders: flag("resetCredits.expirationReminders", false),
             reset_credit_reminder_minutes: reminder_minutes("resetCredits.reminderMinutes", 1440),
             quota_reset_reminders: flag("quota.resetReminders", false),
@@ -99,6 +107,9 @@ impl Settings {
     }
 
     pub fn validate(&self) -> Result<(), String> {
+        if !(1..=99).contains(&self.low_quota_threshold) {
+            return Err("剩余额度阈值必须为 1–99 的整数百分比。".into());
+        }
         if self.refresh_interval < 30 || self.refresh_interval > i32::MAX as u64 {
             return Err("刷新间隔必须为 30 秒至 2147483647 秒。".into());
         }
@@ -134,6 +145,7 @@ impl Settings {
             ("antigravity.cli.announcementNotifications", self.antigravity_announcement_notifications),
             ("antigravity.cli.showTray", self.antigravity_show_tray),
             ("service.codex.notifications", self.recovery_notifications),
+            ("quota.lowNotifications", self.low_quota_notifications),
             (
                 "resetCredits.expirationReminders",
                 self.reset_credit_reminders,
@@ -151,6 +163,10 @@ impl Settings {
         ] {
             p.insert(key.into(), json!(value));
         }
+        p.insert(
+            "quota.lowThreshold".into(),
+            json!(self.low_quota_threshold),
+        );
         p.insert(
             "resetCredits.reminderMinutes".into(),
             json!(self.reset_credit_reminder_minutes),
@@ -286,6 +302,7 @@ pub struct SavedState {
     pub version: u32,
     pub preferences: BTreeMap<String, Value>,
     pub recovery: RecoveryTracker,
+    pub low_quota: LowQuotaTracker,
     pub quota_history: QuotaHistory,
     pub schedule: RefreshSchedule,
     pub reminded_credits: BTreeMap<String, f64>,
@@ -307,6 +324,7 @@ impl Default for SavedState {
             version: 1,
             preferences: BTreeMap::new(),
             recovery: RecoveryTracker::default(),
+            low_quota: LowQuotaTracker::default(),
             quota_history: QuotaHistory::default(),
             schedule: RefreshSchedule::default(),
             reminded_credits: BTreeMap::new(),

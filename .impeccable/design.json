@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-07T06:55:06.012156+00:00",
+  "generatedAt": "2026-11-13T13:20:10.021Z",
   "title": "Design System: Codex Quota",
   "extensions": {
     "colorMeta": {
@@ -428,14 +428,14 @@
         "role": "primary",
         "displayName": "操作蓝 · 深色",
         "tonalRamp": [
-          "oklch(from #4389c7 15% calc(c * 0.35) h)",
-          "oklch(from #4389c7 25% calc(c * 0.6) h)",
-          "oklch(from #4389c7 35% calc(c * 0.85) h)",
-          "oklch(from #4389c7 45% calc(c * 1) h)",
-          "oklch(from #4389c7 55% calc(c * 1) h)",
-          "oklch(from #4389c7 65% calc(c * 0.85) h)",
-          "oklch(from #4389c7 80% calc(c * 0.6) h)",
-          "oklch(from #4389c7 95% calc(c * 0.2) h)"
+          "oklch(from #3178b7 15% calc(c * 0.35) h)",
+          "oklch(from #3178b7 25% calc(c * 0.6) h)",
+          "oklch(from #3178b7 35% calc(c * 0.85) h)",
+          "oklch(from #3178b7 45% calc(c * 1) h)",
+          "oklch(from #3178b7 55% calc(c * 1) h)",
+          "oklch(from #3178b7 65% calc(c * 0.85) h)",
+          "oklch(from #3178b7 80% calc(c * 0.6) h)",
+          "oklch(from #3178b7 95% calc(c * 0.2) h)"
         ]
       },
       "primary-foreground-dark": {
@@ -924,6 +924,10 @@
         "displayName": "紧凑说明",
         "purpose": "同期比较、模型名和辅助时间。"
       },
+      "monospace": {
+        "displayName": "模型与短 ID",
+        "purpose": "短 ID 与模型名使用等宽字体，只有数值采用等宽数字特性。"
+      },
       "detail": {
         "displayName": "表格与说明",
         "purpose": "表格、筛选项、Tooltip 与辅助信息。"
@@ -946,7 +950,7 @@
       },
       "responsive-value": {
         "displayName": "紧凑主指标",
-        "purpose": "960px 以下的概览主指标。"
+        "purpose": "紧凑布局中的概览主指标。"
       },
       "quota-value": {
         "displayName": "额度读数",
@@ -1003,6 +1007,14 @@
     ],
     "breakpoints": [
       {
+        "name": "quota-columns",
+        "value": "820px"
+      },
+      {
+        "name": "usage-summary",
+        "value": "1100px"
+      },
+      {
         "name": "compact-desktop",
         "value": "960px"
       }
@@ -1015,7 +1027,7 @@
       "refersTo": "button-primary",
       "description": "default variant；32px，提交编辑。",
       "html": "<button type=\"button\" class=\"ds-button\">保存</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:32px;padding:4px 12px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--primary, #286fae);color:var(--primary-foreground, #fff)}.ds-button:hover{background:color-mix(in srgb,var(--primary, #286fae) 90%,transparent);}.ds-button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--primary-foreground, #fff);}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:32px;padding:4px 12px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--primary, #286fae);color:var(--primary-foreground, #fff)}.ds-button:hover{background:color-mix(in srgb,var(--primary, #286fae) 90%,transparent);}.ds-button:focus-visible{outline: 2px solid var(--primary-foreground, #fff); outline-offset: -3px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
     },
     {
       "name": "普通操作",
@@ -1023,15 +1035,15 @@
       "refersTo": "button-outline",
       "description": "outline / sm；28px，普通命令。",
       "html": "<button type=\"button\" class=\"ds-button\">管理定价…</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:1px solid var(--border, #dedfe2);font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:28px;padding:3px 10px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--background, #fafafa);color:var(--foreground, #252629);font-size:12px;box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05)}.ds-button:hover{background:var(--accent, #e6e9ed);}.ds-button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--primary, #286fae);}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border-radius:6px;border:1px solid var(--border, #dedfe2);font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:28px;padding:3px 10px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--background, #fafafa);color:var(--foreground, #252629);font-size:12px;box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05)}.ds-button:hover{background:var(--accent, #e6e9ed);}.ds-button:focus-visible{outline: 2px solid var(--primary, #286fae); outline-offset: -2px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
     },
     {
-      "name": "轻量操作",
+      "name": "返回图表",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "ghost / sm；28px，次要命令。",
-      "html": "<button type=\"button\" class=\"ds-button\">取消</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:28px;padding:3px 10px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:transparent;color:var(--foreground, #252629);font-size:12px}.ds-button:hover{background:var(--accent, #e6e9ed);}.ds-button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--primary, #286fae);}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "description": "用量趋势的日 / 小时柱和当前筛选内的热力图日期可进入全局逐条记录，沿用服务与模型筛选，清空搜索，并将所点时段与原统计范围取交集。时间控件保留自动带入的秒及毫秒边界，来源行显示实际范围；右侧使用 ghost / sm“返回图表”按钮。返回按钮与侧栏“用量”共用恢复逻辑，恢复原服务、模型、时间和图表筛选，明细筛选不覆盖返回状态。",
+      "html": "<button type=\"button\" class=\"ds-button\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m15 18-6-6 6-6\" /></svg>返回图表</button>",
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:28px;padding:3px 10px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:transparent;color:var(--foreground, #252629);font-size:12px}.ds-button:hover{background:var(--accent, #e6e9ed);}.ds-button:focus-visible{outline: 2px solid var(--primary, #286fae); outline-offset: -2px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}.ds-button svg{flex-shrink:0;pointer-events:none}"
     },
     {
       "name": "删除确认",
@@ -1039,7 +1051,7 @@
       "refersTo": "button-destructive",
       "description": "destructive；32px，已确认的破坏性操作。",
       "html": "<button type=\"button\" class=\"ds-button\">清除历史</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:32px;padding:4px 12px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--destructive, #bd354b);color:var(--primary-foreground, #fff)}.ds-button:hover{background:color-mix(in srgb,var(--destructive, #bd354b) 90%,transparent);}.ds-button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--primary-foreground, #fff);}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:32px;padding:4px 12px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--destructive, #bd354b);color:var(--primary-foreground, #fff)}.ds-button:hover{background:color-mix(in srgb,var(--destructive, #bd354b) 90%,transparent);}.ds-button:focus-visible{outline: 2px solid var(--primary-foreground, #fff); outline-offset: -3px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
     },
     {
       "name": "数字输入",
@@ -1077,9 +1089,16 @@
       "name": "日志范围提示",
       "kind": "custom",
       "refersTo": "source-tooltip",
-      "description": "ghost / icon-xs 帮助入口；片段展示 hover/focus，实际应用由 Reka Tooltip 管理延迟、Esc 与浮层定位。",
-      "html": "<div class=\"ds-source\"><span>本机日志</span><button class=\"ds-help\" aria-label=\"统计范围说明\" aria-describedby=\"ds-source-tip\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\"/><path d=\"M12 17h.01\"/></svg></button><span class=\"ds-tip\" role=\"tooltip\" id=\"ds-source-tip\">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。</span></div>",
+      "description": "ghost / icon-xs 帮助入口；显示本地时区与包含开始、不包含结束的统计口径。片段展示 hover/focus，实际应用由 Reka Tooltip 管理延迟、Esc 与浮层定位。",
+      "html": "<div class=\"ds-source\"><span>本机日志</span><button class=\"ds-help\" aria-label=\"统计范围说明\" aria-describedby=\"ds-source-tip\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\"/><path d=\"M12 17h.01\"/></svg></button><span class=\"ds-tip\" role=\"tooltip\" id=\"ds-source-tip\">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。时间按本地时区计算，包含开始、不包含结束。</span></div>",
       "css": ".ds-source{display:flex;align-items:center;gap:2px;position:relative;color:var(--muted, #686c72);font:12px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}.ds-help{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:help}.ds-help:hover{background:var(--accent, #e6e9ed);color:var(--foreground, #252629)}.ds-help:focus-visible{outline:2px solid var(--primary, #286fae);outline-offset:-2px}.ds-tip{z-index: 50; max-width: 280px; padding: 10px 12px; border: 1px solid var(--border, #dedfe2); border-radius: 6px; background: var(--popover, #fff); color: var(--foreground, #252629); font-size: 12px; line-height: 1.6;position:absolute;left:0;top:calc(100% + 6px);width:256px;visibility:hidden}.ds-source:has(.ds-help:hover) .ds-tip,.ds-source:has(.ds-help:focus-visible) .ds-tip,.ds-tip:hover{visibility:visible}"
+    },
+    {
+      "name": "日期时间输入",
+      "kind": "input",
+      "description": "自定义范围使用 28px 原生 datetime-local 输入，包含开始、不包含结束；图表跳转保留秒及毫秒边界。片段展示开始时间。",
+      "html": "<label class=\"ds-date-field\">开始 <input type=\"datetime-local\" step=\"any\" value=\"2026-11-12T15:05:30.125\" max=\"2026-11-12T16:00\" required /></label>",
+      "css": ".ds-date-field{display: flex; align-items: center; gap: 8px;font:13px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;color:var(--foreground, #252629)}.ds-date-field input{border:1px solid var(--input, #d7d9dd);background:var(--card, #fff);color:var(--foreground, #252629);border-radius:6px;height:28px;padding:3px 9px;line-height:20px;font-size:12px;font-variant-numeric:tabular-nums;font-family:inherit;caret-color:var(--primary, #286fae)}.ds-date-field input:focus-visible{outline: 2px solid var(--primary, #286fae); outline-offset: -2px;border-color:var(--primary, #286fae)}"
     }
   ],
   "narrative": {

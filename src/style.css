@@ -147,14 +147,15 @@ strong { font-weight: 600; }
 .service-filter .service-option { width: 34px; padding: 2px 8px; }
 .service-icon { display: block; width: 18px; height: 18px; flex-shrink: 0; }
 .codex-icon { background: currentColor; mask: url('./assets/openai.svg') center / contain no-repeat; }
-input[type=date], input[type=number] { border: 1px solid var(--input); background: var(--card); color: var(--foreground); border-radius: 6px; height: 32px; padding: 4px 9px; line-height: 20px; }
-input[type=date] { height: 28px; padding: 3px 9px; font-size: 12px; line-height: 20px; }
+input[type=date], input[type=datetime-local], input[type=number] { border: 1px solid var(--input); background: var(--card); color: var(--foreground); border-radius: 6px; height: 32px; padding: 4px 9px; line-height: 20px; }
+input[type=date], input[type=datetime-local] { height: 28px; padding: 3px 9px; font-size: 12px; line-height: 20px; font-variant-numeric: tabular-nums; }
 [data-slot=native-select-wrapper] { max-width: 200px; flex-shrink: 0; }
 [data-slot=native-select] { @apply shadow-none; height: 28px; padding: 3px 30px 3px 10px; font-size: 12px; line-height: 20px; background: var(--card); }
 [data-slot=native-select][data-size=default] { height: 32px; padding: 4px 30px 4px 10px; font-size: 13px; }
 [data-slot=native-select-icon] { width: 14px; height: 14px; right: 9px; }
 .date-range { display: flex; align-items: center; gap: 12px; }
 .date-range label { display: flex; align-items: center; gap: 8px; }
+.date-range-error { color: var(--destructive); font-size: 12px; }
 .usage-filters { display: grid; gap: 8px; }
 .source-line { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
 .source-label { display: flex; align-items: center; gap: 2px; }
@@ -298,8 +299,11 @@ th svg { display: inline; vertical-align: middle; }
 .setting-row { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: 16px; }
 .setting-row + .setting-row { margin-top: 8px; }
 .setting-row > label, .setting-row > span { user-select: none; }
-.dependent-settings { padding-left: 12px; border: 0; }
+.setting-group { display: grid; gap: 8px; }
+.dependent-settings { display: grid; gap: 12px; min-width: 0; margin: 0; padding: 0 0 0 16px; border: 0; border-left: 1px solid var(--border); }
+.setting-group > .dependent-settings { gap: 8px; }
 .dependent-settings:disabled { opacity: .45; filter: grayscale(1); }
+.dependent-settings:disabled .dependent-settings:disabled { opacity: 1; filter: none; }
 .dependent-settings:disabled :is([data-slot=button], [data-slot=switch], [data-slot=native-select]):disabled, .dependent-settings:disabled [data-slot=native-select-wrapper]:has(select:disabled) { opacity: 1; }
 .setting-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; align-items: center; gap: 8px; }
 .settings-section h2 + .setting-actions { margin-top: 12px; }
