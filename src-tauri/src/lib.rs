@@ -31,6 +31,12 @@ async fn refresh_quota(app: AppHandle) -> AppSnapshot {
 }
 
 #[tauri::command]
+async fn refresh_codex(app: AppHandle) -> AppSnapshot {
+    monitor::refresh_quota(&app, true).await;
+    get_snapshot(app)
+}
+
+#[tauri::command]
 async fn refresh_antigravity(app: AppHandle) -> AppSnapshot {
     monitor::refresh_antigravity(&app, true).await;
     get_snapshot(app)
@@ -326,6 +332,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
             refresh_quota,
+            refresh_codex,
             refresh_antigravity,
             scan_usage,
             save_settings,

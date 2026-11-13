@@ -34,6 +34,7 @@ export async function execute(command: string, args?: Record<string, unknown>) {
     else if (command === 'reset_price') { const original = previewSnapshot().prices.find(price => price.model === args?.model); snapshot.value = { ...snapshot.value, prices: [...snapshot.value.prices.filter(price => price.model !== args?.model), ...(original ? [original] : [])] } }
     else if (command === 'clear_history') snapshot.value = { ...snapshot.value, usage: { ...snapshot.value.usage, records: [] } }
     else if (command === 'scan_usage') snapshot.value = { ...snapshot.value, usage: previewSnapshot().usage }
+    else if (command === 'refresh_codex') snapshot.value = { ...snapshot.value, quota: { ...snapshot.value.quota, lastSuccess: Date.now() / 1000, error: null } }
     else if (command === 'cancel_update') snapshot.value = { ...snapshot.value, update: { ...snapshot.value.update, status: 'idle' } }
     else if (command === 'check_update') snapshot.value = { ...snapshot.value, update: { ...snapshot.value.update, status: 'current' } }
     else if (command === 'mark_notification_guide_shown') snapshot.value = { ...snapshot.value, notificationGuideShown: true }

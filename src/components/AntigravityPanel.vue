@@ -31,7 +31,7 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
         </div>
       </div>
     </div>
-    <div class="antigravity-footer muted"><span>CLI 未提供可验证的账号身份，暂不记录历史或提醒恢复。</span><span v-if="state.antigravity.lastSuccess !== null">上次读取 · {{ dateText(state.antigravity.lastSuccess) }}</span></div>
+    <div class="antigravity-footer muted"><span>CLI 未提供可验证的账号身份，暂不记录历史或提醒恢复。</span><span v-if="state.antigravity.lastSuccess !== null">上次读取 · {{ dateText(state.antigravity.lastSuccess, true) }}</span></div>
   </section>
 </template>
 

@@ -1,0 +1,12 @@
+Codex Quota usage-table interactions
+
+Design reference (reviewed 2026-11-13):
+- farion1231/cc-switch, commit 7dec90e9821d546a7df48dce7adcf5a9abf1cc5d
+  src/components/usage/TablePagination.tsx
+  src/components/usage/RequestLogColumnsMenu.tsx
+  https://github.com/farion1231/cc-switch
+  Copyright (c) 2025 Jason Young. MIT License: cc-switch-LICENSE.txt.
+
+Codex Quota implements these interactions with its existing Vue, VueUse and
+shadcn-vue components. No React components or additional dependencies are copied.
+Usage records and cost calculation retain the application's existing semantics.

@@ -50,6 +50,11 @@ export function previewSnapshot(): AppSnapshot {
   state.quota.resetCredits = { availableCount: 1, credits: [{ id: 'sample-credit', resetType: 'codexRateLimits', status: 'available', expiresAt: now + 360000 }] }
   state.prices = models.map(model => ({ model, service: 'codex', rates: { input: '2.5', output: '15', cached: '0.25', cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: '2', ultrafastMultiplier: null }))
   // Explicit offline scenes exercise the displayed states without starting a local CLI.
+  const quotaScene = new URLSearchParams(location.search).get('quota')
+  if (quotaScene === 'stale') {
+    state.quota.error = 'Codex 网络连接失败，请检查网络。60 秒后重试。'
+    state.quota.lastSuccess = now - 600
+  } else if (quotaScene === 'refreshing') state.quota.refreshing = true
   const antigravityScene = new URLSearchParams(location.search).get('antigravity')
   if (antigravityScene === 'stale') {
     state.antigravity.error = 'Antigravity 网络连接失败，请检查网络。60 秒后重试。'

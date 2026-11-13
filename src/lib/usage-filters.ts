@@ -2,14 +2,18 @@ import { computed, ref } from 'vue'
 import { toRefs, useLocalStorage } from '@vueuse/core'
 import { isPlainObject, isString } from '@pmun/utils'
 import type { Metric, Page } from '@/types'
+import type { SortDirection } from './table'
 import { dayKey, shiftDay } from './usage'
 
 export const usageRanges = [{ value: 'today', label: '今天' }, { value: 'yesterday', label: '昨天' }, { value: '7', label: '7 天' }, { value: '30', label: '30 天' }, { value: 'all', label: '全部' }, { value: 'custom', label: '自定义' }] as const
 
+export type UsageSort = Metric | 'last' | 'count' | 'hitRate'
 interface UsageFilters {
   view: 'session' | 'project'
   period: typeof usageRanges[number]['value']
   metric: Metric
+  sort: UsageSort
+  direction: SortDirection
   model: string
   search: string
   start: string
@@ -30,6 +34,8 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
     view: saved.view === 'project' ? 'project' : 'session',
     period: usageRanges.find(range => range.value === saved.period)?.value ?? defaults.period,
     metric: saved.metric === 'cost' ? 'cost' : 'tokens',
+    sort: (['tokens', 'cost', 'last', 'count', 'hitRate'] as const).find(key => key === saved.sort) ?? (saved.metric === 'cost' ? 'cost' : 'tokens'),
+    direction: saved.direction === 'asc' ? 'asc' : 'desc',
     model: isString(saved.model) && saved.model ? saved.model : defaults.model,
     search: isString(saved.search) ? saved.search : defaults.search,
     start: start <= end ? start : defaults.start,
@@ -38,7 +44,7 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
 }
 
 function defaultFilters(): UsageFilters {
-  return { view: 'session', period: '7', metric: 'tokens', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
+  return { view: 'session', period: '7', metric: 'tokens', sort: 'tokens', direction: 'desc', model: 'all', search: '', start: dayKey(shiftDay(new Date(), -6)), end: dayKey(new Date()) }
 }
 
 const initialDefaults = defaultFilters()

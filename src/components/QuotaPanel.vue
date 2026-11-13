@@ -1,14 +1,24 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { RefreshCw } from '@lucide/vue'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { AppSnapshot, ChartTimeHover, QuotaSeries } from '@/types'
 import { countdown, dateText, quotaLabel } from '@/lib/usage'
+import { execute } from '@/lib/app'
+import { Button } from '@/components/ui/button'
 import Chart from './Chart.vue'
 import AntigravityPanel from './AntigravityPanel.vue'
 import AnnouncementPanel from './AnnouncementPanel.vue'
 import SlidingSelection from './SlidingSelection.vue'
 
 const props = defineProps<{ state: AppSnapshot; now: number }>()
+const refreshPending = ref(false)
+const refreshing = computed(() => refreshPending.value || props.state.quota.refreshing)
+async function refresh() {
+  refreshPending.value = true
+  await execute('refresh_codex')
+  refreshPending.value = false
+}
 const period = ref(24)
 const availableCredits = computed(() => (props.state.quota.resetCredits?.credits ?? []).filter(credit => credit.status === 'available' && credit.resetType === 'codexRateLimits').sort((a, b) => (a.expiresAt ?? Infinity) - (b.expiresAt ?? Infinity)))
 const nextExpiringCredit = computed(() => availableCredits.value.find(credit => credit.expiresAt !== null && credit.expiresAt > props.now))
@@ -50,8 +60,8 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
   <div class="quota-page">
     <div v-if="!state.settings.monitoringEnabled" class="notice">Codex 监测已关闭，可在设置中开启。</div>
     <div v-if="state.quota.error" class="notice warning" role="status">{{ state.quota.error }}<span v-if="state.quota.lastSuccess"> 上次读数已过期。</span></div>
-    <section class="surface quota-surface"><div class="section-heading"><h2>Codex</h2><span>剩余</span></div>
-      <div v-if="!state.quota.windows.length" class="empty-state">{{ state.settings.monitoringEnabled ? '尚无可用额度数据，请确认 Codex 已登录。' : '暂无额度数据' }}</div>
+    <section class="surface quota-surface"><div class="section-heading"><h2>Codex</h2><div class="setting-actions"><span class="muted">剩余</span><Button variant="outline" size="sm" :disabled="!state.settings.monitoringEnabled || refreshing" @click="refresh"><RefreshCw :size="14" :class="{ spinning: refreshing }" />{{ refreshing ? '读取中…' : '刷新' }}</Button></div></div>
+      <div v-if="!state.quota.windows.length" class="empty-state">{{ refreshing ? '正在读取 Codex 额度…' : state.settings.monitoringEnabled ? '尚无可用额度数据，请确认 Codex 已登录。' : '暂无额度数据' }}</div>
       <div v-for="window in state.quota.windows" :key="window.id" class="quota-window" :class="tone(window.usedPercent)">
         <div class="quota-label-row"><h3>{{ quotaLabel(window.durationMinutes, window.label) }}<small v-if="window.bucket !== 'codex'">{{ window.name }}</small></h3><strong>{{ Math.floor(100 - window.usedPercent) }}%</strong></div>
         <div class="quota-track" aria-hidden="true"><div :style="{ width: `${100 - window.usedPercent}%` }" /></div>
@@ -65,6 +75,7 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
         </div>
         <p v-if="availableCredits.length < state.quota.resetCredits.availableCount" class="muted">到期明细不完整</p>
       </div>
+      <div v-if="state.quota.lastSuccess !== null" class="quota-updated muted">上次读取 · {{ dateText(state.quota.lastSuccess, true) }}</div>
     </section>
     <AntigravityPanel :state="state" :now="now" />
     <section class="surface"><div class="section-heading"><h2>Codex 额度消耗趋势</h2><SlidingSelection v-slot="{ highlight }" :selection="period" class="segmented equal-options" role="group" aria-label="额度趋势时间范围"><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="period === 24"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="quota-period" :value="24" />24 小时</component><component :is="highlight ? 'span' : 'label'" class="segment-option" :data-selected="period === 168"><input v-if="!highlight" v-model="period" class="sr-only" type="radio" name="quota-period" :value="168" />7 天</component></SlidingSelection></div><div v-if="!Object.keys(state.quota.history).length" class="empty-state chart-empty">成功读取额度后开始积累趋势</div><div v-for="{ series, option, latest } in quotaCharts" :key="series.window.id" class="quota-chart"><div class="quota-chart-heading"><span>{{ quotaLabel(series.window.durationMinutes, series.window.label) }}</span><span v-if="hovered[series.window.id]">{{ dateText(hovered[series.window.id]!.date) }} · {{ hovered[series.window.id]!.used === null ? '无采样' : `已用 ${hovered[series.window.id]!.used!.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%` }}</span><span v-else>{{ latest ? `已用 ${latest.usedPercent.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%` : '无采样' }}</span></div><Chart :option="option" time-hover @time-hover="inspectSample(series, $event)" :label="`${quotaLabel(series.window.durationMinutes, series.window.label)}已用百分比趋势；中断时段不连接`" :height="120" :animations="state.settings.animations" /></div></section>
