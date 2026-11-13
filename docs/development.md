@@ -33,7 +33,7 @@ pnpm tauri dev
 pnpm dev
 ```
 
-浏览器不能访问桌面进程与本机数据。显式加 `?preview` 可查看标注为离线预览的匿名示例，不会连接真实 Codex 或 Antigravity。
+浏览器不能访问桌面进程与本机数据。显式加 `?preview` 可查看标注为离线预览的匿名示例，不会连接真实 Codex 或 Antigravity。用量预览包含有标题 / 无标题记录及预先计算的普通、Fast 长上下文、缺价费用样例，只用于显示和交互验收，不替代 Rust 计价或本机标题读取的实机验证。
 
 应用版本以 `package.json` 为准，Tauri 配置与网页预览直接读取该字段。正式发版使用 `pnpm release <版本>` 同步 Cargo 版本、锁文件和 CHANGELOG；普通 PR 无需递增版本，也不会触发发布。操作步骤见 [手动发布](updating.md#手动发布)。
 
@@ -54,6 +54,8 @@ bash scripts/test.sh
 ```
 
 `scripts/test.sh` 包含 `pnpm build`（TypeScript 检查与 Vite 构建）和 `cargo check --locked`，无需在它之前重复执行；该入口执行编译检查，不代表已覆盖运行时行为。Windows 可在 Git Bash 执行此入口，PowerShell 命令见 [验证说明](updating.md#验证)。`.github/workflows/check.yml` 编译 Apple Silicon、Intel 和 Windows 目标。
+
+会话标题读取位于 `src-tauri/src/session_titles.rs`，通过 rusqlite 的只读连接访问既有 `state_5.sqlite`，并读取标题索引。自定义数据库目录从 TOML 配置或环境变量解析；不创建或迁移 Codex 数据库。新增依赖后按既有流程运行 `node scripts/collect-licenses.mjs` 重新生成随包许可。
 
 生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
 

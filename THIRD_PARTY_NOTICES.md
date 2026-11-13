@@ -19,6 +19,8 @@
 | [Reka UI](https://github.com/unovue/reka-ui) | shadcn-vue 交互基础 | MIT |
 | [Lucide](https://github.com/lucide-icons/lucide) | 线性图标 | ISC |
 | [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | 组件样式构建 | MIT |
+| [rusqlite](https://github.com/rusqlite/rusqlite) | 只读 Codex 会话标题元数据；仅启用 bundled SQLite | MIT；SQLite 为 Public Domain |
+| [toml](https://github.com/toml-rs/toml) | 读取 Codex 的 sqlite_home 配置 | MIT OR Apache-2.0 |
 | [rust_decimal](https://github.com/paupino/rust-decimal) | 十进制定价计算 | MIT |
 | [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
 
@@ -88,6 +90,8 @@ Copyright (c) 2026 nanvon。采用 MIT License；完整声明保存在 `Resource
 用量明细的紧凑数字、时间、模型排版和今日指标配置参考 cc-switch `9941a6455ef9405cf9d3620057fddd283223a607` 的 `src/components/usage/format.ts`、`RequestLogTable.tsx`、`usageTable.ts` 与 `UsageDisplaySection.tsx`；请求计时边界改编自 `src-tauri/src/services/session_usage_codex.rs` 的 `RequestTimer`，并核对 [issue #7832](https://github.com/farion1231/cc-switch/issues/7832) 与 [PR #7635](https://github.com/farion1231/cc-switch/pull/7635)（2026-10-30）。保留本项目 SwiftUI、日志去重与计费实现；会话速度和首字仅显示带近似标识的估算，缓存写入保留缺失与零值区别。沿用 cc-switch 的 MIT 声明及随包许可，未引入其代理、数据库或前端依赖。
 
 用量表格分页和就地列设置参考 cc-switch `7dec90e9821d546a7df48dce7adcf5a9abf1cc5d` 的 `src/components/usage/TablePagination.tsx`、`RequestLogColumnsMenu.tsx`（2026-11-13）。本项目使用既有 Vue、VueUse 与 shadcn-vue 控件实现分页、排序与共享列偏好，沿用自己的日志和计费口径，未复制 React 组件或引入依赖。Copyright (c) 2025 Jason Young，MIT License；来源说明与许可随包保存在 `Resources/ThirdPartyNotices/usage-tables-NOTICE.txt`、`cc-switch-LICENSE.txt`。
+
+会话标题来源与只读查询参考 cc-switch `7dec90e9821d546a7df48dce7adcf5a9abf1cc5d` 的 `src-tauri/src/session_manager/providers/codex.rs`、`codex_state_db.rs`，并核对 [Codex 元数据膨胀问题 #29007](https://github.com/openai/codex/issues/29007)（2026-11-13）。只提取标题索引及数据库中的独立标题，不选择首条消息正文；字段组织与费用拆分参考同版本 `RequestDetailPanel.tsx`，计价仍来自本项目现有 Decimal 实现。Copyright (c) 2025 Jason Young，MIT License；随包来源见 `usage-tables-NOTICE.txt`，许可见 `cc-switch-LICENSE.txt`。rusqlite 0.42 的 MIT 许可与打包 SQLite 许可由现有脚本重新生成到依赖声明。
 
 本地 Codex 用量统计的日志字段、缓存拆分与重复事件处理参考并改编自 cc-bar 的 `Core/Usage/CodexJSONLScanner.swift` 和 `UsageModels.swift`（参考日期：2026-10-28）。沿用上述 MIT 声明。实现仅保留本项目使用的日志字段与内存文件缓存，未引入其数据库、费用定价或日志监视依赖。旧版参考 `ClaudeJSONLScanner.swift` 的 Claude 解析已移除。
 

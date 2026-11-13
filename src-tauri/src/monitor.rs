@@ -426,22 +426,28 @@ pub async fn refresh_antigravity(app: &AppHandle, force: bool) {
 
 pub async fn scan_usage(app: &AppHandle, rescan: bool) {
     let state = controller(app);
-    {
+    let codex_home = {
         let mut store = state.store.lock().unwrap();
         if state.preview || store.snapshot.usage.refreshing {
             return;
         }
         store.snapshot.usage.refreshing = true;
-    }
+        std::path::PathBuf::from(&store.snapshot.usage.source)
+    };
     state.emit(app);
     let reader = state.reader.clone();
-    let scan =
-        tauri::async_runtime::spawn_blocking(move || reader.lock().unwrap().scan(rescan)).await;
+    let scan = tauri::async_runtime::spawn_blocking(move || {
+        let scan = reader.lock().unwrap().scan(rescan);
+        let (mut titles, warnings) = crate::session_titles::read(&codex_home);
+        let sessions: std::collections::BTreeSet<_> = scan.records.iter().map(|record| &record.session).collect();
+        titles.retain(|session, _| sessions.contains(session));
+        (scan, titles, warnings)
+    }).await;
     {
         let mut store = state.store.lock().unwrap();
         store.snapshot.usage.refreshing = false;
         match scan {
-            Ok(scan) => {
+            Ok((scan, titles, title_warnings)) => {
                 let changed = store.snapshot.usage.records.len() != scan.records.len()
                     || !store
                         .snapshot
@@ -454,7 +460,9 @@ pub async fn scan_usage(app: &AppHandle, rescan: bool) {
                     store.snapshot.usage.records = scan.records;
                 }
                 store.snapshot.usage.project_roots = scan.project_roots;
+                store.snapshot.usage.session_titles = titles;
                 store.snapshot.usage.warnings = scan.warnings;
+                store.snapshot.usage.warnings.extend(title_warnings);
                 if let Some(error) = scan.history_error {
                     store.snapshot.usage.warnings.push(error);
                 }

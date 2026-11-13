@@ -214,6 +214,7 @@ pub struct AntigravitySnapshot {
 pub struct UsageSnapshot {
     pub records: Vec<UsageRecord>,
     pub project_roots: BTreeMap<String, String>,
+    pub session_titles: BTreeMap<String, String>,
     pub warnings: Vec<String>,
     pub scanned_at: Option<f64>,
     pub file_count: usize,

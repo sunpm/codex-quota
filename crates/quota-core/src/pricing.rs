@@ -1,6 +1,6 @@
 // Cost semantics adapted from farion1231/cc-switch (MIT).
 // Copyright (c) 2025 Jason Young. See Resources/ThirdPartyNotices/cc-switch-LICENSE.txt.
-use crate::{UsageRecord, UsageTokens};
+use crate::UsageRecord;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -31,25 +31,6 @@ impl TokenRates {
         .all(|price| {
             price.is_none_or(|v| v >= Decimal::ZERO && v < Decimal::from(1_000_000_000u64))
         })
-    }
-    pub fn cost(&self, tokens: &UsageTokens) -> Option<Decimal> {
-        let parts = [
-            (tokens.input, self.input),
-            (tokens.output, self.output),
-            (tokens.cached, self.cached),
-            (
-                tokens.cache_write - tokens.cache_write_long,
-                self.cache_write,
-            ),
-            (tokens.cache_write_long, self.cache_write_long),
-        ];
-        let mut result = Decimal::ZERO;
-        for (count, price) in parts {
-            if count > 0 {
-                result += Decimal::from(count) * price? / Decimal::from(1_000_000u64);
-            }
-        }
-        Some(result)
     }
 }
 
@@ -84,33 +65,122 @@ impl ModelPricing {
                 .all(|value| value.is_none_or(|v| v > Decimal::ZERO && v < Decimal::from(1000u32)))
     }
     pub fn cost(&self, record: &UsageRecord) -> Option<Decimal> {
-        if record.service != "codex" {
-            return None;
-        }
-        let incoming = record.tokens.input + record.tokens.cached + record.tokens.cache_write;
-        let rates = if self
-            .context_threshold
-            .is_some_and(|threshold| incoming > threshold)
-        {
-            self.long_context_rates.as_ref()?
-        } else {
-            &self.rates
-        };
-        let multiplier = match record.service_tier.as_str() {
-            "standard" | "default" | "auto" => Decimal::ONE,
-            "fast" | "priority" => self.fast_multiplier?,
-            "ultrafast" => self.ultrafast_multiplier?,
-            _ => return None,
-        };
-        Some(rates.cost(&record.tokens)? * multiplier)
+        cost_breakdown(record, Some(self)).total
     }
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CostComponent {
+    pub kind: &'static str,
+    pub tokens: u64,
+    pub rate: Option<Decimal>,
+    pub amount: Option<Decimal>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CostBreakdown {
+    pub pricing_model: Option<String>,
+    pub long_context: bool,
+    pub context_threshold: Option<u64>,
+    pub multiplier: Option<Decimal>,
+    pub components: Vec<CostComponent>,
+    pub total: Option<Decimal>,
+}
+
+fn cost_breakdown(record: &UsageRecord, price: Option<&ModelPricing>) -> CostBreakdown {
+    let price = price.filter(|_| record.service == "codex");
+    let incoming = record.tokens.input + record.tokens.cached + record.tokens.cache_write;
+    let threshold = price.and_then(|price| price.context_threshold);
+    let long_context = threshold.is_some_and(|threshold| incoming > threshold);
+    let rates = price.and_then(|price| {
+        if long_context {
+            price.long_context_rates.as_ref()
+        } else {
+            Some(&price.rates)
+        }
+    });
+    let multiplier = match record.service_tier.as_str() {
+        "standard" | "default" | "auto" => Some(Decimal::ONE),
+        "fast" | "priority" => price.and_then(|price| price.fast_multiplier),
+        "ultrafast" => price.and_then(|price| price.ultrafast_multiplier),
+        _ => None,
+    };
+    let parts = [
+        (
+            "input",
+            record.tokens.input,
+            rates.and_then(|rates| rates.input),
+        ),
+        (
+            "output",
+            record.tokens.output,
+            rates.and_then(|rates| rates.output),
+        ),
+        (
+            "cached",
+            record.tokens.cached,
+            rates.and_then(|rates| rates.cached),
+        ),
+        (
+            "cacheWrite",
+            record.tokens.cache_write - record.tokens.cache_write_long,
+            rates.and_then(|rates| rates.cache_write),
+        ),
+        (
+            "cacheWriteLong",
+            record.tokens.cache_write_long,
+            rates.and_then(|rates| rates.cache_write_long),
+        ),
+    ];
+    let mut components: Vec<_> = parts
+        .into_iter()
+        .map(|(kind, tokens, rate)| CostComponent {
+            kind,
+            tokens,
+            rate,
+            amount: if tokens == 0 {
+                Some(Decimal::ZERO)
+            } else {
+                rate.map(|rate| Decimal::from(tokens) * rate / Decimal::from(1_000_000u64))
+            },
+        })
+        .collect();
+    // Preserve the existing order: sum Decimal components, then apply the tier multiplier.
+    let base_total: Option<Decimal> = components.iter().map(|component| component.amount).sum();
+    let total = rates
+        .and(base_total)
+        .zip(multiplier)
+        .map(|(total, multiplier)| total * multiplier);
+    for component in &mut components {
+        component.amount = component
+            .amount
+            .zip(multiplier)
+            .map(|(amount, multiplier)| amount * multiplier);
+    }
+    CostBreakdown {
+        pricing_model: price.map(|price| price.model.clone()),
+        long_context,
+        context_threshold: threshold,
+        multiplier,
+        components,
+        total,
+    }
+}
+
+pub fn price_record_breakdown(
+    record: &UsageRecord,
+    prices: &BTreeMap<String, ModelPricing>,
+) -> CostBreakdown {
+    cost_breakdown(record, lookup_price(&record.service, &record.model, prices))
 }
 
 pub fn price_record(
     record: &UsageRecord,
     prices: &BTreeMap<String, ModelPricing>,
 ) -> Option<Decimal> {
-    lookup_price(&record.service, &record.model, prices)?.cost(record)
+    price_record_breakdown(record, prices).total
 }
 
 pub fn lookup_price<'a>(

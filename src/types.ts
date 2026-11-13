@@ -30,6 +30,11 @@ export interface UsageRecord {
   tokens: UsageTokens; serviceTier: string; isUSOnly: boolean; serviceTierReported?: boolean | null
   estimatedDuration?: number | null; estimatedFirstToken?: number | null; cost: string | null
 }
+export interface CostComponent { kind: 'input' | 'output' | 'cached' | 'cacheWrite' | 'cacheWriteLong'; tokens: number; rate: string | null; amount: string | null }
+export interface CostBreakdown {
+  pricingModel: string | null; longContext: boolean; contextThreshold: number | null
+  multiplier: string | null; components: CostComponent[]; total: string | null
+}
 export interface TokenRates { input: string | null; output: string | null; cached: string | null; cacheWrite: string | null; cacheWriteLong: string | null }
 export interface ModelPricing {
   service: string; model: string; rates: TokenRates; contextThreshold: number | null
@@ -59,7 +64,7 @@ export interface AppSnapshot {
   announcements: AnnouncementSnapshot
   antigravity: { groups: AntigravityGroup[]; error: string | null; lastSuccess: number | null; refreshing: boolean; requiresAction: boolean }
   antigravityAnnouncements: AnnouncementSnapshot
-  usage: { records: UsageRecord[]; projectRoots: Record<string, string>; warnings: string[]; scannedAt: number | null; fileCount: number; refreshing: boolean; source: string }
+  usage: { records: UsageRecord[]; projectRoots: Record<string, string>; sessionTitles: Record<string, string>; warnings: string[]; scannedAt: number | null; fileCount: number; refreshing: boolean; source: string }
   prices: ModelPricing[]
   priceDate: string
   version: string

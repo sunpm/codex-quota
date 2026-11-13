@@ -9,7 +9,7 @@ export const usageRanges = [{ value: 'today', label: '今天' }, { value: 'yeste
 
 export type UsageSort = Metric | 'last' | 'count' | 'hitRate'
 interface UsageFilters {
-  view: 'session' | 'project'
+  view: 'record' | 'session' | 'project'
   period: typeof usageRanges[number]['value']
   metric: Metric
   sort: UsageSort
@@ -31,7 +31,7 @@ function readFilters(raw: string, defaults: UsageFilters): UsageFilters {
   const start = storedDate(saved.start, defaults.start)
   const end = storedDate(saved.end, defaults.end)
   return {
-    view: saved.view === 'project' ? 'project' : 'session',
+    view: saved.view === 'project' || saved.view === 'record' ? saved.view : 'session',
     period: usageRanges.find(range => range.value === saved.period)?.value ?? defaults.period,
     metric: saved.metric === 'cost' ? 'cost' : 'tokens',
     sort: (['tokens', 'cost', 'last', 'count', 'hitRate'] as const).find(key => key === saved.sort) ?? (saved.metric === 'cost' ? 'cost' : 'tokens'),

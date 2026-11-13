@@ -15,6 +15,8 @@ import SlidingSelection from './SlidingSelection.vue'
 import UsageDetailDialog from './UsageDetailDialog.vue'
 import TablePagination from './TablePagination.vue'
 import TableSortButton from './TableSortButton.vue'
+import UsageRecordTable from './UsageRecordTable.vue'
+import DetailColumnsMenu from './DetailColumnsMenu.vue'
 
 const props = defineProps<{ state: AppSnapshot; page: Page; clock: { now: number; calendar: string } }>()
 const emit = defineEmits<{ navigate: [page: Page] }>()
@@ -102,7 +104,8 @@ function grouped(kind: string) {
   }
   return [...values].map(([key, records]) => {
     const project = props.state.usage.projectRoots[records[0]!.project] ?? records[0]!.project
-    return { key, project, records, total: summarize(records), name: kind === 'session' ? basename(project) : kind === 'project' ? basename(key) : key, subtitle: kind === 'session' ? key.slice(0, 12) : kind === 'project' ? key : '', last: records.reduce((latest, record) => Math.max(latest, record.date), 0) }
+    const sessionTitle = kind === 'session' ? props.state.usage.sessionTitles[key] : undefined
+    return { key, project, records, total: summarize(records), name: kind === 'session' ? sessionTitle || basename(project) : kind === 'project' ? basename(key) : key, subtitle: kind === 'session' ? sessionTitle ? `${basename(project)} · ${key.slice(0, 12)}` : key.slice(0, 12) : kind === 'project' ? key : '', last: records.reduce((latest, record) => Math.max(latest, record.date), 0) }
   }).sort((a, b) => compareSummaries(a.total, b.total, metric.value))
 }
 const groups = computed(() => grouped(grouping.value).filter(group => props.page === 'overview' || !search.value.trim() || `${group.name} ${group.key} ${group.project}`.toLowerCase().includes(search.value.trim().toLowerCase())).sort((a, b) => {
@@ -120,7 +123,13 @@ function selectSort(key: UsageSort) {
   if (key === 'tokens' || key === 'cost') metric.value = key
 }
 const sortState = (key: UsageSort) => sort.value === key ? direction.value === 'asc' ? 'ascending' : 'descending' : 'none'
-const summaryTotal = computed(() => props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
+const recordView = computed(() => props.page === 'details' && view.value === 'record')
+const matchingRecords = computed(() => {
+  const query = search.value.trim().toLowerCase()
+  return records.value.filter(record => !query || `${props.state.usage.sessionTitles[record.session] ?? ''} ${record.session} ${record.id} ${record.project} ${props.state.usage.projectRoots[record.project] ?? ''} ${record.model}`.toLowerCase().includes(query))
+})
+const recordFilterKey = computed(() => JSON.stringify([period.value, model.value, start.value, end.value, search.value]))
+const summaryTotal = computed(() => recordView.value ? summarize(matchingRecords.value) : props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
 const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, group) => Math.max(width, group.total.tokens.toLocaleString('zh-CN').length), 14)}ch + 26px)`)
 const topSessions = computed(() => grouped('session').slice(0, 5))
 const heatmap = computed<EChartsCoreOption>(() => {
@@ -182,7 +191,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
         <section class="surface"><div class="section-heading"><h2>用量构成</h2></div><div v-if="state.usage.scannedAt !== null" class="composition">
           <div v-for="item in [{ label: '新增输入', value: total.input }, { label: '输出', value: total.output }, { label: '缓存命中', value: total.cached }, { label: '缓存写入', value: total.cacheWrite }]" :key="item.label" class="composition-row"><span>{{ item.label }}</span><div class="composition-track"><div :style="{ width: `${total.tokens ? item.value / total.tokens * 100 : 0}%` }" /></div><strong :title="item.value.toLocaleString()">{{ shortTokens(item.value) }}</strong></div>
         </div><div v-else class="empty-state">尚未读取本机日志</div></section>
-        <section class="surface"><div class="section-heading"><h2>高消耗对话</h2><div class="heading-actions"><SlidingSelection v-slot="{ highlight }" :selection="metric" class="segmented" role="group" aria-label="高消耗对话排序指标"><component :is="highlight ? 'span' : 'label'" v-for="item in [{ value: 'tokens', label: 'Tokens' }, { value: 'cost', label: costLabel(total) }]" :key="item.value" class="segment-option" :data-selected="metric === item.value"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="top-session-metric" :value="item.value" @change="sort = metric; direction = 'desc'" />{{ item.label }}</component></SlidingSelection><Button variant="ghost" size="sm" @click="openInDetails('session')">在明细中查看<ChevronRight :size="13" /></Button></div></div><div v-if="!topSessions.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : '暂无记录' }}</div><button v-for="group in topSessions" :key="group.key" class="ranking-row" @click="showDetail(group.name, group.records)"><span :title="group.key">{{ group.name }}<small>{{ dateText(group.last) }} · {{ group.subtitle }}</small></span><strong :class="{ 'unpriced-text': metric === 'cost' && group.total.count && !group.total.priced }" :title="metric === 'tokens' ? group.total.tokens.toLocaleString() : costTooltip(group.total)">{{ metric === 'tokens' ? shortTokens(group.total.tokens) : summaryMoney(group.total) }}<small v-if="metric === 'cost' && group.total.priced && group.total.unpriced" class="unpriced-inline">含未定价</small></strong><ChevronRight :size="14" /></button></section>
+        <section class="surface"><div class="section-heading"><h2>高消耗对话</h2><div class="heading-actions"><SlidingSelection v-slot="{ highlight }" :selection="metric" class="segmented" role="group" aria-label="高消耗对话排序指标"><component :is="highlight ? 'span' : 'label'" v-for="item in [{ value: 'tokens', label: 'Tokens' }, { value: 'cost', label: costLabel(total) }]" :key="item.value" class="segment-option" :data-selected="metric === item.value"><input v-if="!highlight" v-model="metric" class="sr-only" type="radio" name="top-session-metric" :value="item.value" @change="sort = metric; direction = 'desc'" />{{ item.label }}</component></SlidingSelection><Button variant="ghost" size="sm" @click="openInDetails('session')">在明细中查看<ChevronRight :size="13" /></Button></div></div><div v-if="!topSessions.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : '暂无记录' }}</div><button v-for="group in topSessions" :key="group.key" class="ranking-row" @click="showDetail(group.name, group.records)"><span :title="`${group.name}\n${group.key}`">{{ group.name }}<small>{{ dateText(group.last) }} · {{ group.subtitle }}</small></span><strong :class="{ 'unpriced-text': metric === 'cost' && group.total.count && !group.total.priced }" :title="metric === 'tokens' ? group.total.tokens.toLocaleString() : costTooltip(group.total)">{{ metric === 'tokens' ? shortTokens(group.total.tokens) : summaryMoney(group.total) }}<small v-if="metric === 'cost' && group.total.priced && group.total.unpriced" class="unpriced-inline">含未定价</small></strong><ChevronRight :size="14" /></button></section>
       </div>
     </template>
     <section class="surface table-surface" :class="{ 'overview-table': page === 'overview' }">
@@ -193,12 +202,13 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
         </template>
         <template v-else>
           <SlidingSelection v-slot="{ highlight }" :selection="view" class="segmented" role="group" aria-label="明细分组">
-            <component :is="highlight ? 'span' : 'label'" v-for="item in [{ value: 'session', label: '按对话' }, { value: 'project', label: '按项目' }]" :key="item.value" class="segment-option" :data-selected="view === item.value"><input v-if="!highlight" v-model="view" class="sr-only" type="radio" name="detail-view" :value="item.value" @change="search = ''" />{{ item.label }}</component>
+            <component :is="highlight ? 'span' : 'label'" v-for="item in [{ value: 'record', label: '按记录' }, { value: 'session', label: '按对话' }, { value: 'project', label: '按项目' }]" :key="item.value" class="segment-option" :data-selected="view === item.value"><input v-if="!highlight" v-model="view" class="sr-only" type="radio" name="detail-view" :value="item.value" @change="search = ''" />{{ item.label }}</component>
           </SlidingSelection>
-          <label class="search-box"><Search :size="14" /><input v-model="search" :placeholder="view === 'session' ? '搜索对话或项目' : '搜索项目'" aria-label="搜索" /></label>
+          <div class="record-actions"><label class="search-box"><Search :size="14" /><input v-model="search" :placeholder="view === 'record' ? '搜索对话、项目或模型' : view === 'session' ? '搜索对话或项目' : '搜索项目'" aria-label="搜索" /></label><DetailColumnsMenu v-if="recordView" :selected="state.settings.detailColumns" /></div>
         </template>
       </div>
-      <div ref="tableScroll" class="table-scroll"><table class="usage-table" :class="{ 'project-table': grouping === 'project' }" :style="{ '--tokens-column-width': tokenColumnWidth }">
+      <UsageRecordTable v-if="recordView" :records="matchingRecords" :state="state" :reset-key="recordFilterKey" show-identity />
+      <template v-else><div ref="tableScroll" class="table-scroll"><table class="usage-table" :class="{ 'project-table': grouping === 'project' }" :style="{ '--tokens-column-width': tokenColumnWidth }">
         <thead><tr>
           <th class="name-column">{{ grouping === 'session' ? '对话' : grouping === 'project' ? '项目' : '模型' }}</th>
           <th v-if="grouping !== 'model'" class="secondary-column" :class="{ 'time-column': grouping === 'session' }" :aria-sort="grouping === 'session' ? sortState('last') : undefined"><TableSortButton v-if="grouping === 'session'" label="最近用量" :active="sort === 'last'" :direction="direction" @click="selectSort('last')" /><template v-else>目录</template></th>
@@ -209,7 +219,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
           <th class="number cache-column" :aria-sort="sortState('hitRate')"><TableSortButton label="缓存命中率" :active="sort === 'hitRate'" :direction="direction" @click="selectSort('hitRate')" /></th>
         </tr></thead>
         <tbody><tr v-for="group in pageRows" :key="group.key">
-          <td><button class="table-link" :title="group.key" @click="showDetail(group.name, group.records)"><span>{{ group.name }}<small v-if="grouping === 'session'">{{ group.subtitle }}</small></span><ChevronRight :size="13" /></button></td>
+          <td><button class="table-link" :title="`${group.name}\n${group.key}`" @click="showDetail(group.name, group.records)"><span>{{ group.name }}<small v-if="grouping === 'session'">{{ group.subtitle }}</small></span><ChevronRight :size="13" /></button></td>
           <td v-if="grouping !== 'model'" class="muted secondary-column"><span :title="grouping === 'session' ? dateText(group.last, true) : group.subtitle">{{ grouping === 'session' ? dateText(group.last) : group.subtitle }}</span></td>
           <td class="number" :title="group.total.count.toLocaleString()">{{ group.total.count.toLocaleString() }}</td>
           <td class="number">{{ group.total.tokens.toLocaleString('zh-CN') }}</td>
@@ -219,6 +229,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
         </tr></tbody>
       </table><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : search ? '没有匹配的记录' : '此时间范围没有用量记录' }}</div></div>
       <TablePagination v-model:page="tablePage" v-model:page-size="pageSize" :total="groups.length" />
+      </template>
     </section>
     <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>最近 53 周</h2></div><Chart v-if="state.usage.scannedAt !== null" :option="heatmap" label="最近53周每日 Tokens 用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">尚未读取本机日志</div><p v-if="state.usage.scannedAt !== null" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p></section>
     <UsageDetailDialog v-if="detail" :title="detail.title" :records="detail.records" :state="state" @close="detail = null" />

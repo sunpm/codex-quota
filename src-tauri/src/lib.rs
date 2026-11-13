@@ -4,6 +4,7 @@ mod monitor;
 #[cfg(target_os = "macos")]
 mod notifications;
 mod platform;
+mod session_titles;
 mod state;
 mod updates;
 
@@ -17,6 +18,15 @@ use tauri_plugin_notification::NotificationExt;
 #[tauri::command]
 fn get_snapshot(app: AppHandle) -> AppSnapshot {
     controller(&app).store.lock().unwrap().snapshot.clone()
+}
+
+#[tauri::command]
+fn usage_cost_detail(app: AppHandle, record_id: String) -> Result<quota_core::CostBreakdown, String> {
+    let state = controller(&app);
+    let store = state.store.lock().unwrap();
+    let record = store.snapshot.usage.records.iter().find(|record| record.id == record_id)
+        .ok_or("这条用量记录已不在当前历史中，请刷新后重试。")?;
+    Ok(quota_core::price_record_breakdown(record, &store.saved.prices()))
 }
 
 #[tauri::command]
@@ -331,6 +341,7 @@ pub fn run() {
             .build())
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
+            usage_cost_detail,
             refresh_quota,
             refresh_codex,
             refresh_antigravity,
