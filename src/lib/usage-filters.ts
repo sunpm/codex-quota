@@ -21,9 +21,9 @@ interface UsageFilters {
 }
 
 export function parseUsageDateTime(value: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:[0-5]\d(\.\d{1,3})?)?$/.test(value)) return null
   const date = new Date(value)
-  return Number.isFinite(date.getTime()) && dateTimeKey(date) === value ? date.getTime() / 1000 : null
+  return Number.isFinite(date.getTime()) && dateTimeKey(date) === value.slice(0, 16) ? date.getTime() / 1000 : null
 }
 
 function storedDateTime(value: unknown, fallback: string, end = false) {
@@ -72,11 +72,27 @@ export const usageService = useLocalStorage<UsageService | 'all'>('usage.service
 export const quotaService = useLocalStorage<QuotaService>('quota.service.v1', 'all', {
   serializer: { read: value => value === 'codex' || value === 'antigravity' ? value : 'all', write: value => value },
 })
-watch(usageService, () => { details.value.model = 'all'; overview.value.model = 'all' })
+// Apply the service reset before restoring the saved chart model.
+watch(usageService, () => { details.value.model = 'all'; overview.value.model = 'all' }, { flush: 'sync' })
 export const overviewGroupBy = ref<'model' | 'project' | 'session'>('model')
+export const overviewTrendMetric = ref<Metric>('tokens')
+export const chartReturn = ref<{ service: UsageService | 'all'; filters: UsageFilters } | null>(null)
 
 export function syncOverviewToDetails(view: 'session' | 'project' = 'session') {
+  chartReturn.value = null
   details.value = { ...overview.value, view, search: '' }
+}
+
+export function openChartRecords(from: number, to: number) {
+  chartReturn.value = { service: usageService.value, filters: { ...overview.value } }
+  details.value = { ...overview.value, view: 'record', period: 'custom', search: '', start: dateTimeKey(new Date(from * 1000), true), end: dateTimeKey(new Date(to * 1000), true) }
+}
+
+export function restoreChartOverview() {
+  if (!chartReturn.value) return
+  usageService.value = chartReturn.value.service
+  overview.value = { ...chartReturn.value.filters }
+  chartReturn.value = null
 }
 
 export function useUsageFilters(page: () => Page) {

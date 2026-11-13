@@ -5,7 +5,7 @@ import { listen } from '@tauri-apps/api/event'
 import type { Page } from './types'
 import { actionError, connected, execute, initialize, isDesktop, isPreview, snapshot } from './lib/app'
 import { countdownTickMs, dateText, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from './lib/usage'
-import { usageService, useUsageFilters } from './lib/usage-filters'
+import { restoreChartOverview, usageService, useUsageFilters } from './lib/usage-filters'
 import { Button } from './components/ui/button'
 import UsagePanel from './components/UsagePanel.vue'
 import QuotaPanel from './components/QuotaPanel.vue'
@@ -89,7 +89,7 @@ watch(page, () => { pageContent.value?.scrollTo(0, 0); scheduleClock() }, { flus
 watch(snapshot, scheduleClock)
 watch(usagePeriod, scheduleClock)
 function updateTheme() { document.documentElement.classList.toggle('dark', darkQuery.matches) }
-function navigate(value: Page) { if (page.value === value) return; page.value = value; if (value === 'quota') void execute('refresh_quota') }
+function navigate(value: Page) { if (page.value === value) return; if (value === 'overview') restoreChartOverview(); page.value = value; if (value === 'quota') void execute('refresh_quota') }
 function keydown(event: KeyboardEvent) {
   if (!(event.metaKey || event.ctrlKey)) return
   if (event.key === ',') { event.preventDefault(); navigate('settings') }

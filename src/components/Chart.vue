@@ -4,12 +4,12 @@ import { init, use, type EChartsCoreOption } from 'echarts/core'
 import { BarChart, LineChart, HeatmapChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent, CalendarComponent, VisualMapComponent, AriaComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import type { EChartsType } from 'echarts/core'
+import type { ECElementEvent, EChartsType } from 'echarts/core'
 import type { ChartTimeHover } from '@/types'
 
 use([BarChart, LineChart, HeatmapChart, GridComponent, TooltipComponent, LegendComponent, CalendarComponent, VisualMapComponent, AriaComponent, CanvasRenderer])
 const props = defineProps<{ option: EChartsCoreOption; label: string; height?: number; animations?: boolean; timeHover?: boolean }>()
-const emit = defineEmits<{ timeHover: [value: ChartTimeHover | null] }>()
+const emit = defineEmits<{ timeHover: [value: ChartTimeHover | null]; select: [dataIndex: number] }>()
 const element = useTemplateRef('chartElement')
 let chart: EChartsType | undefined
 let observer: ResizeObserver | undefined
@@ -32,6 +32,7 @@ function render() {
 function applyTheme() {
   chart?.dispose()
   chart = init(element.value!, theme.matches ? 'dark' : undefined, { renderer: 'canvas' })
+  chart.on('click', 'series', (event: ECElementEvent) => emit('select', event.dataIndex))
   if (props.timeHover) {
     chart.getZr().on('mousemove', event => {
       const { offsetX: x, offsetY: y } = event

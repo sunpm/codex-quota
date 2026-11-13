@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { groupBy as groupRecords } from '@pmun/utils'
-import { ChevronRight, CircleHelp, Search } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, CircleHelp, Search } from '@lucide/vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { AppSnapshot, Metric, Page, UsageRecord } from '@/types'
 import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dateTimeKey, dayKey, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from '@/lib/usage'
-import { overviewGroupBy, parseUsageDateTime, syncOverviewToDetails, usageRanges, usageService, useUsageFilters, type UsageSort } from '@/lib/usage-filters'
+import { chartReturn, openChartRecords, overviewGroupBy, overviewTrendMetric, parseUsageDateTime, syncOverviewToDetails, usageRanges, usageService, useUsageFilters, type UsageSort } from '@/lib/usage-filters'
 import { compareTableNumbers, useTablePagination } from '@/lib/table'
 import TablePagination from './TablePagination.vue'
 import TableSortButton from './TableSortButton.vue'
@@ -23,7 +23,7 @@ const props = defineProps<{ state: AppSnapshot; page: Page; clock: { now: number
 const emit = defineEmits<{ navigate: [page: Page] }>()
 const { view, period, metric, sort, direction, model, search, start, end } = useUsageFilters(() => props.page)
 const groupBy = overviewGroupBy
-const trendMetric = ref<Metric>('tokens')
+const trendMetric = overviewTrendMetric
 const services = [{ id: 'codex', name: 'Codex', color: '#3279bd' }, { id: 'antigravity', name: 'Antigravity', color: '#448d86' }] as const
 const selectedServices = computed(() => services.filter(service => usageService.value === 'all' || service.id === usageService.value))
 const grouping = computed(() => props.page === 'details' ? view.value : groupBy.value)
@@ -48,7 +48,7 @@ const range = computed(() => {
 })
 const rangeText = computed(() => {
   if (period.value === 'all') return ''
-  if (period.value === 'custom') return customRange.value ? `${start.value.replace('T', ' ')} — ${end.value.replace('T', ' ')}` : ''
+  if (period.value === 'custom') return customRange.value ? `${dateTimeKey(new Date(range.value.from * 1000), true).replace('T', ' ')} — ${dateTimeKey(new Date(range.value.to * 1000), true).replace('T', ' ')}` : ''
   if (period.value === '24h') return `${dateTimeKey(new Date(range.value.from * 1000)).replace('T', ' ')} — ${dateTimeKey(new Date(range.value.to * 1000)).replace('T', ' ')}`
   const first = dayKey(new Date(range.value.from * 1000))
   const last = dayKey(shiftDay(new Date(range.value.from * 1000), Math.max(0, range.value.days - 1)))
@@ -161,15 +161,20 @@ const matchingRecords = computed(() => {
 const recordFilterKey = computed(() => JSON.stringify([usageService.value, period.value, model.value, start.value, end.value, search.value]))
 const summaryTotal = computed(() => recordView.value ? summarize(matchingRecords.value) : props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
 const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, group) => Math.max(width, group.total.tokens.toLocaleString('zh-CN').length), 14)}ch + 26px)`)
+const heatmapDays = computed(() => {
+  const earliest = period.value === 'all' ? records.value.reduce((date, record) => Math.min(date, record.date), range.value.to) : range.value.from
+  const days = groupRecords(records.value, record => dayKey(new Date(record.date * 1000)))
+  for (let day = startOfDay(new Date(earliest * 1000)); day.getTime() / 1000 < range.value.to; day = shiftDay(day, 1)) days[dayKey(day)] ??= []
+  return Object.entries(days).sort(([a], [b]) => a.localeCompare(b)).map(([day, records]) => {
+    const summary = summarize(records)
+    return { value: [day, summary.tokens] as [string, number], summary }
+  })
+})
 const heatmap = computed<EChartsCoreOption>(() => {
   const last = startOfDay(new Date((range.value.to - 0.001) * 1000))
-  const earliest = period.value === 'all' ? records.value.reduce((date, record) => Math.min(date, record.date), range.value.to) : range.value.from
-  const first = new Date(Math.min(startOfDay(new Date(earliest * 1000)).getTime(), shiftDay(last, -370).getTime()))
-  const days = groupRecords(records.value, record => dayKey(new Date(record.date * 1000)))
-  const data = Object.entries(days).sort(([a], [b]) => a.localeCompare(b)).map(([day, records]) => {
-    const summary = summarize(records)
-    return { value: [day, summary.tokens], summary }
-  })
+  const earliest = heatmapDays.value[0]?.value[0] ?? dayKey(last)
+  const first = new Date(Math.min(new Date(`${earliest}T00:00:00`).getTime(), shiftDay(last, -370).getTime()))
+  const data = heatmapDays.value
   return {
     tooltip: { renderMode: 'richText', formatter: (params: { dataIndex: number }) => {
       const day = data[params.dataIndex]!, summary = day.summary
@@ -182,6 +187,24 @@ const heatmap = computed<EChartsCoreOption>(() => {
 })
 function showDetail(name: string, items: UsageRecord[]) { detail.value = { title: name, records: items } }
 function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetails(targetView); emit('navigate', 'details') }
+function openTimeRecords(from: number, to: number) {
+  const start = Math.max(from, range.value.from), end = Math.min(to, range.value.to)
+  if (start >= end) return
+  openChartRecords(start, end)
+  emit('navigate', 'details')
+}
+function openTrendRecords(index: number) {
+  const bucket = buckets.value[index]
+  if (!bucket) return
+  const from = byHour.value ? new Date(Number(bucket.key) * 1000) : new Date(`${bucket.key}T00:00:00`)
+  openTimeRecords(from.getTime() / 1000, byHour.value ? from.getTime() / 1000 + 3600 : shiftDay(from, 1).getTime() / 1000)
+}
+function openHeatmapRecords(index: number) {
+  const day = heatmapDays.value[index]
+  if (!day) return
+  const from = new Date(`${day.value[0]}T00:00:00`)
+  openTimeRecords(from.getTime() / 1000, shiftDay(from, 1).getTime() / 1000)
+}
 </script>
 
 <template>
@@ -204,7 +227,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
         <NativeSelect id="model-filter" :model-value="model" @change="model = ($event.target as HTMLSelectElement).value"><NativeSelectOption value="all">全部模型</NativeSelectOption><NativeSelectOption v-for="item in models" :key="item" :value="item">{{ item }}</NativeSelectOption></NativeSelect>
       </div>
       <template v-if="period === 'custom'">
-        <div class="date-range"><label>开始 <input v-model="start" type="datetime-local" :max="end" required :aria-invalid="!customRange" :aria-describedby="!customRange ? 'usage-range-error' : undefined" /></label><span>—</span><label>结束 <input v-model="end" type="datetime-local" :min="start" required :aria-invalid="!customRange" :aria-describedby="!customRange ? 'usage-range-error' : undefined" /></label></div>
+        <div class="date-range"><label>开始 <input v-model="start" type="datetime-local" step="any" :max="end" required :aria-invalid="!customRange" :aria-describedby="!customRange ? 'usage-range-error' : undefined" /></label><span>—</span><label>结束 <input v-model="end" type="datetime-local" step="any" :min="start" required :aria-invalid="!customRange" :aria-describedby="!customRange ? 'usage-range-error' : undefined" /></label></div>
         <p v-if="!customRange" id="usage-range-error" class="date-range-error" role="alert">请输入完整的开始、结束时间，且结束时间须晚于开始时间。</p>
       </template>
       <div class="source-line">
@@ -215,6 +238,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
             <TooltipPortal><TooltipContent class="source-info-tooltip" side="bottom" align="start" :side-offset="6">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。时间按本地时区计算，包含开始、不包含结束。</TooltipContent></TooltipPortal>
           </TooltipRoot></TooltipProvider>
         </div>
+        <Button v-if="page === 'details' && chartReturn" variant="ghost" size="sm" @click="emit('navigate', 'overview')"><ChevronLeft :size="13" />返回图表</Button>
       </div>
     </div>
     <div v-if="page === 'overview'" class="summary-cards">
@@ -269,7 +293,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
           </SlidingSelection>
         </div>
       </div>
-      <Chart v-if="records.length && (trendMetric === 'tokens' || total.priced)" :option="trend" :label="`按服务堆叠的${trendMetric === 'tokens' ? 'Tokens' : '已定价费用'}趋势，${byHour ? '每小时' : '每日'}一柱`" :animations="state.settings.animations" />
+      <Chart v-if="records.length && (trendMetric === 'tokens' || total.priced)" :option="trend" :label="`按服务堆叠的${trendMetric === 'tokens' ? 'Tokens' : '已定价费用'}趋势，${byHour ? '每小时' : '每日'}一柱，点击查看该时段记录`" :animations="state.settings.animations" @select="openTrendRecords" />
       <div v-else class="empty-state chart-empty">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : !records.length ? '此时间范围没有用量记录' : '此时间范围的记录尚未定价' }}</div>
     </section>
     <section class="surface table-surface" :class="{ 'overview-table': page === 'overview' }">
@@ -315,7 +339,7 @@ function openInDetails(targetView: 'session' | 'project') { syncOverviewToDetail
       <TablePagination v-model:page="tablePage" v-model:page-size="pageSize" :total="groups.length" />
       </template>
     </section>
-    <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>每日用量</h2></div><Chart v-if="hasReadableUsage && records.length" :option="heatmap" label="当前时间范围内每日 Tokens 用量热力图" :height="150" :animations="false" /><div v-else class="empty-state">{{ hasReadableUsage ? '此时间范围没有用量记录' : '尚未读取本机日志' }}</div><p v-if="hasReadableUsage && records.length" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p></section>
+    <section v-if="page === 'overview'" class="surface heatmap-section"><div class="section-heading"><h2>每日用量</h2></div><Chart v-if="hasReadableUsage && records.length" :option="heatmap" label="当前时间范围内每日 Tokens 用量热力图，点击日期查看当天记录" :height="150" :animations="false" @select="openHeatmapRecords" /><div v-else class="empty-state">{{ hasReadableUsage ? '此时间范围没有用量记录' : '尚未读取本机日志' }}</div><p v-if="hasReadableUsage && records.length" class="heatmap-legend">低 <span class="heatmap-scale" /> 高</p></section>
     <UsageDetailDialog v-if="detail" :title="detail.title" :records="detail.records" :state="state" @close="detail = null" />
   </div>
 </template>
