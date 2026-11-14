@@ -126,6 +126,7 @@ enum TrayMenuItemSpec {
         id: String,
         label: String,
         remaining_percent: Option<f64>,
+        resets_at: Option<f64>,
     },
     /// 可点击的辅助信息行（如重置卡数量），点击唤起面板
     ActionNote(String),
@@ -144,7 +145,7 @@ struct TrayContent {
 struct TrayCountdowns(Mutex<HashMap<String, Vec<TrayCountdown>>>);
 
 struct TrayCountdown {
-    item: tauri::menu::MenuItem<tauri::Wry>,
+    item: tauri::menu::IconMenuItem<tauri::Wry>,
     label: String,
     timestamp: Option<f64>,
     expires: bool,
@@ -170,7 +171,11 @@ fn deadline_text(label: &str, timestamp: Option<f64>, expires: bool, now: f64) -
         };
         format!("{value}后{action}")
     };
-    format!("{prefix}{duration} · {}", date.with_timezone(&chrono::Local).format("%m-%d %H:%M"))
+    if expires {
+        format!("{prefix}{duration} · {}", date.with_timezone(&chrono::Local).format("%m-%d %H:%M"))
+    } else {
+        format!("{prefix}{duration}")
+    }
 }
 
 /// 绘制菜单项中的彩色胶囊/环形进度条图标。
@@ -386,8 +391,8 @@ fn codex_tray_content(snapshot: &AppSnapshot) -> TrayContent {
                 id: format!("open:quota:codex:{}", window.id),
                 label: format!("{name} · 剩余 {remaining}%"),
                 remaining_percent: Some(window.remaining()),
+                resets_at: window.resets_at,
             });
-            items.push(TrayMenuItemSpec::Deadline { label: String::new(), timestamp: window.resets_at, expires: false });
 
             tooltip_lines.push(format!("{name}：剩余 {remaining}%{reset_str}"));
         }
@@ -453,11 +458,7 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
             };
 
             if bucket.disabled {
-                items.push(TrayMenuItemSpec::Quota {
-                    id: format!("open:quota:ag:{}", bucket.id),
-                    label: format!("{display_name} · {window} · 未启用"),
-                    remaining_percent: None,
-                });
+                items.push(TrayMenuItemSpec::ActionNote(format!("{display_name} · {window} · 未启用")));
                 tooltip_lines.push(format!("{} · {window} · {} [{}]：未启用", group.name, bucket.name, bucket.id));
             } else if let Some(p) = bucket.remaining_percent {
                 let rem_int = p.floor() as u64;
@@ -465,6 +466,7 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
                     id: format!("open:quota:ag:{}", bucket.id),
                     label: format!("{display_name} · {window} · 剩余 {rem_int}%"),
                     remaining_percent: Some(p),
+                    resets_at: bucket.resets_at,
                 });
                 tooltip_lines.push(format!("{} · {window} · {} [{}]：剩余 {rem_int}%{reset_str}", group.name, bucket.name, bucket.id));
             } else {
@@ -472,11 +474,9 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
                     id: format!("open:quota:ag:{}", bucket.id),
                     label: format!("{display_name} · {window} · 剩余未知"),
                     remaining_percent: None,
+                    resets_at: bucket.resets_at,
                 });
                 tooltip_lines.push(format!("{} · {window} · {} [{}]：剩余未知", group.name, bucket.name, bucket.id));
-            }
-            if !bucket.disabled {
-                items.push(TrayMenuItemSpec::Deadline { label: String::new(), timestamp: bucket.resets_at, expires: false });
             }
         }
     }
@@ -510,10 +510,12 @@ fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &s
 
         for spec in &content.items {
             match spec {
-                TrayMenuItemSpec::Quota { id, label, remaining_percent } => {
+                TrayMenuItemSpec::Quota { id, label, remaining_percent, resets_at } => {
                     let icon = create_progress_capsule_icon(*remaining_percent);
-                    let item = IconMenuItem::with_id(app, id, label, true, Some(icon), None::<&str>)?;
+                    let text = deadline_text(label, *resets_at, false, crate::state::now());
+                    let item = IconMenuItem::with_id(app, id, &text, true, Some(icon), None::<&str>)?;
                     menu.append(&item)?;
+                    countdowns.push(TrayCountdown { item, label: label.clone(), timestamp: *resets_at, expires: false, text });
                 }
                 TrayMenuItemSpec::ActionNote(text) => {
                     let item = MenuItem::with_id(app, "open", text, true, None::<&str>)?;
@@ -521,7 +523,7 @@ fn apply_tray_content(app: &AppHandle, tray: &tauri::tray::TrayIcon, service: &s
                 }
                 TrayMenuItemSpec::Deadline { label, timestamp, expires } => {
                     let text = deadline_text(label, *timestamp, *expires, crate::state::now());
-                    let item = MenuItem::with_id(app, "open", &text, true, None::<&str>)?;
+                    let item = IconMenuItem::with_id(app, "open", &text, true, None, None::<&str>)?;
                     menu.append(&item)?;
                     countdowns.push(TrayCountdown { item, label: label.clone(), timestamp: *timestamp, expires: *expires, text });
                 }

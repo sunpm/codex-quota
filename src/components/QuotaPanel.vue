@@ -5,12 +5,13 @@ import { execute } from '@/lib/app'
 import { Button } from '@/components/ui/button'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { AppSnapshot, ChartTimeHover, QuotaSeries } from '@/types'
-import { countdown, dateText, quotaLabel } from '@/lib/usage'
+import { dateText, quotaLabel } from '@/lib/usage'
 import { quotaService } from '@/lib/usage-filters'
 import Chart from './Chart.vue'
 import AntigravityPanel from './AntigravityPanel.vue'
 import AnnouncementPanel from './AnnouncementPanel.vue'
 import SlidingSelection from './SlidingSelection.vue'
+import DeadlineCountdown from './DeadlineCountdown.vue'
 import antigravityIcon from '@/assets/antigravity.svg'
 
 const props = defineProps<{ state: AppSnapshot; now: number }>()
@@ -103,7 +104,7 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
             </div>
             <div class="quota-track" aria-hidden="true"><div :style="{ width: `${100 - window.usedPercent}%` }" /></div>
             <div class="quota-time-row">
-              <span v-if="countdown(window.resetsAt, now)" class="deadline-countdown" :data-tone="deadlineTone(window.resetsAt)">{{ countdown(window.resetsAt, now) }}</span>
+              <DeadlineCountdown :resets-at="window.resetsAt" :now="now" :data-tone="deadlineTone(window.resetsAt)" />
               <span v-if="window.resetsAt" class="muted">重置 · {{ dateText(window.resetsAt) }}</span>
             </div>
           </div>
@@ -112,7 +113,7 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
           <div class="section-heading"><h3>重置卡</h3><span>{{ state.quota.resetCredits.availableCount }} 张可用</span></div>
           <div v-for="(credit, index) in availableCredits" :key="credit.id" class="credit-row">
             <span>重置卡 {{ index + 1 }}<template v-if="credit.expiresAt != null && credit.expiresAt <= now"> · 已到期</template></span>
-            <span class="credit-expiry"><span v-if="credit.expiresAt != null && credit.expiresAt > now && countdown(credit.expiresAt, now)" class="deadline-countdown" :data-tone="deadlineTone(credit.expiresAt)">{{ countdown(credit.expiresAt, now) }}</span><span v-if="credit.expiresAt != null" class="muted">到期 · {{ dateText(credit.expiresAt) }}</span><span v-else class="muted">到期时间未知</span></span>
+            <span class="credit-expiry"><DeadlineCountdown v-if="credit.expiresAt != null && credit.expiresAt > now" :resets-at="credit.expiresAt" :now="now" :data-tone="deadlineTone(credit.expiresAt)" /><span v-if="credit.expiresAt != null" class="muted">到期 · {{ dateText(credit.expiresAt) }}</span><span v-else class="muted">到期时间未知</span></span>
           </div>
           <p v-if="availableCredits.length < state.quota.resetCredits.availableCount" class="muted">到期明细不完整</p>
         </div>
