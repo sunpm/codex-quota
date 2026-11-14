@@ -2,8 +2,9 @@
 import { RefreshCw } from '@lucide/vue'
 import type { AppSnapshot } from '@/types'
 import { execute } from '@/lib/app'
-import { countdown, dateText } from '@/lib/usage'
+import { dateText } from '@/lib/usage'
 import { Button } from '@/components/ui/button'
+import DeadlineCountdown from './DeadlineCountdown.vue'
 import antigravityIcon from '@/assets/antigravity.svg'
 
 defineProps<{ state: AppSnapshot; now: number }>()
@@ -44,7 +45,7 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
               <div :style="{ width: `${bucket.remainingPercent}%` }" />
             </div>
             <div class="quota-time-row">
-              <span v-if="countdown(bucket.resetsAt, now)" class="deadline-countdown">{{ countdown(bucket.resetsAt, now) }}</span>
+              <DeadlineCountdown :resets-at="bucket.resetsAt" :now="now" />
               <span v-if="bucket.resetsAt !== null" class="muted">重置 · {{ dateText(bucket.resetsAt) }}</span>
             </div>
           </div>

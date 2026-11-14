@@ -273,6 +273,7 @@ th svg { display: inline; vertical-align: middle; }
 .quota-time-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-top: 8px; font-variant-numeric: tabular-nums; font-size: 12px; flex-wrap: wrap; }
 .quota-updated { margin-top: 20px; text-align: right; font-size: 12px; font-variant-numeric: tabular-nums; }
 .deadline-countdown { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deadline-countdown .deadline-number { font-weight: 600; }
 .deadline-countdown[data-tone=normal] { color: var(--deadline-normal); }
 .deadline-countdown[data-tone=warning] { color: var(--deadline-warning); }
 .deadline-countdown[data-tone=urgent] { color: var(--deadline-urgent); }
