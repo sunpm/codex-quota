@@ -347,6 +347,8 @@ pub struct QuotaPoint {
     pub date: f64,
     pub used_percent: f64,
     pub segment: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resets_at: Option<f64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -406,6 +408,7 @@ impl QuotaHistory {
                 date,
                 used_percent: window.used_percent,
                 segment,
+                resets_at: window.resets_at,
             };
             let count = series.points.len();
             // 五分钟内只合并同段内部采样，保留重置和中断后的起点。
