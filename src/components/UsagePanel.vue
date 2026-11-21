@@ -4,9 +4,10 @@ import { useMutationObserver } from '@vueuse/core'
 import { groupBy as groupRecords } from '@pmun/utils'
 import { ChevronLeft, ChevronRight, CircleHelp, Search } from '@lucide/vue'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
-import type { EChartsCoreOption } from 'echarts/core'
+import { format, type EChartsCoreOption } from 'echarts/core'
+import type { CustomSeriesOption } from 'echarts/charts'
 import type { AppSnapshot, Metric, Page, UsageRecord } from '@/types'
-import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dateTimeKey, dayKey, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from '@/lib/usage'
+import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dateTimeKey, dayKey, metricShare, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney, type Summary } from '@/lib/usage'
 import { chartReturn, openChartRecords, overviewGroupBy, overviewTrendMetric, parseUsageDateTime, syncOverviewToDetails, usageRanges, usageService, useUsageFilters, type UsageSort } from '@/lib/usage-filters'
 import { compareTableNumbers, useTablePagination } from '@/lib/table'
 import TablePagination from './TablePagination.vue'
@@ -51,7 +52,9 @@ const range = computed(() => {
   if (period.value === 'yesterday') { from = shiftDay(today, -1); to = today }
   else if (period.value === '7' || period.value === '30') from = shiftDay(today, 1 - Number(period.value))
   const days = Math.round((Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) - Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) / 86400000)
-  return { from: from.getTime() / 1000, to: Math.min(to.getTime() / 1000, props.clock.now + 1), days }
+  // Ranges are end-exclusive. Include records timestamped at the current millisecond.
+  const cutoff = period.value === 'today' ? (Math.floor(props.clock.now * 1000) + 1) / 1000 : props.clock.now + 1
+  return { from: from.getTime() / 1000, to: Math.min(to.getTime() / 1000, cutoff), days }
 })
 const rangeText = computed(() => {
   if (period.value === 'all') return ''
@@ -104,33 +107,96 @@ const buckets = computed(() => {
   }
   return Object.entries(values).sort(([a], [b]) => byHour.value ? Number(a) - Number(b) : a.localeCompare(b)).map(([key, records]) => ({
     key, total: summarize(records),
+    models: model.value === 'all' ? Object.values(groupRecords(records, record => `${record.service}:${record.model}`)).map(items => ({
+      name: items[0]!.model, service: items[0]!.service, total: summarize(items),
+    })) : [],
     codex: summarize(records.filter(record => record.service === 'codex')),
     antigravity: summarize(records.filter(record => record.service === 'antigravity')),
   }))
 })
-const trend = computed<EChartsCoreOption>(() => ({
-  grid: { left: 54, right: 20, top: 30, bottom: 35 },
-  legend: { top: 0, selectedMode: false },
-  tooltip: { trigger: 'axis', renderMode: 'richText', formatter: (params: { dataIndex: number }[]) => {
-    const bucket = buckets.value[params[0]?.dataIndex ?? -1]
-    if (!bucket) return ''
-    const date = byHour.value ? dateTimeKey(new Date(Number(bucket.key) * 1000)).replace('T', ' ') : bucket.key
-    const lines = selectedServices.value.map(service => {
-      const summary = bucket[service.id]
-      return `${service.name}：${summary.tokens.toLocaleString('zh-CN')} Tokens · ${summaryMoney(summary)}`
-    })
-    return [date, ...lines, ...(selectedServices.value.length > 1 ? [`合计：${bucket.total.tokens.toLocaleString('zh-CN')} Tokens · ${summaryMoney(bucket.total)}`] : [])].join('\n')
-  } },
-  xAxis: { type: 'category', data: buckets.value.map(bucket => bucket.key), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { hideOverlap: true, formatter: (value: string) => byHour.value ? dateTimeKey(new Date(Number(value) * 1000)).slice(hourlyAcrossDays.value ? 5 : 11).replace('T', ' ').replace('-', '/') : value.slice(5).replace('-', '/') } },
-  yAxis: { type: 'value', name: trendMetric.value === 'tokens' ? 'Tokens' : `${costLabel(total.value)} ($)`, min: 0, splitNumber: 3, axisLabel: { formatter: (value: number) => trendMetric.value === 'tokens' ? shortTokens(value) : money(String(value)) }, splitLine: { lineStyle: { color: '#88888820' } } },
-  series: selectedServices.value.map(service => ({
-    name: service.name, type: 'bar', stack: 'usage', barMaxWidth: 30, itemStyle: { color: service.color },
-    data: buckets.value.map(bucket => {
-      const summary = bucket[service.id]
-      return trendMetric.value === 'cost' && summary.count && !summary.priced ? null : metricValue(summary, trendMetric.value)
+const rankedModels = computed(() => {
+  const servicesByModel = new Map<string, Set<string>>()
+  for (const bucket of buckets.value) {
+    for (const { name, service } of bucket.models) {
+      const owners = servicesByModel.get(name) ?? new Set<string>()
+      owners.add(service)
+      servicesByModel.set(name, owners)
+    }
+  }
+  return buckets.value.map(bucket => bucket.models
+    .filter(item => trendMetric.value === 'tokens' || item.total.priced)
+    .sort((a, b) => compareSummaries(a.total, b.total, trendMetric.value) || a.name.localeCompare(b.name))
+    .slice(0, 3)
+    .map(item => {
+      const name = item.name === 'unknown' ? '未知模型' : item.name
+      return { ...item, name: servicesByModel.get(item.name)!.size > 1 ? `${name} · ${serviceName(item.service)}` : name }
+    }))
+})
+function trendTooltip(params: { dataIndex: number } | { dataIndex: number }[]) {
+  const index = Array.isArray(params) ? params[0]?.dataIndex : params.dataIndex
+  if (index === undefined) return ''
+  const bucket = buckets.value[index]!
+  const date = byHour.value ? dateTimeKey(new Date(Number(bucket.key) * 1000)).replace('T', ' ') : bucket.key
+  const metric = trendMetric.value
+  const value = (summary: Summary, kind: Metric) => kind === 'tokens' ? `${summary.tokens.toLocaleString('zh-CN')} Tokens` : summaryMoney(summary)
+  const totalsRow = (name: string, summary: Summary) => `<span>${name}</span><b>${value(summary, metric)}</b><span>${value(summary, metric === 'tokens' ? 'cost' : 'tokens')}</span>`
+  const services = selectedServices.value
+  const heading = totalsRow(services.length === 1 ? services[0]!.name : '合计', bucket.total)
+  const breakdown = services.length === 1 ? '' : services.map(service => totalsRow(service.name, bucket[service.id])).join('')
+  const models = rankedModels.value[index]!.map(item => `<span>${format.encodeHTML(item.name)}</span><b>${value(item.total, metric)}</b><span>${percent(metricShare(item.total, bucket.total, metric))}</span>`).join('')
+  const coverage = bucket.total.priced && bucket.total.unpriced ? ` · ${bucket.total.unpriced} 条未定价` : ''
+  return `<div class="trend-tip"><div class="trend-tip-date">${date}${coverage}</div><div class="trend-tip-grid trend-tip-totals">${heading}${breakdown}</div>`
+    + (models ? `<div class="trend-tip-grid trend-tip-models">${models}</div>` : '') + '</div>'
+}
+
+// Use the elapsed part of each hour for both its bar and its hover area.
+function todayTrend() {
+  const hours = buckets.value.length
+  const elapsed = (props.clock.now - range.value.from) / 3600
+  const observed = buckets.value.filter(bucket => Number(bucket.key) <= props.clock.now)
+  const spans = observed.map((_, index) => [index, Math.min(index + 1, elapsed)] as const)
+  const series = selectedServices.value.map((service, serviceIndex): CustomSeriesOption => ({
+    name: service.name, type: 'custom', itemStyle: { color: service.color }, encode: { x: [0, 1], y: [2, 3] },
+    data: observed.map((bucket, index) => {
+      const base = serviceIndex === 0 ? 0 : metricValue(bucket.codex, trendMetric.value)
+      return [...spans[index]!, base, base + metricValue(bucket[service.id], trendMetric.value)]
     }),
-  })),
+    renderItem: (_, api) => {
+      const [left, bottom] = api.coord([api.value(0), api.value(2)])
+      const [right, top] = api.coord([api.value(1), api.value(3)])
+      if (bottom === top) return
+      const width = Math.min(30, (right! - left!) * 0.7)
+      return { type: 'rect', shape: { x: (left! + right! - width) / 2, y: top!, width, height: bottom! - top! }, style: { fill: service.color } }
+    },
+    ...(serviceIndex === 0 && {
+      markArea: { label: { show: false }, emphasis: { disabled: true }, itemStyle: { color: 'transparent' }, data: spans.map(([start, end]) => [{ xAxis: start }, { xAxis: end }]) },
+      markLine: { silent: true, symbol: 'none', precision: -1, label: { formatter: '现在', position: 'end', fontSize: 11 }, lineStyle: { color: '#888', width: 1, opacity: 0.65, type: 'solid' }, data: [{ xAxis: elapsed }] },
+    }),
+  }))
+  return {
+    xAxis: { type: 'value', min: 0, max: hours, interval: 1, axisTick: { show: false }, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { hideOverlap: true, formatter: (hour: number) => hour === hours ? '24:00' : dateTimeKey(new Date((range.value.from + hour * 3600) * 1000)).slice(11) } },
+    series,
+  }
+}
+const trend = computed<EChartsCoreOption>(() => ({
+  grid: { left: 54, right: 20, top: period.value === 'today' ? 40 : 30, bottom: 35 },
+  legend: { top: 0, selectedMode: false, icon: 'roundRect' },
+  tooltip: { trigger: period.value === 'today' ? 'item' : 'axis', renderMode: 'html', appendTo: 'body', transitionDuration: 0, hideDelay: 0, formatter: trendTooltip },
+  yAxis: { type: 'value', name: trendMetric.value === 'tokens' ? 'Tokens' : `${costLabel(total.value)} ($)`, min: 0, splitNumber: 3, axisLabel: { formatter: (value: number) => trendMetric.value === 'tokens' ? shortTokens(value) : money(String(value)) }, splitLine: { lineStyle: { color: '#88888820' } } },
+  ...(period.value === 'today' ? todayTrend() : {
+    xAxis: { type: 'category', data: buckets.value.map(bucket => bucket.key), axisTick: { show: false }, axisLine: { show: false }, axisLabel: { hideOverlap: true, formatter: (value: string) => byHour.value ? dateTimeKey(new Date(Number(value) * 1000)).slice(hourlyAcrossDays.value ? 5 : 11).replace('T', ' ').replace('-', '/') : value.slice(5).replace('-', '/') } },
+    series: selectedServices.value.map(service => ({
+      name: service.name, type: 'bar', stack: 'usage', barMaxWidth: 30, itemStyle: { color: service.color },
+      data: buckets.value.map(bucket => {
+        const summary = bucket[service.id]
+        return trendMetric.value === 'cost' && summary.count && !summary.priced ? null : metricValue(summary, trendMetric.value)
+      }),
+    })),
+  }),
 }))
+const showTrend = computed(() => hasReadableUsage.value && (
+  total.value.count ? trendMetric.value === 'tokens' || total.value.priced > 0 : period.value === 'today'
+))
 function grouped(kind: string) {
   const values = new Map<string, UsageRecord[]>()
   for (const record of records.value) {
@@ -167,6 +233,9 @@ const matchingRecords = computed(() => {
 })
 const recordFilterKey = computed(() => JSON.stringify([usageService.value, period.value, model.value, start.value, end.value, search.value]))
 const summaryTotal = computed(() => recordView.value ? summarize(matchingRecords.value) : props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
+const summaryRows = computed(() => pageRows.value.map(group => ({
+  ...group, share: metricShare(group.total, summaryTotal.value, metric.value),
+})))
 const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, group) => Math.max(width, group.total.tokens.toLocaleString('zh-CN').length), 14)}ch + 26px)`)
 const heatmapDays = computed(() => {
   const earliest = period.value === 'all' ? records.value.reduce((date, record) => Math.min(date, record.date), range.value.to) : range.value.from
@@ -304,7 +373,7 @@ function openHeatmapRecords(index: number) {
           </SlidingSelection>
         </div>
       </div>
-      <Chart v-if="records.length && (trendMetric === 'tokens' || total.priced)" :option="trend" :label="`按服务堆叠的${trendMetric === 'tokens' ? 'Tokens' : '已定价费用'}趋势，${byHour ? '每小时' : '每日'}一柱，点击查看该时段记录`" :animations="state.settings.animations" @select="openTrendRecords" />
+      <Chart v-if="showTrend" :option="trend" :label="`按服务堆叠的${trendMetric === 'tokens' ? 'Tokens' : '已定价费用'}趋势，${byHour ? '每小时' : '每日'}一柱，点击查看该时段记录`" :animations="state.settings.animations" @select="openTrendRecords" />
       <div v-else class="empty-state chart-empty">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : !records.length ? '此时间范围没有用量记录' : '此时间范围的记录尚未定价' }}</div>
     </section>
     <section class="surface table-surface" :class="{ 'overview-table': page === 'overview' }">
@@ -337,13 +406,13 @@ function openHeatmapRecords(index: number) {
           <th class="number share-column" :title="metric === 'tokens' ? 'Tokens 占比' : '费用占比'">{{ metric === 'tokens' ? 'Tokens 占比' : '费用占比' }}</th>
           <th class="number cache-column" :aria-sort="sortState('hitRate')"><TableSortButton label="缓存命中率" :active="sort === 'hitRate'" :direction="direction" @click="selectSort('hitRate')" /></th>
         </tr></thead>
-        <tbody><tr v-for="group in pageRows" :key="group.key">
+        <tbody><tr v-for="group in summaryRows" :key="group.key">
           <td><button class="table-link" :title="`${group.name}\n${group.key}`" @click="showDetail(group.name, group.records)"><span>{{ group.name }}<small v-if="grouping !== 'project'">{{ group.subtitle }}</small></span><ChevronRight :size="13" /></button></td>
           <td v-if="grouping !== 'model'" class="muted secondary-column"><span :title="grouping === 'session' ? dateText(group.last, true) : group.subtitle">{{ grouping === 'session' ? dateText(group.last) : group.subtitle }}</span></td>
           <td class="number" :title="group.total.count.toLocaleString()">{{ group.total.count.toLocaleString() }}</td>
           <td class="number">{{ group.total.tokens.toLocaleString('zh-CN') }}</td>
           <td class="number" :title="costTooltip(group.total)"><span :class="{ 'unpriced-text': group.total.count && !group.total.priced }">{{ summaryMoney(group.total) }}</span></td>
-          <td class="number muted">{{ metricValue(summaryTotal, metric) ? percent(metricValue(group.total, metric) / metricValue(summaryTotal, metric)) : '—' }}</td>
+          <td class="number muted"><div class="usage-share"><span v-if="group.share !== null" class="usage-share-track" aria-hidden="true"><span :style="{ width: `${group.share * 100}%` }" /></span><span>{{ percent(group.share) }}</span></div></td>
           <td class="number muted">{{ percent(group.total.hitRate) }}</td>
         </tr></tbody>
       </table><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : search ? '没有匹配的记录' : '此时间范围没有用量记录' }}</div></div>

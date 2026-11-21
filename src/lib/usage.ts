@@ -73,6 +73,10 @@ export function billingTier(record: UsageRecord) {
 }
 export const billingTierLabel = (record: UsageRecord) => `${billingTier(record) === '未知档位' ? `${record.serviceTier || '未知'}（未知档位）` : billingTier(record)}${billingTier(record) === 'Standard' && record.serviceTierReported !== true ? '（估算）' : ''}`
 export const metricValue = (summary: Summary, metric: Metric) => metric === 'tokens' ? summary.tokens : Number(summary.amount)
+export function metricShare(part: Summary, whole: Summary, metric: Metric) {
+  const denominator = metricValue(whole, metric)
+  return denominator && (metric === 'tokens' || part.priced) ? metricValue(part, metric) / denominator : null
+}
 export const percent = (value: number | null) => value == null ? '—' : `${(value * 100).toFixed(1)}%`
 export function countdown(resetsAt: number | null, now: number) {
   if (resetsAt == null) return '重置时间未知'
