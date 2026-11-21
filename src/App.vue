@@ -5,7 +5,7 @@ import { listen } from '@tauri-apps/api/event'
 import type { Page } from './types'
 import { actionError, connected, execute, initialize, isDesktop, isPreview, snapshot } from './lib/app'
 import { countdownTickMs, dateText, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from './lib/usage'
-import { restoreChartOverview, usageService, useUsageFilters } from './lib/usage-filters'
+import { chartReturn, restoreChartOverview, usageService, useUsageFilters } from './lib/usage-filters'
 import { Button } from './components/ui/button'
 import UsagePanel from './components/UsagePanel.vue'
 import QuotaPanel from './components/QuotaPanel.vue'
@@ -32,13 +32,13 @@ const usageRefreshLabel = computed(() => {
   return `${Math.floor(minutes / 1440)} 天前刷新`
 })
 const title = computed(() => navigation.find(item => item.id === page.value)!.label)
-// Calendar ranges stay stable between scans; rolling ranges follow the local clock.
+const liveUsageRange = computed(() => isUsage.value && (usagePeriod.value === '24h' || usagePeriod.value === 'today'))
 const calendarKey = computed(() => {
   const date = new Date(now.value * 1000)
   return `${startOfDay(date).getTime() / 1000}|${date.getTimezoneOffset()}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
 })
 const usageClock = computed(() => ({
-  now: isUsage.value && usagePeriod.value === '24h' ? now.value : Math.max(snapshot.value.usage.scannedAt ?? startedAt, Number(calendarKey.value.split('|')[0])),
+  now: liveUsageRange.value || chartReturn.value?.filters.period === 'today' ? now.value : Math.max(snapshot.value.usage.scannedAt ?? startedAt, Number(calendarKey.value.split('|')[0])),
   calendar: calendarKey.value,
 }))
 const serviceRecords = computed(() => snapshot.value.usage.records.filter(record => usageService.value === 'all' || record.service === usageService.value))
@@ -61,7 +61,7 @@ let clock: ReturnType<typeof setTimeout> | undefined
 function nextTickDelay(current: number) {
   const tomorrow = shiftDay(startOfDay(new Date(current * 1000)), 1).getTime() - current * 1000
   let delay = Math.max(1000, tomorrow)
-  if (isUsage.value && usagePeriod.value === '24h') delay = Math.min(delay, 60_000)
+  if (liveUsageRange.value) delay = Math.min(delay, 60_000 - current * 1000 % 60_000)
   if (page.value === 'quota') {
     const deadlines = [
       ...snapshot.value.quota.windows.map(window => window.resetsAt),
