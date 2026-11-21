@@ -38,6 +38,10 @@ Rust 业务核心由本仓库 Swift 规则迁移，保留以下 cc-bar、cc-swit
 
 以下记录保留原实现的历史来源；其中 SwiftUI / Swift Charts / Sparkle 的实现描述属于已移除的旧版。当前 Rust 沿用的设计与逻辑继续保留对应来源和许可；仅供旧应用使用的依赖许可随旧源码保存在 Git 历史中。当前 macOS 集成仍通过 Rust 调用 AppKit 等系统框架。
 
+## 官网与文档
+
+官网用 [Astro](https://github.com/withastro/astro) 生成静态页面，文档主题、导航、截图标签页和图标使用 [Starlight](https://github.com/withastro/starlight)。两者使用 MIT 许可。网站依赖版本记录在 `site/pnpm-lock.yaml`，构建产物附带 `licenses.md`。
+
 ## AIHOT 重置动态数据
 
 Codex 与 Antigravity 重置动态通过 [AIHOT Public API](https://aihot.news/openapi-v1.json) 的 `/api/v1/codex-resets/recent` 与 `/api/v1/antigravity-resets/recent` 获取公开公告、中文摘录与原帖链接，Antigravity 接口及现行契约核对日期为 2026-11-08。两接口使用相同版本的数据结构，分别维护来源校验、缓存和通知基线。客户端根据公开契约自行实现，未复制 AIHOT 或其他监测项目的代码，未引入依赖。已参考 [Issue #276](https://github.com/KKKKhazix/AIHOT/issues/276) 区分过期预告和确认事件。

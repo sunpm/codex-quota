@@ -65,6 +65,21 @@ bash scripts/test.sh
 
 生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
 
+## 官网与使用文档
+
+`site/` 是独立的 Astro + Starlight 静态站点，使用 Node.js 22.23.4+ 和 pnpm 12.11.2+（12.x）。在仓库根目录执行：
+
+```sh
+pnpm --dir site install --frozen-lockfile
+pnpm --dir site dev
+```
+
+运行 `pnpm --dir site build` 生成 `site/dist/`，运行 `pnpm --dir site preview` 查看构建结果。本地预览与[官网](https://sunpm.github.io/codex-quota/)共用 `/codex-quota/` 路径。
+
+`main` 上的网站源码、引用的文档和图片或 Pages 工作流变更会触发 `.github/workflows/pages.yml`，构建并发布到 GitHub Pages。也可以从 Actions 手动运行 Pages 工作流。桌面应用沿用独立的构建和发布流程。
+
+首页直接引用 `docs/images/` 中的用量与额度截图。三个下载链接使用 GitHub 最新正式版的固定附件名，命名约定见[升级与发布](updating.md)。修改[使用说明](usage.md)或[首次打开指引](release-notes.md)后，重新构建即可更新网站对应页面。
+
 ## Codex 低额度提醒（2026-11-13）
 
 低额度判定位于 `quota-core::LowQuotaTracker`，只接收 Codex 成功读取后的已校验窗口。复用现有账号指纹、`SavedState` 原子保存及系统通知通道；先持久化观测和周期去重记录，再发送通知，保存失败不发送。观测基线与已消费周期分开保存，切换开关或修改阈值只重建基线；切换账号不比较不同账号的读数，同时保留仍未到期的各账号周期记录。

@@ -1,0 +1,12 @@
+:root {
+  --sl-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-color-accent: #83adfa;
+  --sl-color-accent-high: #bcd4ff;
+  --sl-color-accent-low: #1c304f;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent: #295fae;
+  --sl-color-accent-high: #184984;
+  --sl-color-accent-low: #e7effb;
+}

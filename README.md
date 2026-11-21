@@ -2,6 +2,8 @@
 
 Codex Quota 是支持 Codex 与 Antigravity（反重力）的桌面额度与本地用量分析工具，支持 macOS 和 Windows。
 
+[官网与下载](https://sunpm.github.io/codex-quota/) · [使用说明](https://sunpm.github.io/codex-quota/usage/)
+
 - 查看 Codex 与 Antigravity 的剩余额度和重置倒计时，按服务独立监测。
 - 查看 Codex 各额度窗口的今日已用比例、额度趋势和重置卡，接收低额度、额度恢复、额度重置前和重置卡到期提醒。
 - 按服务、时间、模型、对话和项目分析 Codex 与 Antigravity Token 用量及估算费用，支持按服务自定义价格。
@@ -26,9 +28,9 @@ Codex Quota 是支持 Codex 与 Antigravity（反重力）的桌面额度与本�
 
 额度监测复用各自官方 CLI 的登录态，本应用不保存或改写凭据。Antigravity 监测默认关闭，只显示 CLI 返回的额度分组；CLI 报告不提供可靠账号身份，因此不记录 Antigravity 额度历史或发送个人恢复提醒。用量分析可独立使用，只读本机 Codex 日志、Antigravity CLI / 桌面端 JSONL 与 SQLite，以及已确认口径的采集历史，可能包含多个账号。费用按 API 单价估算，**不代表订阅账单**。
 
-[使用说明](docs/usage.md) · [版本历史](CHANGELOG.md) · [反馈问题](https://github.com/sunpm/codex-quota/issues)
+[版本历史](CHANGELOG.md) · [反馈问题](https://github.com/sunpm/codex-quota/issues)
 
-[开发与构建](docs/development.md) · [升级与发布](docs/updating.md) · [第三方来源与许可](THIRD_PARTY_NOTICES.md)
+[开发与构建](docs/development.md) · [本地预览官网](docs/development.md#官网与使用文档) · [升级与发布](docs/updating.md) · [第三方来源与许可](THIRD_PARTY_NOTICES.md)
 
 ## 环境要求
 

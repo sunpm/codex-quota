@@ -20,6 +20,7 @@
 
 - Codex 与 Antigravity 的桌面额度与本地用量分析应用，支持 macOS 13+（Apple Silicon / Intel）与 Windows x64；主窗口为主体，菜单栏 / 托盘可选。
 - `src/`：Vue 3、TypeScript 与 shadcn-vue 界面，Vite 构建，Apache ECharts 按需加载图表。
+- `site/`：独立构建的 Astro + Starlight 官网，直接引用 `docs/images/`、`docs/usage.md` 与 `docs/release-notes.md`，命令见 `docs/development.md`。
 - `src-tauri/`：Rust 桌面入口、Codex / Antigravity 子进程、监测调度、系统集成、设置迁移与 Tauri updater。
 - `crates/quota-core/`：额度、日志解析、增量扫描、历史、Decimal 定价与通知判定；保持与桌面运行时分离。
 - 旧 Swift 应用、检查及打包脚本已移除，历史实现从 Git 历史查阅；`scripts/make-icon.swift` 仍用于当前应用图标生成。保留 Rust 中的 macOS 集成与旧数据迁移。

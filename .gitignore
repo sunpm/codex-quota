@@ -12,3 +12,4 @@ src-tauri/gen/schemas/
 *.tsbuildinfo
 Resources/ThirdPartyNotices/dependencies-LICENSES.txt
 .impeccable/
+site/.astro/

@@ -1,0 +1,45 @@
+---
+import { Image } from 'astro:assets'
+import { TabItem, Tabs } from '@astrojs/starlight/components'
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro'
+import usage from '../../../docs/images/usage.png'
+import usageDark from '../../../docs/images/usage-dark.png'
+import quota from '../../../docs/images/quota.png'
+import quotaDark from '../../../docs/images/quota-dark.png'
+
+const screenshots = [
+  { label: '用量分析', alt: '按模型汇总的 Token 与估算费用，以及每日用量趋势', light: usage, dark: usageDark },
+  { label: '额度监测', alt: 'Codex 与 Antigravity 的剩余额度、重置倒计时与额度趋势', light: quota, dark: quotaDark },
+]
+---
+
+<StarlightPage frontmatter={{
+  title: '桌面额度与本地用量分析',
+  description: '下载适用于 macOS 和 Windows 的 Codex Quota，查看 Codex 与 Antigravity 剩余额度、Token 用量及估算费用。',
+  template: 'splash',
+  hero: {},
+}}>
+  <figure>
+    <Tabs>
+      {screenshots.map(({ label, alt, light, dark }) => (
+        <TabItem label={label}>
+          <Image class="dark:sl-hidden" src={light} alt={alt} />
+          <Image class="light:sl-hidden" src={dark} alt={alt} />
+        </TabItem>
+      ))}
+    </Tabs>
+    <figcaption>应用截图使用离线示例数据。</figcaption>
+  </figure>
+</StarlightPage>
+
+<style>
+  figure { margin: 0; }
+  figure :global(img) {
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.65rem;
+    margin: 0;
+  }
+  figcaption { margin-block-start: 0.75rem; color: var(--sl-color-gray-3); font-size: 0.875rem; }
+</style>

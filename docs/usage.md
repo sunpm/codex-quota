@@ -1,6 +1,10 @@
-# 使用说明
+---
+title: 使用说明
+---
 
-[返回 README](../README.md)
+## 开始使用
+
+打开 Codex Quota 后，在「用量」查看本机现有日志，无需开启额度监测。要查看剩余额度和重置时间，先登录对应的官方 CLI，再到「设置」开启该服务的监测。首次安装可参考 [Codex CLI 指南](https://learn.chatgpt.com/docs/codex/cli)或 [Antigravity CLI 指南](https://github.com/google-antigravity/antigravity-cli)。
 
 ## 日常使用
 
@@ -61,7 +65,7 @@ Antigravity 默认关闭，额度页选择“全部”时，首次成功读取�
 
 CLI 报告没有可靠账号身份，首版不显示账号归属、不保存 Antigravity 额度历史或发送个人恢复提醒；不能据相邻读数认定来自同一账号。切换 CLI 账号后请手动刷新；本应用不管理或自动切换账号。本地用量另行只读扫描，不以当前登录账号划分。
 
-Windows 后台查询使用不带终端的受限进程，禁止启动浏览器及其他子进程，因此配置了 MCP 或外部辅助程序的 CLI 可能查询失败。macOS 为查询设置独立进程会话并拦截浏览器启动命令。当前实机验收结果与平台限制见[开发说明](development.md)。
+Windows 后台查询使用不带终端的受限进程，禁止启动浏览器及其他子进程，因此配置了 MCP 或外部辅助程序的 CLI 可能查询失败。macOS 为查询设置独立进程会话并拦截浏览器启动命令。当前实机验收结果与平台限制见[开发说明](https://github.com/sunpm/codex-quota/blob/main/docs/development.md)。
 
 自定义位置可通过 `CODEX_QUOTA_AGY` 指定官方 CLI 可执行文件；该变量一旦设置便优先采用，路径无效时直接提示。否则从 `PATH`、用户的 `~/.local/bin` 及平台常见安装目录查找。macOS 从 Finder 启动时可能无法继承终端自定义的 `PATH`。
 
