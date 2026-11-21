@@ -2,6 +2,18 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.27.0](https://github.com/sunpm/codex-quota/releases/tag/v0.27.0)
+
+<!-- Release notes generated using configuration in .github/release.yml at 94eb9035a0c461e0657580cfc133be6739132f76 -->
+
+### What's Changed
+#### 更新内容
+* feat(usage): 展示用量峰值来源、当前时刻与汇总占比 by @sunpm in https://github.com/sunpm/codex-quota/pull/55
+* fix(ui): 保留自动更新提示并合并托盘额度信息 by @sunpm in https://github.com/sunpm/codex-quota/pull/54
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.26.1...v0.27.0
+
 ## [0.26.1](https://github.com/sunpm/codex-quota/releases/tag/v0.26.1)
 
 <!-- Release notes generated using configuration in .github/release.yml at 460f38e9c79b7d4ef3c0e775f60e5e9a42df51ba -->
