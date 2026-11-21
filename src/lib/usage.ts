@@ -1,5 +1,5 @@
 import { addDays, formatDate, startOf, trimDecimalZeros } from '@pmun/utils'
-import type { UsageRecord, Metric, CostComponent } from '@/types'
+import type { UsageRecord, Metric, CostComponent, QuotaSeries } from '@/types'
 
 export const serviceName = (service: string) => service === 'codex' ? 'Codex' : service === 'antigravity' ? 'Antigravity' : '全部服务'
 export const knownTokens = (record: UsageRecord) => record.tokens.inputReported !== false && record.tokens.outputReported !== false && record.tokens.cachedReported !== false
@@ -73,6 +73,10 @@ export function billingTier(record: UsageRecord) {
 }
 export const billingTierLabel = (record: UsageRecord) => `${billingTier(record) === '未知档位' ? `${record.serviceTier || '未知'}（未知档位）` : billingTier(record)}${billingTier(record) === 'Standard' && record.serviceTierReported !== true ? '（估算）' : ''}`
 export const metricValue = (summary: Summary, metric: Metric) => metric === 'tokens' ? summary.tokens : Number(summary.amount)
+export function metricShare(part: Summary, whole: Summary, metric: Metric) {
+  const denominator = metricValue(whole, metric)
+  return denominator && (metric === 'tokens' || part.priced) ? metricValue(part, metric) / denominator : null
+}
 export const percent = (value: number | null) => value == null ? '—' : `${(value * 100).toFixed(1)}%`
 export function countdown(resetsAt: number | null, now: number) {
   if (resetsAt == null) return '重置时间未知'
@@ -101,3 +105,36 @@ export function countdownTickMs(deadlines: (number | null | undefined)[], now: n
   return Number.isFinite(delay) ? Math.max(1000, delay) : null
 }
 export const quotaLabel = (minutes: number | null, label: string | null) => label ?? (minutes ? minutes % 1440 === 0 ? `${minutes / 1440} 天额度` : minutes % 60 === 0 ? `${minutes / 60} 小时额度` : `${minutes} 分钟额度` : '额度')
+
+export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number): string {
+  const first = points.findIndex(point => point.date >= midnight)
+  if (first < 0) return '—'
+
+  let used = 0
+  let complete = points[first].date === midnight
+  for (let i = first; i < points.length; i++) {
+    const point = points[i]
+    const previous = points[i - 1]
+    if (!previous) continue
+    const increase = point.usedPercent - previous.usedPercent
+    const sameCycle = point.segment === previous.segment ||
+      (point.resetsAt !== undefined && point.resetsAt === previous.resetsAt && increase >= 0)
+    if (sameCycle) {
+      if (previous.date >= midnight) used += increase
+      // 跨零点的增量无法按日拆分，只有持平的读数能确定零点基线。
+      else if (increase === 0) complete = true
+      continue
+    }
+
+    if (previous.date >= midnight) complete = false
+    if (previous.resetsAt !== undefined && point.resetsAt !== undefined &&
+        previous.resetsAt >= midnight && previous.resetsAt <= point.date && point.resetsAt > previous.resetsAt) {
+      used += point.usedPercent
+    } else if (previous.date >= midnight) {
+      used += Math.max(0, increase)
+    }
+  }
+  if (complete) return `${used.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%`
+  if (used === 0) return '—'
+  return used < 0.1 ? '>0%' : `≥${Math.floor(used * 10) / 10}%`
+}

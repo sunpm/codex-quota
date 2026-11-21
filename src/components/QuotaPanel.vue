@@ -5,7 +5,7 @@ import { execute } from '@/lib/app'
 import { Button } from '@/components/ui/button'
 import type { EChartsCoreOption } from 'echarts/core'
 import type { AppSnapshot, ChartTimeHover, QuotaSeries } from '@/types'
-import { dateText, quotaLabel } from '@/lib/usage'
+import { dailyQuotaUsage, dateText, quotaLabel, startOfDay } from '@/lib/usage'
 import { quotaService } from '@/lib/usage-filters'
 import Chart from './Chart.vue'
 import AntigravityPanel from './AntigravityPanel.vue'
@@ -33,6 +33,9 @@ function deadlineTone(deadline: number | null) {
   return remaining > 86400 ? 'normal' : remaining > 21600 ? 'warning' : remaining > 3600 ? 'urgent' : 'critical'
 }
 const tone = (used: number) => used >= 100 ? 'exhausted' : used >= 80 ? 'warning' : 'normal'
+const midnight = computed(() => startOfDay(new Date(props.now * 1000)).getTime() / 1000)
+const dailyUsage = computed(() => Object.fromEntries(Object.entries(props.state.quota.history)
+  .map(([id, series]) => [id, dailyQuotaUsage(series, midnight.value)])))
 const chartNow = computed(() => Math.floor(props.now / 60) * 60)
 const chartEnd = computed(() => Math.max(chartNow.value, props.state.quota.lastSuccess ?? 0))
 const visiblePoints = (series: QuotaSeries) => series.points.filter(point => point.date >= chartNow.value - period.value * 3600 && point.date <= chartEnd.value)
@@ -97,7 +100,10 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
           <div v-for="window in state.quota.windows" :key="window.id" class="quota-window" :class="tone(window.usedPercent)">
             <div class="quota-label-row">
               <div>
-                <h3>{{ quotaLabel(window.durationMinutes, window.label) }}</h3>
+                <div class="quota-window-title">
+                  <h3>{{ quotaLabel(window.durationMinutes, window.label) }}</h3>
+                  <span class="quota-daily-usage" title="按本地日期累计该窗口的额度消耗。采样不全时显示已确认的下限，无法确定时显示 —。">今日已用 {{ dailyUsage[window.id] ?? '—' }}</span>
+                </div>
                 <small v-if="window.bucket !== 'codex'">{{ window.name }}</small>
               </div>
               <strong>{{ Math.floor(100 - window.usedPercent) }}%</strong>

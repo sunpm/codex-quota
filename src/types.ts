@@ -46,7 +46,7 @@ export interface ModelPricing {
 }
 export interface QuotaWindow { id: string; bucket: string; name: string; usedPercent: number; durationMinutes: number | null; resetsAt: number | null; label: string | null }
 export interface ResetCredit { id: string; resetType: string; status: string; expiresAt: number | null }
-export interface QuotaSeries { window: QuotaWindow; points: { date: number; usedPercent: number; segment: number }[] }
+export interface QuotaSeries { window: QuotaWindow; points: { date: number; usedPercent: number; segment: number; resetsAt?: number }[] }
 export interface Announcement {
   id: string; type: string; displayLabel: string | null; status: string
   presentation: { status: string; scopeLabel: string | null } | null

@@ -193,6 +193,15 @@ input[type=date], input[type=datetime-local] { height: 28px; padding: 3px 9px; f
 .heading-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .chart-section { padding-bottom: 8px; }
 .chart { min-width: 0; width: 100%; }
+.trend-tip { color: var(--foreground); font: 12px/1.5 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.trend-tip-date { margin-bottom: 4px; color: var(--muted); }
+.trend-tip-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 3px 12px; }
+.trend-tip-models > :nth-child(3n + 1) { overflow-wrap: anywhere; white-space: normal; }
+.trend-tip-grid > b, .trend-tip-grid > :nth-child(3n) { text-align: right; }
+.trend-tip-grid > b { font-weight: 500; }
+.trend-tip-grid > :nth-child(3n) { color: var(--muted); }
+.trend-tip-totals > :nth-child(2) { font-size: 14px; font-weight: 650; }
+.trend-tip-models { max-width: min(440px, 85vw); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
 .chart-coverage, .summary-table-heading .count { font-size: 12px; font-variant-numeric: tabular-nums; }
 .summary-table-heading { display: flex; align-items: center; gap: 12px; }
 .summary-table-heading .count { color: var(--muted); }
@@ -230,6 +239,10 @@ th svg { display: inline; vertical-align: middle; }
 .usage-table.project-table .name-column { width: 144px; }
 .usage-table .count-column { width: 80px; }
 .usage-table .share-column { width: 100px; }
+.usage-share { display: grid; grid-template-columns: minmax(0, 1fr) 6.5ch; align-items: center; gap: 5px; }
+.usage-share > :last-child { grid-column: 2; }
+.usage-share-track { height: 4px; border-radius: 2px; overflow: hidden; background: var(--secondary); }
+.usage-share-track > span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--muted) 60%, transparent); }
 .usage-table .tokens-column { width: var(--tokens-column-width); }
 .usage-table .cost-column { width: 120px; }
 .usage-table .cache-column { width: 104px; }
@@ -268,6 +281,8 @@ th svg { display: inline; vertical-align: middle; }
 .quota-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
 .quota-label-row strong { font-size: 22px; color: var(--quota-color); font-variant-numeric: tabular-nums; }
 .quota-label-row small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+.quota-window-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; }
+.quota-daily-usage { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .quota-track { height: 6px; }
 .quota-track > div { height: 100%; background: var(--quota-color); border-radius: inherit; }
 .quota-time-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding-top: 8px; font-variant-numeric: tabular-nums; font-size: 12px; flex-wrap: wrap; }
