@@ -31,7 +31,20 @@ const quotaSource = computed({
 const intervalOpen = ref(false)
 const intervalDraft = ref(props.state.settings.refreshInterval)
 const intervalSelection = ref<string | number>(props.state.settings.refreshInterval)
-const lowQuotaDraft = ref<string | number>(props.state.settings.lowQuotaThreshold)
+const thresholdFields = [
+  { key: 'fiveHour', label: '5 小时剩余（%）' },
+  { key: 'weekly', label: '7 天剩余（%）' },
+  { key: 'other', label: '其他窗口剩余（%）' },
+] as const
+const visibleThresholds = computed(() => thresholdFields.filter(({ key }) => key !== 'other'
+  || props.state.quota.windows.some(window => window.durationMinutes !== 300 && window.durationMinutes !== 10080)))
+const thresholdDraft = ref({ ...props.state.settings.lowQuotaThresholds })
+const thresholdsChanged = computed(() => visibleThresholds.value.some(({ key }) => thresholdDraft.value[key] !== props.state.settings.lowQuotaThresholds[key]))
+function saveThresholds() {
+  const lowQuotaThresholds = { ...props.state.settings.lowQuotaThresholds }
+  for (const { key } of visibleThresholds.value) lowQuotaThresholds[key] = thresholdDraft.value[key]
+  return changeSettings({ lowQuotaThresholds })
+}
 const pricingOpen = ref(false)
 const clearOpen = ref(false)
 const historyService = ref<UsageService>(usageService.value === 'antigravity' ? 'antigravity' : 'codex')
@@ -74,7 +87,9 @@ async function notifications(key: keyof Settings, value: boolean) {
   if (value && !actionError.value) await requestNotificationsIfNeeded()
 }
 watch(() => props.state.settings.refreshInterval, value => { intervalSelection.value = value })
-watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.value = value })
+for (const { key } of thresholdFields) {
+  watch(() => props.state.settings.lowQuotaThresholds[key], value => { thresholdDraft.value[key] = value })
+}
 </script>
 <template>
   <div class="settings-page">
@@ -87,9 +102,12 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
         <div class="setting-group">
           <div class="setting-row"><span id="low-quota-label">低额度提醒</span><Switch id="low-quota" aria-labelledby="low-quota-label" :model-value="state.settings.lowQuotaNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('lowQuotaNotifications', $event)" /></div>
           <fieldset class="dependent-settings" aria-labelledby="low-quota-label" :disabled="!state.settings.lowQuotaNotifications">
-            <form class="setting-row low-quota-setting" @submit.prevent="changeSettings({ lowQuotaThreshold: Number(lowQuotaDraft) })">
-              <label for="low-quota-threshold">剩余额度阈值（%）</label>
-              <div class="low-quota-inputs"><input id="low-quota-threshold" v-model.number="lowQuotaDraft" type="number" min="1" max="99" step="1" required /><Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || lowQuotaDraft === state.settings.lowQuotaThreshold">保存</Button></div>
+            <form class="setting-row low-quota-setting" @submit.prevent="saveThresholds">
+              <label v-for="field in visibleThresholds" :key="field.key">
+                {{ field.label }}
+                <input v-model.number="thresholdDraft[field.key]" type="number" min="1" max="99" step="1" required />
+              </label>
+              <Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || !thresholdsChanged">保存</Button>
             </form>
           </fieldset>
         </div>
@@ -147,9 +165,9 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
 </template>
 
 <style scoped>
-.low-quota-setting { justify-content: flex-start; gap: 12px; }
-.low-quota-inputs { display: flex; align-items: center; gap: 8px; }
-.low-quota-inputs input { width: 84px; font-variant-numeric: tabular-nums; }
+.low-quota-setting { justify-content: flex-start; flex-wrap: wrap; gap: 8px 12px; }
+.low-quota-setting label { display: inline-flex; align-items: center; gap: 6px; }
+.low-quota-setting input { width: 70px; font-variant-numeric: tabular-nums; }
 .release-notes { white-space: normal; }
 .antigravity-setup { display: grid; gap: 8px; }
 .reminder-note { font-size: 12px; }

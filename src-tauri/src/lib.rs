@@ -82,9 +82,13 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
         settings.save_into(&mut saved.preferences);
         if settings.monitoring_enabled != previous.monitoring_enabled
             || settings.low_quota_notifications != previous.low_quota_notifications
-            || settings.low_quota_threshold != previous.low_quota_threshold
         {
             saved.low_quota.reset_baseline();
+        } else if settings.low_quota_thresholds != previous.low_quota_thresholds {
+            saved.low_quota.reset_changed_thresholds(
+                previous.low_quota_thresholds,
+                settings.low_quota_thresholds,
+            );
         }
         if settings.monitoring_enabled != previous.monitoring_enabled {
             saved.recovery.state = None;

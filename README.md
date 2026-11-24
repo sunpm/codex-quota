@@ -5,7 +5,7 @@ Codex Quota 是支持 Codex 与 Antigravity（反重力）的桌面额度与本�
 [官网与下载](https://sunpm.github.io/codex-quota/) · [使用说明](https://sunpm.github.io/codex-quota/usage/)
 
 - 查看 Codex 与 Antigravity 的剩余额度和重置倒计时，按服务独立监测。
-- 查看 Codex 各额度窗口的今日已用比例、额度趋势和重置卡，接收低额度、额度恢复、额度重置前和重置卡到期提醒。
+- 查看 Codex 各窗口的今日已用比例和额度趋势，以及账号的 Credits 余额和重置卡。可按窗口设置低额度提醒，也可接收额度恢复、重置前和重置卡到期提醒。
 - 按服务、时间、模型、对话和项目分析 Codex 与 Antigravity Token 用量及估算费用，支持按服务自定义价格。
 - 查看用量趋势、缓存命中率、热力图、全局逐条记录与费用拆分。
 - 在菜单栏或系统托盘查看额度，关闭窗口后继续监测，退出应用后停止。

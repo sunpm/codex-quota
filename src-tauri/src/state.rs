@@ -1,5 +1,6 @@
 use quota_core::{
-    DeadlineReminderTracker, LowQuotaTracker, ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow,
+    CodexCredits, DeadlineReminderTracker, LowQuotaThresholds, LowQuotaTracker, ModelPricing,
+    QuotaHistory, QuotaSeries, QuotaWindow,
     RateLimitResetCredits, RecoveryTracker, RefreshSchedule, ResetAnnouncement,
     ResetAnnouncementFeed, ResetAnnouncementTracker, UsageRecord, SWIFT_EPOCH_OFFSET,
 };
@@ -34,7 +35,7 @@ pub struct Settings {
     pub antigravity_show_tray: bool,
     pub recovery_notifications: bool,
     pub low_quota_notifications: bool,
-    pub low_quota_threshold: u8,
+    pub low_quota_thresholds: LowQuotaThresholds,
     pub reset_credit_reminders: bool,
     pub reset_credit_reminder_minutes: Vec<u32>,
     pub quota_reset_reminders: bool,
@@ -52,6 +53,12 @@ pub struct Settings {
 impl Settings {
     pub fn from_preferences(p: &BTreeMap<String, Value>) -> Self {
         let flag = |key: &str, default| p.get(key).and_then(Value::as_bool).unwrap_or(default);
+        let threshold = |key: &str| {
+            p.get(key).and_then(Value::as_u64)
+                .filter(|value| (1..=99).contains(value))
+                .map(|value| value as u8)
+        };
+        let fallback = threshold("quota.lowThreshold").unwrap_or(20);
         let reminder_minutes = |key: &str, default| {
             p.get(key)
                 .and_then(|value| serde_json::from_value::<Vec<u32>>(value.clone()).ok())
@@ -81,11 +88,11 @@ impl Settings {
             antigravity_show_tray: flag("antigravity.cli.showTray", true),
             recovery_notifications: flag("service.codex.notifications", true),
             low_quota_notifications: flag("quota.lowNotifications", false),
-            low_quota_threshold: p
-                .get("quota.lowThreshold")
-                .and_then(Value::as_u64)
-                .filter(|value| (1..=99).contains(value))
-                .unwrap_or(20) as u8,
+            low_quota_thresholds: LowQuotaThresholds {
+                five_hour: threshold("quota.lowThreshold.fiveHour").unwrap_or(fallback),
+                weekly: threshold("quota.lowThreshold.weekly").unwrap_or(fallback),
+                other: fallback,
+            },
             reset_credit_reminders: flag("resetCredits.expirationReminders", false),
             reset_credit_reminder_minutes: reminder_minutes("resetCredits.reminderMinutes", 1440),
             quota_reset_reminders: flag("quota.resetReminders", false),
@@ -125,7 +132,10 @@ impl Settings {
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        if !(1..=99).contains(&self.low_quota_threshold) {
+        let thresholds = self.low_quota_thresholds;
+        if [thresholds.five_hour, thresholds.weekly, thresholds.other]
+            .iter().any(|value| !(1..=99).contains(value))
+        {
             return Err("剩余额度阈值必须为 1–99 的整数百分比。".into());
         }
         if self.refresh_interval < 30 || self.refresh_interval > i32::MAX as u64 {
@@ -182,10 +192,10 @@ impl Settings {
         ] {
             p.insert(key.into(), json!(value));
         }
-        p.insert(
-            "quota.lowThreshold".into(),
-            json!(self.low_quota_threshold),
-        );
+        let thresholds = self.low_quota_thresholds;
+        p.insert("quota.lowThreshold".into(), json!(thresholds.other));
+        p.insert("quota.lowThreshold.fiveHour".into(), json!(thresholds.five_hour));
+        p.insert("quota.lowThreshold.weekly".into(), json!(thresholds.weekly));
         p.insert(
             "resetCredits.reminderMinutes".into(),
             json!(self.reset_credit_reminder_minutes),
@@ -217,6 +227,7 @@ impl Settings {
 #[serde(rename_all = "camelCase")]
 pub struct QuotaSnapshot {
     pub windows: Vec<QuotaWindow>,
+    pub credits: Option<CodexCredits>,
     pub reset_credits: Option<RateLimitResetCredits>,
     pub history: BTreeMap<String, QuotaSeries>,
     pub error: Option<String>,

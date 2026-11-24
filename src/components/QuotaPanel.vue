@@ -96,8 +96,8 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
           </div>
           <div class="setting-actions"><span class="muted">剩余</span><Button variant="outline" size="sm" :disabled="!state.settings.monitoringEnabled || refreshing" @click="refresh"><RefreshCw :size="14" :class="{ spinning: refreshing }" />{{ refreshing ? '读取中…' : '刷新' }}</Button></div>
         </div>
-        <div v-if="!state.quota.windows.length" class="empty-state">{{ refreshing ? '正在读取 Codex 额度…' : state.settings.monitoringEnabled ? '尚无可用额度数据，请确认 Codex 已登录。' : '暂无额度数据' }}</div>
-        <div v-else class="quota-windows-grid">
+        <div v-if="!state.quota.windows.length && !state.quota.credits && !state.quota.resetCredits" class="empty-state">{{ refreshing ? '正在读取 Codex 额度…' : state.settings.monitoringEnabled ? '尚无可用额度数据，请确认 Codex 已登录。' : '暂无额度数据' }}</div>
+        <div v-if="state.quota.windows.length" class="quota-windows-grid">
           <div v-for="window in state.quota.windows" :key="window.id" class="quota-window" :class="tone(window.usedPercent)">
             <div class="quota-label-row">
               <div>
@@ -115,6 +115,10 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
               <span v-if="window.resetsAt" class="muted">重置 · {{ dateText(window.resetsAt) }}</span>
             </div>
           </div>
+        </div>
+        <div v-if="state.quota.credits" class="credits section-heading">
+          <h3>Credits 余额</h3>
+          <span class="tabular-nums">{{ state.quota.credits.kind === 'unlimited' ? '不限量' : state.quota.credits.balance }}</span>
         </div>
         <div v-if="state.quota.resetCredits" class="credits">
           <div class="section-heading"><h3>重置卡</h3><span><AnimatedNumber :value="state.quota.resetCredits.availableCount" /> 张可用</span></div>

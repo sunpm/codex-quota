@@ -11,6 +11,21 @@ pub struct LimitsResponse {
 }
 
 impl LimitsResponse {
+    pub fn codex_credits(&self) -> Option<CodexCredits> {
+        let credits = self
+            .rate_limits_by_limit_id
+            .as_ref()
+            .and_then(|buckets| buckets.get("codex"))
+            .and_then(|bucket| bucket.credits.as_ref())
+            .or_else(|| self.rate_limits.as_ref()?.credits.as_ref())?;
+        if credits.unlimited {
+            return Some(CodexCredits::Unlimited);
+        }
+        let balance = credits.balance.as_deref()?.trim()
+            .parse::<rust_decimal::Decimal>().ok()?;
+        Some(CodexCredits::Balance(balance.normalize().to_string()))
+    }
+
     pub fn windows(&self) -> Vec<QuotaWindow> {
         let legacy;
         let buckets = match &self.rate_limits_by_limit_id {
@@ -101,6 +116,20 @@ pub struct LimitBucket {
     pub limit_name: Option<String>,
     pub primary: Option<LimitWindow>,
     pub secondary: Option<LimitWindow>,
+    credits: Option<CreditsSnapshot>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct CreditsSnapshot {
+    unlimited: bool,
+    balance: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase", tag = "kind", content = "balance")]
+pub enum CodexCredits {
+    Balance(String),
+    Unlimited,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -196,6 +225,24 @@ struct LowQuotaBaseline {
     windows: BTreeMap<String, LowQuotaObservation>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LowQuotaThresholds {
+    pub five_hour: u8,
+    pub weekly: u8,
+    pub other: u8,
+}
+
+impl LowQuotaThresholds {
+    fn for_duration(self, minutes: Option<i64>) -> u8 {
+        match minutes {
+            Some(300) => self.five_hour,
+            Some(10080) => self.weekly,
+            _ => self.other,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct LowQuotaTracker {
@@ -208,12 +255,27 @@ impl LowQuotaTracker {
         self.baseline = None;
     }
 
+    pub fn reset_changed_thresholds(
+        &mut self,
+        previous: LowQuotaThresholds,
+        next: LowQuotaThresholds,
+    ) {
+        if let Some(baseline) = &mut self.baseline {
+            baseline.windows.retain(|id, _| {
+                // Persisted window IDs end in the reported duration, including pre-upgrade baselines.
+                let duration = id.rsplit_once(':')
+                    .and_then(|(_, minutes)| minutes.parse().ok());
+                previous.for_duration(duration) == next.for_duration(duration)
+            });
+        }
+    }
+
     /// Observe successful samples even while notifications are disabled.
     pub fn observe(
         &mut self,
         account: &str,
         windows: &[QuotaWindow],
-        threshold: u8,
+        thresholds: LowQuotaThresholds,
         now: f64,
     ) -> Vec<QuotaWindow> {
         self.observed_cycles.retain(|_, windows| {
@@ -231,12 +293,13 @@ impl LowQuotaTracker {
                 continue;
             };
             let remaining = window.remaining();
+            let threshold = f64::from(thresholds.for_duration(window.duration_minutes));
             if previous
                 .and_then(|baseline| baseline.windows.get(&window.id))
                 .is_some_and(|old| {
                     old.resets_at == resets_at
-                        && old.remaining > f64::from(threshold)
-                        && remaining <= f64::from(threshold)
+                        && old.remaining > threshold
+                        && remaining <= threshold
                 })
             {
                 let observed = self.observed_cycles.entry(account.into()).or_default();

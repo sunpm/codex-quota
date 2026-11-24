@@ -260,7 +260,7 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
                 let low_windows = store.saved.low_quota.observe(
                     &sample.fingerprint,
                     &sample.windows,
-                    settings.low_quota_threshold,
+                    settings.low_quota_thresholds,
                     time,
                 );
                 if settings.low_quota_notifications && !low_windows.is_empty() {
@@ -373,6 +373,7 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
                 store.saved.schedule.next_attempt = time + settings.refresh_interval as f64;
                 store.snapshot.quota = QuotaSnapshot {
                     windows: sample.windows,
+                    credits: sample.credits,
                     reset_credits: sample.reset_credits,
                     history: store.saved.quota_history.series.clone(),
                     error: None,

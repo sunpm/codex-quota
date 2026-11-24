@@ -96,8 +96,10 @@ impl AntigravityClient {
                 Duration::from_secs(90),
             )
             .await?;
-        decode_antigravity_usage(&output.stdout)
-            .map_err(|message| AntigravityError::new(&message, true))
+        decode_antigravity_usage(&output.stdout).map_err(|message| {
+            region_error(&output.stdout, &output.stderr)
+                .unwrap_or_else(|| AntigravityError::new(&message, true))
+        })
     }
 
     async fn run(
@@ -198,21 +200,14 @@ impl AntigravityClient {
             .path()
             .join("auth-blocked")
             .exists();
-        if blocked {
-            return Err(AntigravityError::new(
-                "Antigravity 需要登录，已阻止后台打开浏览器。请在终端运行 agy 登录后重试。",
-                true,
-            ));
-        }
+        let timed_out = result.is_err();
         match result {
-            Ok(Ok((status, (), ()))) if status.success() => Ok(Output {
+            Ok(Ok((status, (), ()))) if status.success() && !blocked => Ok(Output {
                 status,
                 stdout: output,
                 stderr: diagnostic,
             }),
-            Ok(Ok(_)) => Err(classify_failure(&diagnostic, false)),
-            Err(_) => Err(classify_failure(&diagnostic, true)),
-            Ok(Err(error)) => Err(AntigravityError::new(
+            Ok(Err(error)) if !blocked => Err(AntigravityError::new(
                 if error.kind() == io::ErrorKind::InvalidData {
                     "Antigravity CLI 输出过大，已停止查询。请更新 agy 后重试。"
                 } else {
@@ -220,6 +215,7 @@ impl AntigravityClient {
                 },
                 true,
             )),
+            _ => Err(classify_failure(&output, &diagnostic, timed_out, blocked)),
         }
     }
 
@@ -352,7 +348,38 @@ async fn read_output(mut reader: impl AsyncRead + Unpin, bytes: &mut Vec<u8>) ->
     }
 }
 
-fn classify_failure(stderr: &[u8], timed_out: bool) -> AntigravityError {
+fn region_error(stdout: &[u8], stderr: &[u8]) -> Option<AntigravityError> {
+    let unsupported = [stderr, stdout].into_iter().any(|stream| {
+        let diagnostic = String::from_utf8_lossy(stream).to_ascii_lowercase();
+        [
+            "unsupported_location",
+            "not currently available in your location",
+            "user location is not supported for the api use",
+        ]
+        .iter()
+        .any(|reason| diagnostic.contains(reason))
+    });
+    unsupported.then(|| AntigravityError::new(
+        "Antigravity 报告当前地区不受支持。请在终端用 agy 确认，恢复后重新读取。",
+        true,
+    ))
+}
+
+fn classify_failure(
+    stdout: &[u8],
+    stderr: &[u8],
+    timed_out: bool,
+    blocked: bool,
+) -> AntigravityError {
+    if let Some(error) = region_error(stdout, stderr) {
+        return error;
+    }
+    if blocked {
+        return AntigravityError::new(
+            "Antigravity 需要登录，已阻止后台打开浏览器。请在终端运行 agy 登录后重试。",
+            true,
+        );
+    }
     let diagnostic = String::from_utf8_lossy(stderr);
     let text = diagnostic.to_ascii_lowercase();
     if [

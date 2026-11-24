@@ -84,7 +84,7 @@ pnpm --dir site dev
 
 低额度判定位于 `quota-core::LowQuotaTracker`，只接收 Codex 成功读取后的已校验窗口。复用现有账号指纹、`SavedState` 原子保存及系统通知通道；先持久化观测和周期去重记录，再发送通知，保存失败不发送。观测基线与已消费周期分开保存，切换开关或修改阈值只重建基线；切换账号不比较不同账号的读数，同时保留仍未到期的各账号周期记录。
 
-设置键为 `quota.lowNotifications`（默认 `false`）和 `quota.lowThreshold`（默认 `20`，范围 `1–99` 的整数百分比），旧设置自动使用默认值。阈值在偏好读取和保存命令各自的入口校验，内部按类型传递。触发规则见[提醒与公开动态](usage.md#提醒与公开动态)。
+`quota.lowNotifications` 控制提醒（默认关闭）。`quota.lowThreshold.fiveHour` 和 `quota.lowThreshold.weekly` 分别对应 300 分钟与 10080 分钟窗口。其他窗口使用 `quota.lowThreshold`。新键缺失时继承该旧键，未配置时用 20%；三项均接受 1–99 的整数百分比。修改阈值只清除对应时长窗口的观测基线。阈值在偏好读取和保存命令各自的入口校验，内部按类型传递。触发规则见[提醒与公开动态](usage.md#提醒与公开动态)。
 
 本次 `bash scripts/test.sh` 的 TypeScript 检查、Vite 构建和本机 Rust 编译通过，保留既有 chunk 大小提示。Chrome 完成一次离线设置关键流程：默认关闭、开启后阈值 `20`、保存 `25` 并切页保留、输入 `100` 被原生校验阻止，以及关闭监测时的禁用状态。Tab、方向键及 Enter 操作通过；默认、聚焦、失焦状态和相邻控件对齐均已观察。界面复用现有 Switch、Button、原生数字输入和主题，未引入设计系统变更。
 
