@@ -1,4 +1,5 @@
 use quota_core::{decode_antigravity_usage, AntigravityGroup};
+use crate::state::AntigravitySource;
 use std::{
     io,
     path::{Path, PathBuf},
@@ -41,10 +42,24 @@ pub struct AntigravityClient {
 }
 
 impl AntigravityClient {
-    pub async fn sample(&mut self) -> Result<Vec<AntigravityGroup>, AntigravityError> {
+    pub async fn sample(&mut self, source: AntigravitySource) -> Result<Option<Vec<AntigravityGroup>>, AntigravityError> {
+        if source == AntigravitySource::Desktop {
+            return crate::antigravity_panel::read().await
+                .map_err(|message| AntigravityError::new(&message, false));
+        }
+        if source == AntigravitySource::Ide {
+            return tokio::task::spawn_blocking(|| {
+                let app_data = dirs::data_dir().ok_or("无法定位 Antigravity IDE 数据目录。")?;
+                quota_core::read_antigravity_ide_quota(&app_data)
+            })
+            .await
+            .map_err(|_| AntigravityError::new("读取 Antigravity IDE 快照中断。", false))?
+            .map(Some)
+            .map_err(|message| AntigravityError::new(&message, false));
+        }
         let result = self.read_sample().await;
         self.stop().await;
-        result
+        result.map(Some)
     }
 
     async fn read_sample(&mut self) -> Result<Vec<AntigravityGroup>, AntigravityError> {

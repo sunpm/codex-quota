@@ -382,14 +382,14 @@ fn read_session(
 
 // Decode only established fields; no schema generation or message-body storage.
 #[derive(Clone, PartialEq, Message)]
-struct Timestamp {
+pub(crate) struct Timestamp {
     #[prost(int64, tag = "1")]
     seconds: i64,
     #[prost(int32, tag = "2")]
     nanos: i32,
 }
 impl Timestamp {
-    fn seconds(&self) -> Option<f64> {
+    pub(crate) fn seconds(&self) -> Option<f64> {
         (self.seconds >= 0
             && self.seconds <= 253_402_300_799
             && (0..1_000_000_000).contains(&self.nanos))
@@ -461,25 +461,30 @@ struct NativeSession {
     invalid: usize,
 }
 
-fn read_database(path: &Path) -> Result<NativeSession, Box<dyn std::error::Error>> {
-    let wal = PathBuf::from(format!("{}-wal", path.display()));
-    let before = stamp(path)?;
+pub(crate) fn open_snapshot_db(path: &Path, idle: bool) -> Result<Connection, Box<dyn std::error::Error>> {
     // Closed WAL databases have no sidecars. Immutable avoids creating them; a live WAL
     // always uses SQLite's read transaction so committed generations remain visible.
-    let idle = stamp(&wal)?.is_none();
     let mut uri = url::Url::from_file_path(path).map_err(|_| "invalid database path")?;
     uri.set_query(Some(if idle {
         "mode=ro&immutable=1"
     } else {
         "mode=ro"
     }));
-    let mut conn = Connection::open_with_flags(
+    let conn = Connection::open_with_flags(
         uri.as_str(),
         OpenFlags::SQLITE_OPEN_READ_ONLY
             | OpenFlags::SQLITE_OPEN_URI
             | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )?;
     conn.busy_timeout(Duration::ZERO)?;
+    Ok(conn)
+}
+
+fn read_database(path: &Path) -> Result<NativeSession, Box<dyn std::error::Error>> {
+    let wal = PathBuf::from(format!("{}-wal", path.display()));
+    let before = stamp(path)?;
+    let idle = stamp(&wal)?.is_none();
+    let mut conn = open_snapshot_db(path, idle)?;
     let tx = conn.transaction()?;
     let mut result = NativeSession::default();
     let mut steps: BTreeMap<u64, (u64, Option<f64>)> = BTreeMap::new();

@@ -106,9 +106,17 @@ pnpm --dir site dev
 
 收尾确认验收副本及其 Codex 查询子进程正常退出，原安装版保持运行。已清理临时应用、隔离数据、平台配置及专用缓存，原有 `dist` 应用包和产物清单已恢复。
 
+## Antigravity 本地额度来源
+
+`antigravity.quotaSource` 选择 `ide`、`desktop` 或 `cli`。首次开启默认 IDE，已开启的旧版 CLI 监测保留 CLI。手动和定时刷新共用同一入口。各来源分别保留内存快照，CLI 的服务端冷却独立于本地读取。
+
+IDE 使用 SQLite 只读连接读取 `User/globalStorage/state.vscdb` 的 `antigravityUnifiedStateSync.userStatus` 行。优先检查 `Antigravity IDE` 目录，兼容旧版 `Antigravity`。Protobuf 只解码模型标签、额度比例及重置时间。SQLite 文件修改时间不代表额度变化；相同读数不推进变化时间。
+
+独立 App 使用 macOS Accessibility 或 Windows UI Automation 定位已打开的 Models & Usage 面板，按分组标题和额度标签读取可见百分比。面板结构与 Google 桌面版 2.34.0 核对。采集不激活窗口或点击控件。没有可识别的额度时保留已有读数，不能将隐藏百分比或未知窗口补零。IDE 与独立 App 均不读取 OAuth 或本地服务令牌。
+
 ## Antigravity CLI 接入边界
 
-首版只使用官方 CLI 的 `agy -p /usage --output-format json`，不启动模型任务、不解析 TUI、不接入本地接口或自行获取 Google 凭据。执行前校验正式版版本：macOS 至少 1.1.11，Windows 至少 1.4.10；后者用于限定已核对的 headless 认证行为。通过 `CODEX_QUOTA_AGY`、`PATH`、用户安装目录查找原生可执行文件，Windows 只执行 `.exe`，不通过 shell、`.cmd` 或 WSL。
+CLI 来源使用官方 CLI 的 `agy -p /usage --output-format json`，不启动模型任务、不解析 TUI、不接入本地接口或自行获取 Google 凭据。执行前校验正式版版本：macOS 至少 1.1.11，Windows 至少 1.4.10；后者用于限定已核对的 headless 认证行为。通过 `CODEX_QUOTA_AGY`、`PATH`、用户安装目录查找原生可执行文件，Windows 只执行 `.exe`，不通过 shell、`.cmd` 或 WSL。
 
 解析入口要求 `status=SUCCESS`、`command.name=usage`，读取 `command.data.groups` 的名称及 `buckets` 的 `id`、`name`、`window`、`remaining_fraction`、`reset_time` 和 `disabled`。分组不按模型写死；未知扩展字段可忽略，缺失或越界的比例保持未知，不能通过 clamp 伪造 0% / 100%。只有 `window=5h/weekly` 才标注具体窗口，不从名称、桶 ID 或重置日期推断。报告不提供可靠身份，因此个人额度不落盘、不参与历史和恢复提醒。
 

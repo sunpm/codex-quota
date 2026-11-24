@@ -11,6 +11,7 @@ import antigravityIcon from '@/assets/antigravity.svg'
 defineProps<{ state: AppSnapshot; now: number }>()
 const windowLabel = (window: string | null) => window === '5h' ? '五小时额度' : window === 'weekly' ? '周额度' : '额度'
 const tone = (remaining: number | null) => remaining === null ? 'unknown' : remaining <= 0 ? 'exhausted' : remaining <= 20 ? 'warning' : 'normal'
+const timeLabels = { ide: '上次观察到变化', desktop: '上次读取面板', cli: '上次读取' }
 </script>
 
 <template>
@@ -28,9 +29,9 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
       </div>
     </div>
     <p v-if="!state.settings.antigravityEnabled" class="notice">Antigravity 监测已关闭，可在设置中开启。</p>
-    <p v-if="state.antigravity.error" class="notice warning" role="status">{{ state.antigravity.error }}<span v-if="state.antigravity.lastSuccess"> 上次读数已过期。</span></p>
-    <div v-if="!state.antigravity.groups.length" class="empty-state">{{ state.antigravity.refreshing ? '正在读取 Antigravity 额度…' : state.settings.antigravityEnabled ? '尚无可用额度数据，请确认已在终端登录 agy。' : '暂无额度数据' }}</div>
-    <div v-else class="antigravity-groups" :class="{ 'single-bucket-groups': state.antigravity.groups.every(group => group.buckets.length === 1) }">
+    <p v-if="state.antigravity.error" class="notice warning" role="status">{{ state.antigravity.error }}<span v-if="state.antigravity.groups.length"> 上次读数已过期。</span></p>
+    <div v-if="!state.antigravity.groups.length && !state.antigravity.error" class="empty-state">{{ state.antigravity.refreshing ? '正在读取 Antigravity 额度…' : '暂无额度数据' }}</div>
+    <div v-if="state.antigravity.groups.length" class="antigravity-groups" :class="{ 'single-bucket-groups': state.antigravity.groups.every(group => group.buckets.length === 1) }">
       <div v-for="(group, index) in state.antigravity.groups" :key="index" class="antigravity-group">
         <h3 class="antigravity-group-title">{{ group.name }}</h3>
         <div class="quota-windows-grid">
@@ -53,9 +54,8 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
         </div>
       </div>
     </div>
-    <div class="antigravity-footer muted">
-      <span>CLI 未提供可验证的账号身份，暂不记录历史或提醒恢复。</span>
-      <span v-if="state.antigravity.lastSuccess !== null">上次读取 · {{ dateText(state.antigravity.lastSuccess, true) }}</span>
+    <div v-if="state.antigravity.lastSuccess !== null" class="antigravity-footer muted">
+      {{ timeLabels[state.settings.antigravitySource] }} · {{ dateText(state.antigravity.lastSuccess, true) }}
     </div>
   </section>
 </template>

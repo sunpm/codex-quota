@@ -1,4 +1,10 @@
 fn main() {
+    if matches!(std::env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("macos")) {
+        println!("cargo:rerun-if-changed=src/antigravity_panel.m");
+        cc::Build::new().file("src/antigravity_panel.m").flag("-fobjc-arc").compile("antigravity_panel");
+        println!("cargo:rustc-link-lib=framework=ApplicationServices");
+        println!("cargo:rustc-link-lib=framework=AppKit");
+    }
     println!("cargo:rerun-if-env-changed=TAURI_UPDATER_PUBLIC_KEY");
     println!("cargo:rerun-if-env-changed=CODEX_QUOTA_RELEASE_NOTES_FILE");
     let notes = match std::env::var_os("CODEX_QUOTA_RELEASE_NOTES_FILE").filter(|path| !path.is_empty()) {

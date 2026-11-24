@@ -19,6 +19,15 @@ import ReminderSchedule from './ReminderSchedule.vue'
 import AnimatedNumber from './AnimatedNumber.vue'
 
 const props = defineProps<{ state: AppSnapshot }>()
+const sourceInstructions = {
+  ide: '请打开 Antigravity IDE 并登录。',
+  desktop: '请在 Antigravity 桌面 App 中打开「设置 → 模型」。',
+  cli: '请先安装官方 agy，并在终端运行 agy 登录。',
+}
+const quotaSource = computed({
+  get: () => props.state.settings.antigravitySource,
+  set: (value: Settings['antigravitySource']) => { void changeSettings({ antigravitySource: value }) },
+})
 const intervalOpen = ref(false)
 const intervalDraft = ref(props.state.settings.refreshInterval)
 const intervalSelection = ref<string | number>(props.state.settings.refreshInterval)
@@ -106,11 +115,19 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
       <div class="section-heading"><h2 id="antigravity-monitoring-label">Antigravity 额度监测</h2><Switch id="antigravity-monitoring" aria-labelledby="antigravity-monitoring-label" :model-value="state.settings.antigravityEnabled" @update:model-value="changeSettings({ antigravityEnabled: $event })" /></div>
       <fieldset class="dependent-settings" aria-labelledby="antigravity-monitoring-label" :disabled="!state.settings.antigravityEnabled">
         <div class="setting-group">
+          <div class="setting-row">
+            <label for="antigravity-source">额度来源</label>
+            <NativeSelect id="antigravity-source" v-model="quotaSource">
+              <NativeSelectOption value="ide">Antigravity IDE</NativeSelectOption>
+              <NativeSelectOption value="desktop">Antigravity 桌面 App</NativeSelectOption>
+              <NativeSelectOption value="cli">Antigravity CLI</NativeSelectOption>
+            </NativeSelect>
+          </div>
           <div class="setting-row"><span id="antigravity-announcements-label">Antigravity 重置动态通知</span><Switch aria-labelledby="antigravity-announcements-label" :model-value="state.settings.antigravityAnnouncementNotifications" :disabled="!state.settings.antigravityEnabled" @update:model-value="notifications('antigravityAnnouncementNotifications', $event)" /></div>
           <div v-if="state.settings.antigravityEnabled && !state.antigravity.groups.length" class="antigravity-setup">
-            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取 CLI 额度…' : state.antigravity.error ?? '请先安装官方 agy，并在终端运行 agy 登录。' }}</p>
+            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取额度…' : state.antigravity.error ?? sourceInstructions[state.settings.antigravitySource] }}</p>
             <div class="setting-actions">
-              <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">安装说明 <ArrowUpRight :size="13" /></button>
+              <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">使用说明 <ArrowUpRight :size="13" /></button>
               <Button variant="outline" size="sm" :disabled="state.antigravity.refreshing" @click="execute('refresh_antigravity')">{{ state.antigravity.refreshing ? '读取中…' : '重新读取' }}</Button>
             </div>
           </div>

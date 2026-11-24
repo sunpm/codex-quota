@@ -489,8 +489,12 @@ fn antigravity_tray_content(snapshot: &AppSnapshot) -> TrayContent {
     if let Some(time) = quota.last_success.and_then(|timestamp| chrono::DateTime::from_timestamp(timestamp as i64, 0)) {
         let tag = if quota.error.is_some() { "（已过期）" } else { "" };
         let formatted = time.with_timezone(&chrono::Local).format("%m-%d %H:%M");
-        items.push(TrayMenuItemSpec::Info(format!("上次读取{tag}：{formatted}")));
-        tooltip_lines.push(format!("Antigravity 上次读取{tag}：{formatted}"));
+        let label = match snapshot.settings.antigravity_source {
+            crate::state::AntigravitySource::Ide => "上次观察到变化",
+            _ => "上次读取",
+        };
+        items.push(TrayMenuItemSpec::Info(format!("{label}{tag}：{formatted}")));
+        tooltip_lines.push(format!("Antigravity {label}{tag}：{formatted}"));
     }
 
     TrayContent {

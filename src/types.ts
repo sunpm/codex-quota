@@ -10,6 +10,7 @@ export interface NotificationStatus {
 export interface Settings {
   monitoringEnabled: boolean
   antigravityEnabled: boolean
+  antigravitySource: 'ide' | 'desktop' | 'cli'
   antigravityAnnouncementNotifications: boolean
   antigravityShowTray: boolean
   recoveryNotifications: boolean

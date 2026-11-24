@@ -548,6 +548,7 @@ name = "codex-quota"
 version = "0.27.0"
 dependencies = [
  "block2",
+ "cc",
  "chrono",
  "dirs 7.0.0",
  "libc",
@@ -3196,6 +3197,7 @@ dependencies = [
 name = "quota-core"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "file-id",
  "prost",

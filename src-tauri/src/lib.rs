@@ -1,4 +1,5 @@
 mod antigravity;
+mod antigravity_panel;
 mod client;
 mod monitor;
 #[cfg(target_os = "macos")]
@@ -71,6 +72,7 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
     settings.validate()?;
     let state = controller(&app);
     let previous = state.store.lock().unwrap().snapshot.settings.clone();
+    let antigravity_source_changed = settings.antigravity_source != previous.antigravity_source;
     if previous.launch_at_login != settings.launch_at_login {
         platform::set_autostart(&app, settings.launch_at_login)?;
     }
@@ -95,6 +97,9 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
             saved.antigravity_announcements.tracker.has_baseline = false;
             if settings.antigravity_enabled { saved.antigravity_schedule.next_attempt = 0.0; }
         }
+        if antigravity_source_changed {
+            saved.antigravity_schedule.next_attempt = 0.0;
+        }
         if settings.refresh_interval != previous.refresh_interval && saved.antigravity_schedule.failures == 0 {
             saved.antigravity_schedule.next_attempt = state::now() + settings.refresh_interval as f64;
         }
@@ -116,6 +121,21 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
     {
         let mut store = state.store.lock().unwrap();
         store.snapshot.settings = settings.clone();
+        if antigravity_source_changed {
+            let mut restored = store.antigravity_readings.remove(&settings.antigravity_source).unwrap_or_default();
+            restored.refreshing = store.snapshot.antigravity.refreshing;
+            let previous_reading = std::mem::replace(&mut store.snapshot.antigravity, restored);
+            if !previous_reading.groups.is_empty() {
+                store.antigravity_readings.insert(previous.antigravity_source, state::AntigravitySnapshot {
+                    groups: previous_reading.groups,
+                    last_success: previous_reading.last_success,
+                    ..Default::default()
+                });
+            }
+            store.next_local_quota_read = 0.0;
+        } else if settings.refresh_interval != previous.refresh_interval {
+            store.next_local_quota_read = state::now() + settings.refresh_interval as f64;
+        }
         if settings.antigravity_enabled != previous.antigravity_enabled {
             store.snapshot.antigravity.requires_action = false;
             if !settings.antigravity_enabled { store.snapshot.antigravity.refreshing = false; store.snapshot.antigravity_announcements.refreshing = false; }
@@ -133,11 +153,14 @@ async fn save_settings(app: AppHandle, settings: Settings) -> Result<AppSnapshot
         state.client.lock().await.stop().await;
     }
     let antigravity_active = settings.antigravity_enabled && !state.paused.load(Ordering::Relaxed) && !state.preview;
-    if *state.antigravity_active.borrow() != antigravity_active { state.antigravity_active.send_replace(antigravity_active); }
+    if *state.antigravity_active.borrow() != antigravity_active || antigravity_source_changed { state.antigravity_active.send_replace(antigravity_active); }
     if !antigravity_active { state.antigravity_client.lock().await.stop().await; }
     if settings.antigravity_enabled && !previous.antigravity_enabled {
         let handle = app.clone();
         tauri::async_runtime::spawn(async move { tokio::join!(monitor::refresh_antigravity(&handle, true), monitor::refresh_antigravity_announcements(&handle)); });
+    } else if antigravity_active && antigravity_source_changed {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move { monitor::refresh_antigravity(&handle, true).await; });
     }
     if !settings.automatic_updates {
         updates::cancel_check(&app);

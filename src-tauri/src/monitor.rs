@@ -120,6 +120,8 @@ impl Controller {
             writable: error.is_none(),
             continuous: false,
             updating_prices: false,
+            next_local_quota_read: 0.0,
+            antigravity_readings: Default::default(),
         };
         store.reprice();
         let (active, _) = watch::channel(settings.monitoring_enabled && !preview);
@@ -160,6 +162,7 @@ impl Controller {
         if !paused {
             store.saved.schedule.next_attempt = 0.0;
             store.saved.antigravity_schedule.next_attempt = 0.0;
+            store.next_local_quota_read = 0.0;
         }
         self.active
             .send_replace(!paused && store.snapshot.settings.monitoring_enabled && !self.preview);
@@ -409,37 +412,67 @@ pub async fn refresh_quota(app: &AppHandle, force: bool) {
 pub async fn refresh_antigravity(app: &AppHandle, force: bool) {
     let state = controller(app);
     let mut activity = state.antigravity_active.subscribe();
-    {
+    let source = {
         let mut store = state.store.lock().unwrap();
         if !*activity.borrow()
             || store.snapshot.antigravity.refreshing
-            || (!force && store.snapshot.antigravity.requires_action)
-            || !store.saved.antigravity_schedule.can_refresh(force, now())
+            || !store.can_refresh_antigravity(force)
         {
             return;
         }
         store.snapshot.antigravity.refreshing = true;
-    }
+        store.snapshot.settings.antigravity_source
+    };
     state.emit(app);
     let mut client = state.antigravity_client.lock().await;
     let result = tokio::select! {
-        result = client.sample() => Some(result),
+        result = client.sample(source) => Some(result),
         _ = activity.changed() => { client.stop().await; None },
     };
     drop(client);
     {
         let mut store = state.store.lock().unwrap();
         store.snapshot.antigravity.refreshing = false;
-        if *activity.borrow() {
+        if *activity.borrow() && source == store.snapshot.settings.antigravity_source {
+            let read_at = now();
+            let next = read_at + store.snapshot.settings.refresh_interval as f64;
             match result {
-                Some(Ok(groups)) => {
-                    store.saved.antigravity_schedule.succeeded();
-                    store.saved.antigravity_schedule.next_attempt = now() + store.snapshot.settings.refresh_interval as f64;
+                Some(Ok(Some(groups))) => {
+                    let last_success = match source {
+                        AntigravitySource::Cli => {
+                            store.saved.antigravity_schedule.succeeded();
+                            store.saved.antigravity_schedule.next_attempt = next;
+                            Some(read_at)
+                        }
+                        AntigravitySource::Ide => {
+                            store.next_local_quota_read = next;
+                            let prior = &store.snapshot.antigravity;
+                            // The IDE row has no source timestamp. Only timestamp observed changes.
+                            if !prior.groups.is_empty() && prior.groups != groups {
+                                Some(read_at)
+                            } else {
+                                prior.last_success
+                            }
+                        }
+                        AntigravitySource::Desktop => {
+                            store.next_local_quota_read = next;
+                            Some(read_at)
+                        }
+                    };
                     store.snapshot.antigravity = AntigravitySnapshot {
                         groups,
-                        last_success: Some(now()),
+                        last_success,
                         ..Default::default()
                     };
+                }
+                Some(Ok(None)) => {
+                    store.next_local_quota_read = next;
+                    store.snapshot.antigravity.error = store.snapshot.antigravity.groups.is_empty()
+                        .then(|| "请在 Antigravity 桌面 App 中打开「设置 → 模型」。".into());
+                }
+                Some(Err(error)) if source != AntigravitySource::Cli => {
+                    store.next_local_quota_read = next;
+                    store.snapshot.antigravity.error = Some(error.message);
                 }
                 Some(Err(error)) => {
                     let delay = store.saved.antigravity_schedule.failed(error.retry_after, now());
@@ -452,7 +485,9 @@ pub async fn refresh_antigravity(app: &AppHandle, force: bool) {
                 }
                 None => {}
             }
-            let _ = store.persist();
+            if source == AntigravitySource::Cli {
+                let _ = store.persist();
+            }
         }
     }
     state.emit(app);
@@ -671,8 +706,7 @@ pub fn start(app: AppHandle) {
                     store.snapshot.settings.monitoring_enabled
                         && now() >= store.saved.announcements.next_request,
                     store.snapshot.settings.antigravity_enabled
-                        && !store.snapshot.antigravity.requires_action
-                        && store.saved.antigravity_schedule.can_refresh(false, now()),
+                        && store.can_refresh_antigravity(false),
                     store.snapshot.settings.antigravity_enabled
                         && now() >= store.saved.antigravity_announcements.next_request,
                     visible

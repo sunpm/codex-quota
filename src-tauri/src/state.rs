@@ -14,11 +14,22 @@ pub fn now() -> f64 {
     chrono::Utc::now().timestamp_millis() as f64 / 1000.0
 }
 
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AntigravitySource {
+    #[default]
+    Cli,
+    Ide,
+    Desktop,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub monitoring_enabled: bool,
     pub antigravity_enabled: bool,
+    #[serde(default)]
+    pub antigravity_source: AntigravitySource,
     pub antigravity_announcement_notifications: bool,
     pub antigravity_show_tray: bool,
     pub recovery_notifications: bool,
@@ -59,6 +70,13 @@ impl Settings {
         Self {
             monitoring_enabled: flag("service.codex.enabled", true),
             antigravity_enabled: flag("antigravity.cli.enabled", false),
+            antigravity_source: p.get("antigravity.quotaSource")
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
+                .unwrap_or_else(|| if flag("antigravity.cli.enabled", false) {
+                    AntigravitySource::Cli
+                } else {
+                    AntigravitySource::Ide
+                }),
             antigravity_announcement_notifications: flag("antigravity.cli.announcementNotifications", false),
             antigravity_show_tray: flag("antigravity.cli.showTray", true),
             recovery_notifications: flag("service.codex.notifications", true),
@@ -139,6 +157,7 @@ impl Settings {
     }
 
     pub fn save_into(&self, p: &mut BTreeMap<String, Value>) {
+        p.insert("antigravity.quotaSource".into(), json!(self.antigravity_source));
         for (key, value) in [
             ("service.codex.enabled", self.monitoring_enabled),
             ("antigravity.cli.enabled", self.antigravity_enabled),
@@ -494,9 +513,19 @@ pub struct Store {
     pub writable: bool,
     pub continuous: bool,
     pub updating_prices: bool,
+    pub next_local_quota_read: f64,
+    pub antigravity_readings: BTreeMap<AntigravitySource, AntigravitySnapshot>,
 }
 
 impl Store {
+    pub fn can_refresh_antigravity(&self, force: bool) -> bool {
+        match self.snapshot.settings.antigravity_source {
+            AntigravitySource::Ide | AntigravitySource::Desktop => force || now() >= self.next_local_quota_read,
+            AntigravitySource::Cli => (force || !self.snapshot.antigravity.requires_action)
+                && self.saved.antigravity_schedule.can_refresh(force, now()),
+        }
+    }
+
     pub fn commit(&mut self, saved: SavedState) -> Result<(), String> {
         let previous = std::mem::replace(&mut self.saved, saved);
         let result = self.persist();

@@ -26,7 +26,14 @@ export async function initialize() {
 export async function execute(command: string, args?: Record<string, unknown>) {
   actionError.value = null
   if (isPreview) {
-    if (command === 'save_settings') snapshot.value = { ...snapshot.value, settings: args?.settings as Settings }
+    if (command === 'save_settings') {
+      const settings = args?.settings as Settings
+      const sourceChanged = settings.antigravitySource !== snapshot.value.settings.antigravitySource
+      const antigravity = sourceChanged
+        ? (settings.antigravitySource === 'cli' ? previewSnapshot() : emptySnapshot()).antigravity
+        : snapshot.value.antigravity
+      snapshot.value = { ...snapshot.value, settings, antigravity }
+    }
     else if (command === 'save_prices') {
       const prices = args?.prices as AppSnapshot['prices']
       snapshot.value = { ...snapshot.value, prices: [...snapshot.value.prices.filter(price => !prices.some(updated => updated.service === price.service && updated.model === price.model)), ...prices] }
