@@ -5,6 +5,7 @@ edition = "2021"
 description = "Offline Codex and Antigravity quota, usage and pricing models"
 
 [dependencies]
+base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 file-id = "0.2"
 prost = "0.14"

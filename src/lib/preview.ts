@@ -49,8 +49,8 @@ export function previewCostBreakdown(record: UsageRecord): CostBreakdown {
 }
 export function emptySnapshot(): AppSnapshot {
   return {
-    settings: { monitoringEnabled: true, antigravityEnabled: false, antigravityAnnouncementNotifications: false, antigravityShowTray: true, recoveryNotifications: true, lowQuotaNotifications: false, lowQuotaThreshold: 20, resetCreditReminders: false, resetCreditReminderMinutes: [1440], quotaResetReminders: false, quotaResetReminderMinutes: [120], announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 60, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
-    quota: { windows: [], resetCredits: null, history: {}, error: null, lastSuccess: null, refreshing: false },
+    settings: { monitoringEnabled: true, antigravityEnabled: false, antigravitySource: 'cli', antigravityAnnouncementNotifications: false, antigravityShowTray: true, recoveryNotifications: true, lowQuotaNotifications: false, lowQuotaThresholds: { fiveHour: 20, weekly: 20, other: 20 }, resetCreditReminders: false, resetCreditReminderMinutes: [1440], quotaResetReminders: false, quotaResetReminderMinutes: [120], announcementNotifications: false, showTray: true, launchAtLogin: false, animations: true, refreshInterval: 60, automaticUpdates: true, todayMetrics: ['tokens'], detailColumns: ['speed', 'firstToken'] },
+    quota: { windows: [], credits: null, resetCredits: null, history: {}, error: null, lastSuccess: null, refreshing: false },
     announcements: { events: [], error: null, sourceStatus: null, refreshing: false, lastSuccess: null },
     antigravity: { groups: [], error: null, lastSuccess: null, refreshing: false, requiresAction: false },
     antigravityAnnouncements: { events: [], error: null, sourceStatus: null, refreshing: false, lastSuccess: null },
@@ -103,6 +103,7 @@ export function previewSnapshot(): AppSnapshot {
     ], error: null, lastSuccess: now, refreshing: false, requiresAction: false,
   }
   state.quota.lastSuccess = now
+  state.quota.credits = { kind: 'balance', balance: '125.5' }
   state.quota.resetCredits = { availableCount: 3, credits: [2400, 64800, 360000].map((remaining, index) => ({ id: `sample-credit-${index}`, resetType: 'codexRateLimits', status: 'available', expiresAt: now + remaining })) }
   state.prices = Object.values(officialPrices)
   state.prices.push({ model: 'unknown', service: 'antigravity', rates: { input: null, output: null, cached: null, cacheWrite: null, cacheWriteLong: null }, contextThreshold: null, longContextRates: null, fastMultiplier: null, ultrafastMultiplier: null })

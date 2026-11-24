@@ -1,5 +1,6 @@
 mod announcements;
 mod antigravity;
+mod antigravity_ide;
 mod antigravity_usage;
 mod pricing;
 mod official_pricing;
@@ -9,6 +10,7 @@ mod usage;
 
 pub use announcements::*;
 pub use antigravity::*;
+pub use antigravity_ide::read_antigravity_ide_quota;
 pub use pricing::*;
 pub use official_pricing::*;
 pub use quota::*;

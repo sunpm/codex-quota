@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight } from '@lucide/vue'
 import { tablePageSizes } from '@/lib/table'
+import AnimatedNumber from './AnimatedNumber.vue'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Pagination, PaginationContent, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
@@ -21,14 +22,14 @@ function jump(event: Event, pageCount: number) {
 
 <template>
   <div v-if="total" class="table-pagination">
-    <span class="muted">共 {{ total.toLocaleString('zh-CN') }} 条</span>
+    <span class="muted">共 <AnimatedNumber :value="total" /> 条</span>
     <NativeSelect :model-value="pageSize" aria-label="每页条数" @change="emit('update:pageSize', Number(($event.target as HTMLSelectElement).value))"><NativeSelectOption v-for="size in tablePageSizes" :key="size" :value="size">{{ size }} 条 / 页</NativeSelectOption></NativeSelect>
     <Pagination v-slot="{ pageCount }" class="table-page-navigation" data-size="sm" :page="page" :items-per-page="pageSize" :total="total" aria-label="表格分页" @update:page="emit('update:page', $event)">
       <PaginationContent class="pagination-controls">
         <PaginationPrevious size="sm" aria-label="上一页"><ChevronLeft /></PaginationPrevious>
         <div class="page-position">
           <Input v-model="pageInput" class="page-input shadow-none" type="number" min="1" :max="pageCount" step="1" aria-label="页码" @change="jump($event, pageCount)" @keydown.enter.prevent="jump($event, pageCount)" @keydown.esc="pageInput = page" />
-          <span>/ {{ pageCount.toLocaleString('zh-CN') }} 页</span>
+          <span>/ <AnimatedNumber :value="pageCount" /> 页</span>
         </div>
         <PaginationNext size="sm" aria-label="下一页"><ChevronRight /></PaginationNext>
       </PaginationContent>

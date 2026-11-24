@@ -7,7 +7,7 @@ import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipCon
 import { format, type EChartsCoreOption } from 'echarts/core'
 import type { CustomSeriesOption } from 'echarts/charts'
 import type { AppSnapshot, Metric, Page, UsageRecord } from '@/types'
-import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dateTimeKey, dayKey, metricShare, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney, type Summary } from '@/lib/usage'
+import { basename, compareSummaries, costCardTitle, costColumnLabel, costLabel, costTooltip, dateText, dateTimeKey, dayKey, metricShare, metricValue, money, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryAmount, summaryMoney, type Summary } from '@/lib/usage'
 import { chartReturn, openChartRecords, overviewGroupBy, overviewTrendMetric, parseUsageDateTime, syncOverviewToDetails, usageRanges, usageService, useUsageFilters, type UsageSort } from '@/lib/usage-filters'
 import { compareTableNumbers, useTablePagination } from '@/lib/table'
 import TablePagination from './TablePagination.vue'
@@ -17,6 +17,8 @@ import DetailColumnsMenu from './DetailColumnsMenu.vue'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import Chart from './Chart.vue'
+import AnimatedNumber from './AnimatedNumber.vue'
+import UsageComparison from './UsageComparison.vue'
 import SlidingSelection from './SlidingSelection.vue'
 import UsageDetailDialog from './UsageDetailDialog.vue'
 import antigravityIcon from '@/assets/antigravity.svg'
@@ -70,6 +72,12 @@ const models = computed(() => [...new Set([...availableRecords.value.map(record 
 const inModel = (record: UsageRecord) => model.value === 'all' || record.model === model.value
 const records = computed(() => availableRecords.value.filter(record => record.date >= range.value.from && record.date < range.value.to && inModel(record)))
 const total = computed(() => summarize(records.value))
+const tokenBreakdown = computed(() => [
+  { label: '新增输入', value: total.value.input, known: total.value.inputKnown },
+  { label: '输出', value: total.value.output, known: total.value.outputKnown },
+  { label: '缓存命中', value: total.value.cached, known: total.value.cachedKnown },
+  { label: '缓存写入', value: total.value.cacheWrite, known: total.value.cacheWriteKnown },
+].map(({ label, value, known }) => ({ label, value: hasReadableUsage.value && (known || value > 0) ? value : null })))
 const previous = computed(() => {
   if (period.value === 'all' || range.value.to <= range.value.from) return null
   const duration = period.value === 'custom' ? customRange.value!.to - customRange.value!.from : 86400
@@ -77,18 +85,6 @@ const previous = computed(() => {
   const to = range.value.days ? shiftDay(new Date(range.value.to * 1000), -range.value.days).getTime() / 1000 : range.value.to - duration
   return { from, to, total: summarize(availableRecords.value.filter(record => record.date >= from && record.date < to && inModel(record))) }
 })
-function changeText(kind: Metric) {
-  if (props.state.usage.scannedAt === null || !previous.value || kind === 'cost' && total.value.count > 0 && !total.value.priced) return null
-  const current = metricValue(total.value, kind), before = metricValue(previous.value.total, kind)
-  const delta = current - before
-  const amount = kind === 'tokens' ? `${shortTokens(Math.abs(delta))} Tokens` : money(String(Math.abs(delta)))
-  const title = `上期：${kind === 'tokens' ? `${before.toLocaleString('zh-CN')} Tokens` : costTooltip(previous.value.total)}`
-  if (!delta) return { text: '较上期持平', title, direction: 'unchanged' }
-  const direction = delta > 0 ? 'increase' : 'decrease'
-  if (!before) return { text: `+${amount}`, title, direction }
-  const sign = delta > 0 ? '+' : '−'
-  return { text: `${sign}${amount}（${(Math.abs(delta) / before * 100).toFixed(1)}%）`, title, direction }
-}
 const byHour = computed(() => period.value === 'today' || period.value === 'yesterday' || period.value === '24h' || period.value === 'custom' && customRange.value !== null && customRange.value.to - customRange.value.from <= 86400)
 const hourlyAcrossDays = computed(() => byHour.value && dayKey(new Date(range.value.from * 1000)) !== dayKey(new Date((range.value.to - 0.001) * 1000)))
 const buckets = computed(() => {
@@ -233,6 +229,8 @@ const matchingRecords = computed(() => {
 })
 const recordFilterKey = computed(() => JSON.stringify([usageService.value, period.value, model.value, start.value, end.value, search.value]))
 const summaryTotal = computed(() => recordView.value ? summarize(matchingRecords.value) : props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
+const currentCost = computed(() => hasReadableUsage.value ? summaryAmount(summaryTotal.value) : null)
+const previousCost = computed(() => previous.value ? summaryAmount(previous.value.total) : null)
 const summaryRows = computed(() => pageRows.value.map(group => ({
   ...group, share: metricShare(group.total, summaryTotal.value, metric.value),
 })))
@@ -322,47 +320,47 @@ function openHeatmapRecords(index: number) {
       </div>
     </div>
     <div v-if="page === 'overview'" class="summary-cards">
-      <div class="surface summary-card tokens-card">
-        <div class="card-header">
+      <div class="summary-card tokens-card">
+        <div class="summary-reading">
           <span class="metric-label">总 Tokens</span>
-          <span v-if="changeText('tokens')" class="comparison-badge" :data-direction="changeText('tokens')!.direction" :title="changeText('tokens')!.title">{{ changeText('tokens')!.text }}</span>
+          <strong class="card-value" :title="hasReadableUsage ? undefined : '尚未读取本机日志'"><AnimatedNumber :value="hasReadableUsage ? summaryTotal.tokens : null" /></strong>
+          <UsageComparison v-if="hasReadableUsage && previous" kind="tokens" :current="summaryTotal.tokens" :previous="previous.total.tokens" :title="`上期：${previous.total.tokens.toLocaleString('zh-CN')} Tokens`" />
         </div>
-        <strong class="card-value" :title="state.usage.scannedAt === null ? '尚未读取本机日志' : undefined">{{ hasReadableUsage ? summaryTotal.tokens.toLocaleString('zh-CN') : '—' }}</strong>
-        <div class="token-breakdown">
-          <div v-for="item in [{ label: '新增输入', value: total.input, known: total.inputKnown }, { label: '输出', value: total.output, known: total.outputKnown }, { label: '缓存命中', value: total.cached, known: total.cachedKnown }, { label: '缓存写入', value: total.cacheWrite, known: total.cacheWriteKnown }]" :key="item.label" class="breakdown-item">
-            <span class="breakdown-label">{{ item.label }}</span>
-            <strong :title="hasReadableUsage ? item.value.toLocaleString('zh-CN') : undefined">{{ !hasReadableUsage || !item.known && !item.value ? '—' : shortTokens(item.value) }}</strong>
+        <dl class="summary-footer summary-counts">
+          <div v-for="item in tokenBreakdown" :key="item.label">
+            <dt>{{ item.label }}</dt>
+            <dd :title="item.value?.toLocaleString('zh-CN')"><AnimatedNumber :value="item.value" kind="tokens" /></dd>
           </div>
-        </div>
+        </dl>
       </div>
-      <div class="surface summary-card cost-card" :title="costCardTitle(summaryTotal)">
-        <div class="card-header">
+      <div class="summary-card" :title="costCardTitle(summaryTotal)">
+        <div class="summary-reading">
           <span class="metric-label">{{ costLabel(summaryTotal) }}</span>
-          <span v-if="changeText('cost')" class="comparison-badge" :data-direction="changeText('cost')!.direction" :title="changeText('cost')!.title">{{ changeText('cost')!.text }}</span>
+          <strong class="card-value" :class="{ 'unpriced-text': hasReadableUsage && summaryTotal.count && !summaryTotal.priced }"><AnimatedNumber :value="currentCost" kind="money" :empty="hasReadableUsage ? '未定价' : '—'" /></strong>
+          <UsageComparison v-if="currentCost !== null && previousCost !== null && previous" kind="money" :current="currentCost" :previous="previousCost" :title="`上期：${costTooltip(previous.total)}`" />
         </div>
-        <strong class="card-value" :class="{ 'unpriced-text': state.usage.scannedAt && summaryTotal.count && !summaryTotal.priced }">{{ hasReadableUsage ? summaryMoney(summaryTotal) : '—' }}</strong>
-        <div class="card-footer">
+        <div class="summary-footer cost-notes">
           <span>API 等价估算</span>
-          <span v-if="state.usage.scannedAt !== null && previous" class="comparison-range">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - (range.days ? 1 : 0)) }}</span>
+          <span v-if="hasReadableUsage && previous">上期 {{ dateText(previous.from) }} — {{ dateText(previous.to - (range.days ? 1 : 0)) }}</span>
         </div>
       </div>
-      <div class="surface summary-card efficiency-card">
-        <div class="card-header">
+      <div class="summary-card">
+        <div class="summary-reading">
           <span class="metric-label" title="缓存命中 ÷ 全部输入">缓存命中率</span>
-          <span class="card-badge">{{ hasReadableUsage ? `${summaryTotal.sessions.toLocaleString('zh-CN')} 个对话` : '—' }}</span>
+          <strong class="card-value"><AnimatedNumber :value="hasReadableUsage ? summaryTotal.hitRate : null" kind="rate" /></strong>
+          <div v-if="hasReadableUsage && summaryTotal.hitRate !== null" class="quota-track hit-rate-track" aria-hidden="true"><div :style="{ width: `${summaryTotal.hitRate * 100}%` }" /></div>
         </div>
-        <strong class="card-value">{{ state.usage.scannedAt ? percent(summaryTotal.hitRate) : '—' }}</strong>
-        <div class="card-footer efficiency-footer">
-          <div class="quota-track hit-rate-track" aria-hidden="true"><div :style="{ width: `${Math.min(100, Math.max(0, (summaryTotal.hitRate ?? 0) * 100))}%` }" /></div>
-          <div class="efficiency-meta"><span>缓存命中 ÷ 全部输入</span><span>{{ hasReadableUsage ? `${summaryTotal.count.toLocaleString('zh-CN')} 条记录` : '—' }}</span></div>
-        </div>
+        <dl class="summary-footer summary-counts">
+          <div><dt>对话数</dt><dd><AnimatedNumber :value="hasReadableUsage ? summaryTotal.sessions : null" /></dd></div>
+          <div><dt>记录数</dt><dd><AnimatedNumber :value="hasReadableUsage ? summaryTotal.count : null" /></dd></div>
+        </dl>
       </div>
     </div>
     <div v-else class="surface summary-bar">
-      <div class="summary-bar-item"><span class="metric-label">总 Tokens</span><strong>{{ hasReadableUsage ? summaryTotal.tokens.toLocaleString('zh-CN') : '—' }}</strong></div>
-      <div class="summary-bar-item" :title="costCardTitle(summaryTotal)"><span class="metric-label">{{ costLabel(summaryTotal) }}</span><strong :class="{ 'unpriced-text': state.usage.scannedAt && summaryTotal.count && !summaryTotal.priced }">{{ hasReadableUsage ? summaryMoney(summaryTotal) : '—' }}</strong><small class="metric-note">API 等价估算</small></div>
-      <div class="summary-bar-item"><span class="metric-label">对话数</span><strong>{{ hasReadableUsage ? summaryTotal.sessions.toLocaleString('zh-CN') : '—' }}</strong></div>
-      <div class="summary-bar-item" title="缓存命中 ÷ 全部输入"><span class="metric-label">缓存命中率</span><strong>{{ state.usage.scannedAt ? percent(summaryTotal.hitRate) : '—' }}</strong></div>
+      <div class="summary-bar-item"><span class="metric-label">总 Tokens</span><strong><AnimatedNumber :value="hasReadableUsage ? summaryTotal.tokens : null" /></strong></div>
+      <div class="summary-bar-item" :title="costCardTitle(summaryTotal)"><span class="metric-label">{{ costLabel(summaryTotal) }}</span><strong :class="{ 'unpriced-text': state.usage.scannedAt && summaryTotal.count && !summaryTotal.priced }"><AnimatedNumber :value="currentCost" kind="money" :empty="hasReadableUsage ? '未定价' : '—'" /></strong><small class="metric-note">API 等价估算</small></div>
+      <div class="summary-bar-item"><span class="metric-label">对话数</span><strong><AnimatedNumber :value="hasReadableUsage ? summaryTotal.sessions : null" /></strong></div>
+      <div class="summary-bar-item" title="缓存命中 ÷ 全部输入"><span class="metric-label">缓存命中率</span><strong><AnimatedNumber :value="hasReadableUsage ? summaryTotal.hitRate : null" kind="rate" /></strong></div>
     </div>
     <section v-if="page === 'overview'" class="surface chart-section">
       <div class="section-heading">
@@ -384,7 +382,7 @@ function openHeatmapRecords(index: number) {
             <SlidingSelection v-slot="{ highlight }" :selection="groupBy" class="segmented" role="group" aria-label="汇总分组">
               <component :is="highlight ? 'span' : 'label'" v-for="item in [{ value: 'model', label: '模型' }, { value: 'project', label: '项目' }, { value: 'session', label: '对话' }]" :key="item.value" class="segment-option" :data-selected="groupBy === item.value"><input v-if="!highlight" v-model="groupBy" class="sr-only" type="radio" name="overview-group" :value="item.value" />{{ item.label }}</component>
             </SlidingSelection>
-            <span class="count">{{ state.usage.scannedAt === null ? '—' : `${groups.length} 项` }}</span>
+            <span class="count"><AnimatedNumber :value="hasReadableUsage ? groups.length : null" suffix=" 项" /></span>
           </div>
           <Button v-if="groupBy !== 'model'" variant="ghost" size="sm" @click="openInDetails(groupBy)">在明细中查看<ChevronRight :size="13" /></Button>
         </template>
@@ -409,11 +407,11 @@ function openHeatmapRecords(index: number) {
         <tbody><tr v-for="group in summaryRows" :key="group.key">
           <td><button class="table-link" :title="`${group.name}\n${group.key}`" @click="showDetail(group.name, group.records)"><span>{{ group.name }}<small v-if="grouping !== 'project'">{{ group.subtitle }}</small></span><ChevronRight :size="13" /></button></td>
           <td v-if="grouping !== 'model'" class="muted secondary-column"><span :title="grouping === 'session' ? dateText(group.last, true) : group.subtitle">{{ grouping === 'session' ? dateText(group.last) : group.subtitle }}</span></td>
-          <td class="number" :title="group.total.count.toLocaleString()">{{ group.total.count.toLocaleString() }}</td>
-          <td class="number">{{ group.total.tokens.toLocaleString('zh-CN') }}</td>
-          <td class="number" :title="costTooltip(group.total)"><span :class="{ 'unpriced-text': group.total.count && !group.total.priced }">{{ summaryMoney(group.total) }}</span></td>
-          <td class="number muted"><div class="usage-share"><span v-if="group.share !== null" class="usage-share-track" aria-hidden="true"><span :style="{ width: `${group.share * 100}%` }" /></span><span>{{ percent(group.share) }}</span></div></td>
-          <td class="number muted">{{ percent(group.total.hitRate) }}</td>
+          <td class="number" :title="group.total.count.toLocaleString()"><AnimatedNumber :value="group.total.count" /></td>
+          <td class="number"><AnimatedNumber :value="group.total.tokens" /></td>
+          <td class="number" :title="costTooltip(group.total)"><span :class="{ 'unpriced-text': group.total.count && !group.total.priced }"><AnimatedNumber :value="summaryAmount(group.total)" kind="money" empty="未定价" /></span></td>
+          <td class="number muted"><div class="usage-share"><span v-if="group.share !== null" class="usage-share-track" aria-hidden="true"><span :style="{ width: `${group.share * 100}%` }" /></span><span><AnimatedNumber :value="group.share" kind="rate" /></span></div></td>
+          <td class="number muted"><AnimatedNumber :value="group.total.hitRate" kind="rate" /></td>
         </tr></tbody>
       </table><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : search ? '没有匹配的记录' : '此时间范围没有用量记录' }}</div></div>
       <TablePagination v-model:page="tablePage" v-model:page-size="pageSize" :total="groups.length" />

@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、窗口状态、更新 | MIT OR Apache-2.0 |
 | [Vue](https://github.com/vuejs/core) | 界面与响应式状态 | MIT |
+| [NumberFlow for Vue](https://github.com/barvian/number-flow) | 用量、额度与倒计时数字动画 | MIT，Copyright (c) 2024 Maxwell Barvian |
 | [@pmun/utils](https://github.com/sunpm/sunpm-utils) | 类型判断、本地日期运算、分组排序、金额尾零与草稿拷贝 | MIT |
 | [Day.js](https://github.com/iamkun/dayjs) | @pmun/utils 的日期处理依赖 | MIT |
 | [markdown-it](https://github.com/markdown-it/markdown-it) | 更新说明 Markdown 渲染 | MIT；Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin |
@@ -24,7 +25,7 @@
 | [rust_decimal](https://github.com/paupino/rust-decimal) | 十进制定价计算 | MIT |
 | [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
 
-以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect、Pagination）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
+准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect、Pagination）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
 
 `@pmun/utils` 0.17.0 与 Day.js 的 MIT 许可于 2026-11-07 核对，随生成的依赖声明分发；工具方法的使用边界见 [开发说明](docs/development.md#通用工具方法)。
 
@@ -50,7 +51,9 @@ AIHOT 数据服务并非 OpenAI 或 Google 官方服务，数据使用遵循 [AI
 
 ## Antigravity 额度接入
 
-2026-11-08 复核 [steipete/CodexBar](https://github.com/steipete/CodexBar/tree/c727c08a291681fc76dd5e22dd34e2b9614990b9) 的 `docs/antigravity.md`、CLI JSON 解析及子进程行为，借鉴结构化报告、无身份数据隔离、禁用子进程自动更新和阻止后台浏览器登录的设计。本项目使用现有 Rust / Tokio / Serde 实现，仅接入官方 CLI 报告，不引入其本地接口、OAuth 凭据或多账号管理。CodexBar 为 MIT License，Copyright (c) 2026 Peter Steinberger；沿用 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt` 随包分发。
+IDE 快照的 SQLite 键和 Protobuf 额度字段参考 [Orbit Hub 的额度读取器](https://github.com/amEya911/Orbit-Hub/blob/f121565e2af49c22d673ed341e6f5a57eaf00652/src/quotaFetcher.ts)，MIT License，Copyright (c) 2026 [Orbit-Hub Authors]。本项目使用 rusqlite 与 prost 读取实际字段。许可原文随包置于 `Resources/ThirdPartyNotices/Orbit-Hub-LICENSE.txt`。桌面 App 面板的标题、分组及可见百分比结构依据 Google Antigravity 2.34.0；辅助功能读取端独立实现。
+
+2026-11-08 复核 [steipete/CodexBar](https://github.com/steipete/CodexBar/tree/c727c08a291681fc76dd5e22dd34e2b9614990b9) 的 `docs/antigravity.md`、CLI JSON 解析及子进程行为，借鉴结构化报告、无身份数据隔离、禁用子进程自动更新和阻止后台浏览器登录的设计。本项目的 CLI 来源使用 Rust / Tokio / Serde 读取官方 CLI 报告，不引入其本地接口、OAuth 凭据或多账号管理。CodexBar 为 MIT License，Copyright (c) 2026 Peter Steinberger；沿用 `Resources/ThirdPartyNotices/CodexBar-LICENSE.txt` 随包分发。
 
 已核对 CodexBar 的 [CLI 后台更新流量问题 #4739](https://github.com/steipete/CodexBar/issues/4739)、[CLI 与桌面登录状态差异 #3146](https://github.com/steipete/CodexBar/issues/3146)，以及官方 CLI 的[自动更新开关问题 #942](https://github.com/google-antigravity/antigravity-cli/issues/942)、[macOS print 模式问题 #1046](https://github.com/google-antigravity/antigravity-cli/issues/1046)。`AGY_CLI_DISABLE_AUTO_UPDATE` 使用小写字符串 `true`，只设置在本应用启动的子进程中。
 

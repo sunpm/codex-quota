@@ -28,6 +28,11 @@ The official agy CLI is installed separately by the user and is not distributed
 with Codex Quota. Authentication is handled by the CLI; this application does not
 extract, copy or store Google credentials.
 
+Antigravity IDE snapshot format reference:
+https://github.com/amEya911/Orbit-Hub/blob/f121565e2af49c22d673ed341e6f5a57eaf00652/src/quotaFetcher.ts
+The SQLite status key and model quota field mapping were consulted. The MIT
+license for Orbit Hub is included in Orbit-Hub-LICENSE.txt.
+
 MIT License
 
 Copyright (c) 2026 HemSoft

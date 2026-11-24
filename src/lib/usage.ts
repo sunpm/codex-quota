@@ -1,5 +1,6 @@
 import { addDays, formatDate, startOf, trimDecimalZeros } from '@pmun/utils'
 import type { UsageRecord, Metric, CostComponent, QuotaSeries } from '@/types'
+import { numberOptions } from './number-format'
 
 export const serviceName = (service: string) => service === 'codex' ? 'Codex' : service === 'antigravity' ? 'Antigravity' : '全部服务'
 export const knownTokens = (record: UsageRecord) => record.tokens.inputReported !== false && record.tokens.outputReported !== false && record.tokens.cachedReported !== false
@@ -11,7 +12,7 @@ export function reportedTokenCount(record: UsageRecord, kind: CostComponent['kin
   return reported ? record.tokens[kind] : null
 }
 export const tokenCount = (record: UsageRecord) => record.tokens.input + record.tokens.output + record.tokens.cached + record.tokens.cacheWrite
-export const shortTokens = (value: number) => value < 10000 ? value.toLocaleString('zh-CN') : new Intl.NumberFormat('en', { notation: 'compact', maximumSignificantDigits: 3 }).format(value)
+export const shortTokens = (value: number) => value.toLocaleString('en-US', numberOptions('tokens', value))
 export const dateText = (seconds: number | null | undefined, full = false) => seconds == null ? '—' : new Date(seconds * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', ...(full ? { year: 'numeric', second: '2-digit' } : {}) })
 export const dayKey = (date: Date) => formatDate(date, 'YYYY-MM-DD')
 export function dateTimeKey(date: Date, precise = false) {
@@ -51,8 +52,13 @@ export function summarize(records: UsageRecord[]): Summary {
 }
 export const costLabel = (_summary?: Summary) => '估算费用'
 export const costColumnLabel = (_summary?: Summary) => '估算费用'
-export function money(amount: string | null) { return amount == null ? '未定价' : `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: Number(amount) > 0 && Number(amount) < 0.01 ? 6 : 2 })}` }
-export const summaryMoney = (summary: Summary) => summary.count && !summary.priced ? '未定价' : money(summary.amount)
+export function money(amount: string | number | null) {
+  if (amount === null) return '未定价'
+  const value = Number(amount)
+  return value.toLocaleString('en-US', numberOptions('money', value))
+}
+export const summaryAmount = (summary: Summary) => summary.count && !summary.priced ? null : Number(summary.amount)
+export const summaryMoney = (summary: Summary) => money(summaryAmount(summary))
 export const exactMoney = (amount: string | null) => amount == null ? '未定价' : `$${trimDecimalZeros(amount)}`
 export const costTooltip = (summary: Summary) => summary.count && !summary.priced ? '未定价' : exactMoney(summary.amount)
 export const costCardTitle = (_summary?: Summary) => 'API 等价估算，非订阅账单。'
@@ -77,19 +83,21 @@ export function metricShare(part: Summary, whole: Summary, metric: Metric) {
   const denominator = metricValue(whole, metric)
   return denominator && (metric === 'tokens' || part.priced) ? metricValue(part, metric) / denominator : null
 }
-export const percent = (value: number | null) => value == null ? '—' : `${(value * 100).toFixed(1)}%`
-export function countdown(resetsAt: number | null, now: number) {
+export const percent = (value: number | null) => value == null ? '—' : value.toLocaleString('en-US', numberOptions('rate', value))
+type CountdownPart = { value: number; unit: string; padded?: boolean }
+export function countdown(resetsAt: number | null, now: number): string | CountdownPart[] {
   if (resetsAt == null) return '重置时间未知'
   const remaining = Math.max(0, Math.ceil(resetsAt - now))
   if (!remaining) return '等待实际重置'
   if (remaining > 7 * 86400) return ''
   const days = Math.floor(remaining / 86400)
-  const hours = Math.floor(remaining % 86400 / 3600)
-  const minutes = Math.floor(remaining % 3600 / 60)
+  const hours = Math.floor(remaining / 3600)
+  const minutes = Math.floor(remaining / 60)
   const seconds = remaining % 60
-  if (remaining > 86400) return `${days} 天 ${hours} 小时`
-  if (remaining > 3600) return `${hours} 小时 ${String(minutes).padStart(2, '0')} 分`
-  return `${minutes ? `${minutes} 分 ` : ''}${String(seconds).padStart(2, '0')} 秒`
+  if (remaining > 86400) return [{ value: days, unit: '天' }, { value: hours % 24, unit: '小时' }]
+  if (remaining > 3600) return [{ value: hours, unit: '小时' }, { value: minutes % 60, unit: '分', padded: true }]
+  const secondPart = { value: seconds, unit: '秒', padded: true }
+  return minutes ? [{ value: minutes, unit: '分' }, secondPart] : [secondPart]
 }
 export function countdownTickMs(deadlines: (number | null | undefined)[], now: number) {
   let delay = Infinity
@@ -106,9 +114,9 @@ export function countdownTickMs(deadlines: (number | null | undefined)[], now: n
 }
 export const quotaLabel = (minutes: number | null, label: string | null) => label ?? (minutes ? minutes % 1440 === 0 ? `${minutes / 1440} 天额度` : minutes % 60 === 0 ? `${minutes / 60} 小时额度` : `${minutes} 分钟额度` : '额度')
 
-export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number): string {
+export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number) {
   const first = points.findIndex(point => point.date >= midnight)
-  if (first < 0) return '—'
+  if (first < 0) return null
 
   let used = 0
   let complete = points[first].date === midnight
@@ -134,7 +142,7 @@ export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number): stri
       used += Math.max(0, increase)
     }
   }
-  if (complete) return `${used.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%`
-  if (used === 0) return '—'
-  return used < 0.1 ? '>0%' : `≥${Math.floor(used * 10) / 10}%`
+  if (complete) return { value: used }
+  if (used === 0) return null
+  return used < 0.1 ? { value: 0, prefix: '>' } : { value: Math.floor(used * 10) / 10, prefix: '≥' }
 }

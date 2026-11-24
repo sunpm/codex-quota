@@ -1,4 +1,4 @@
-use quota_core::{LimitsResponse, QuotaWindow, RateLimitResetCredits};
+use quota_core::{CodexCredits, LimitsResponse, QuotaWindow, RateLimitResetCredits};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -11,6 +11,7 @@ use tokio::{
 pub struct Sample {
     pub fingerprint: String,
     pub windows: Vec<QuotaWindow>,
+    pub credits: Option<CodexCredits>,
     pub reset_credits: Option<RateLimitResetCredits>,
 }
 
@@ -169,7 +170,8 @@ impl CodexClient {
             serde_json::from_value(self.request("account/rateLimits/read", json!({})).await?)
                 .map_err(|_| ClientError::new("Codex 额度响应格式暂不兼容。"))?;
         let windows = limits.windows();
-        if windows.is_empty() && limits.rate_limit_reset_credits.is_none() {
+        let credits = limits.codex_credits();
+        if windows.is_empty() && credits.is_none() && limits.rate_limit_reset_credits.is_none() {
             return Err(ClientError::new("当前账号没有返回可用的额度数据。"));
         }
         let identity = limits
@@ -180,6 +182,7 @@ impl CodexClient {
         Ok(Sample {
             fingerprint: fingerprint(&identity),
             windows,
+            credits,
             reset_credits: limits.rate_limit_reset_credits,
         })
     }

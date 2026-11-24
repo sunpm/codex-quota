@@ -10,11 +10,12 @@ export interface NotificationStatus {
 export interface Settings {
   monitoringEnabled: boolean
   antigravityEnabled: boolean
+  antigravitySource: 'ide' | 'desktop' | 'cli'
   antigravityAnnouncementNotifications: boolean
   antigravityShowTray: boolean
   recoveryNotifications: boolean
   lowQuotaNotifications: boolean
-  lowQuotaThreshold: number
+  lowQuotaThresholds: { fiveHour: number; weekly: number; other: number }
   resetCreditReminders: boolean
   resetCreditReminderMinutes: number[]
   quotaResetReminders: boolean
@@ -46,6 +47,7 @@ export interface ModelPricing {
 }
 export interface QuotaWindow { id: string; bucket: string; name: string; usedPercent: number; durationMinutes: number | null; resetsAt: number | null; label: string | null }
 export interface ResetCredit { id: string; resetType: string; status: string; expiresAt: number | null }
+export type CodexCredits = { kind: 'balance'; balance: string } | { kind: 'unlimited' }
 export interface QuotaSeries { window: QuotaWindow; points: { date: number; usedPercent: number; segment: number; resetsAt?: number }[] }
 export interface Announcement {
   id: string; type: string; displayLabel: string | null; status: string
@@ -64,7 +66,7 @@ export interface UpdateState {
 export interface AppSnapshot {
   error?: string | null
   settings: Settings
-  quota: { windows: QuotaWindow[]; resetCredits: { availableCount: number; credits: ResetCredit[] | null } | null; history: Record<string, QuotaSeries>; error: string | null; lastSuccess: number | null; refreshing: boolean }
+  quota: { windows: QuotaWindow[]; credits: CodexCredits | null; resetCredits: { availableCount: number; credits: ResetCredit[] | null } | null; history: Record<string, QuotaSeries>; error: string | null; lastSuccess: number | null; refreshing: boolean }
   announcements: AnnouncementSnapshot
   antigravity: { groups: AntigravityGroup[]; error: string | null; lastSuccess: number | null; refreshing: boolean; requiresAction: boolean }
   antigravityAnnouncements: AnnouncementSnapshot

@@ -16,12 +16,35 @@ import PricingDialog from './PricingDialog.vue'
 import DetailColumnsMenu from './DetailColumnsMenu.vue'
 import ReleaseNotes from './ReleaseNotes.vue'
 import ReminderSchedule from './ReminderSchedule.vue'
+import AnimatedNumber from './AnimatedNumber.vue'
 
 const props = defineProps<{ state: AppSnapshot }>()
+const sourceInstructions = {
+  ide: '请打开 Antigravity IDE 并登录。',
+  desktop: '请在 Antigravity 桌面 App 中打开「设置 → 模型」。',
+  cli: '请先安装官方 agy，并在终端运行 agy 登录。',
+}
+const quotaSource = computed({
+  get: () => props.state.settings.antigravitySource,
+  set: (value: Settings['antigravitySource']) => { void changeSettings({ antigravitySource: value }) },
+})
 const intervalOpen = ref(false)
 const intervalDraft = ref(props.state.settings.refreshInterval)
 const intervalSelection = ref<string | number>(props.state.settings.refreshInterval)
-const lowQuotaDraft = ref<string | number>(props.state.settings.lowQuotaThreshold)
+const thresholdFields = [
+  { key: 'fiveHour', label: '5 小时剩余（%）' },
+  { key: 'weekly', label: '7 天剩余（%）' },
+  { key: 'other', label: '其他窗口剩余（%）' },
+] as const
+const visibleThresholds = computed(() => thresholdFields.filter(({ key }) => key !== 'other'
+  || props.state.quota.windows.some(window => window.durationMinutes !== 300 && window.durationMinutes !== 10080)))
+const thresholdDraft = ref({ ...props.state.settings.lowQuotaThresholds })
+const thresholdsChanged = computed(() => visibleThresholds.value.some(({ key }) => thresholdDraft.value[key] !== props.state.settings.lowQuotaThresholds[key]))
+function saveThresholds() {
+  const lowQuotaThresholds = { ...props.state.settings.lowQuotaThresholds }
+  for (const { key } of visibleThresholds.value) lowQuotaThresholds[key] = thresholdDraft.value[key]
+  return changeSettings({ lowQuotaThresholds })
+}
 const pricingOpen = ref(false)
 const clearOpen = ref(false)
 const historyService = ref<UsageService>(usageService.value === 'antigravity' ? 'antigravity' : 'codex')
@@ -64,7 +87,9 @@ async function notifications(key: keyof Settings, value: boolean) {
   if (value && !actionError.value) await requestNotificationsIfNeeded()
 }
 watch(() => props.state.settings.refreshInterval, value => { intervalSelection.value = value })
-watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.value = value })
+for (const { key } of thresholdFields) {
+  watch(() => props.state.settings.lowQuotaThresholds[key], value => { thresholdDraft.value[key] = value })
+}
 </script>
 <template>
   <div class="settings-page">
@@ -77,9 +102,12 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
         <div class="setting-group">
           <div class="setting-row"><span id="low-quota-label">低额度提醒</span><Switch id="low-quota" aria-labelledby="low-quota-label" :model-value="state.settings.lowQuotaNotifications" :disabled="!state.settings.monitoringEnabled" @update:model-value="notifications('lowQuotaNotifications', $event)" /></div>
           <fieldset class="dependent-settings" aria-labelledby="low-quota-label" :disabled="!state.settings.lowQuotaNotifications">
-            <form class="setting-row low-quota-setting" @submit.prevent="changeSettings({ lowQuotaThreshold: Number(lowQuotaDraft) })">
-              <label for="low-quota-threshold">剩余额度阈值（%）</label>
-              <div class="low-quota-inputs"><input id="low-quota-threshold" v-model.number="lowQuotaDraft" type="number" min="1" max="99" step="1" required /><Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || lowQuotaDraft === state.settings.lowQuotaThreshold">保存</Button></div>
+            <form class="setting-row low-quota-setting" @submit.prevent="saveThresholds">
+              <label v-for="field in visibleThresholds" :key="field.key">
+                {{ field.label }}
+                <input v-model.number="thresholdDraft[field.key]" type="number" min="1" max="99" step="1" required />
+              </label>
+              <Button type="submit" variant="outline" :disabled="!state.settings.monitoringEnabled || !thresholdsChanged">保存</Button>
             </form>
           </fieldset>
         </div>
@@ -105,11 +133,19 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
       <div class="section-heading"><h2 id="antigravity-monitoring-label">Antigravity 额度监测</h2><Switch id="antigravity-monitoring" aria-labelledby="antigravity-monitoring-label" :model-value="state.settings.antigravityEnabled" @update:model-value="changeSettings({ antigravityEnabled: $event })" /></div>
       <fieldset class="dependent-settings" aria-labelledby="antigravity-monitoring-label" :disabled="!state.settings.antigravityEnabled">
         <div class="setting-group">
+          <div class="setting-row">
+            <label for="antigravity-source">额度来源</label>
+            <NativeSelect id="antigravity-source" v-model="quotaSource">
+              <NativeSelectOption value="ide">Antigravity IDE</NativeSelectOption>
+              <NativeSelectOption value="desktop">Antigravity 桌面 App</NativeSelectOption>
+              <NativeSelectOption value="cli">Antigravity CLI</NativeSelectOption>
+            </NativeSelect>
+          </div>
           <div class="setting-row"><span id="antigravity-announcements-label">Antigravity 重置动态通知</span><Switch aria-labelledby="antigravity-announcements-label" :model-value="state.settings.antigravityAnnouncementNotifications" :disabled="!state.settings.antigravityEnabled" @update:model-value="notifications('antigravityAnnouncementNotifications', $event)" /></div>
           <div v-if="state.settings.antigravityEnabled && !state.antigravity.groups.length" class="antigravity-setup">
-            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取 CLI 额度…' : state.antigravity.error ?? '请先安装官方 agy，并在终端运行 agy 登录。' }}</p>
+            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取额度…' : state.antigravity.error ?? sourceInstructions[state.settings.antigravitySource] }}</p>
             <div class="setting-actions">
-              <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">安装说明 <ArrowUpRight :size="13" /></button>
+              <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">使用说明 <ArrowUpRight :size="13" /></button>
               <Button variant="outline" size="sm" :disabled="state.antigravity.refreshing" @click="execute('refresh_antigravity')">{{ state.antigravity.refreshing ? '读取中…' : '重新读取' }}</Button>
             </div>
           </div>
@@ -117,11 +153,11 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
       </fieldset>
     </section>
     <section class="surface settings-section"><div class="section-heading"><h2>系统通知</h2><span>{{ permissionText }}</span></div><div class="setting-actions"><Button variant="outline" size="sm" :disabled="!(state.settings.monitoringEnabled && (state.settings.recoveryNotifications || state.settings.lowQuotaNotifications || state.settings.resetCreditReminders || state.settings.quotaResetReminders || state.settings.announcementNotifications) || state.settings.antigravityEnabled && state.settings.antigravityAnnouncementNotifications)" @click="testNotification">测试通知</Button><Button v-if="(isPreview || state.platform === 'macos') && notificationStatus?.alertStyle !== 'persistent'" variant="outline" size="sm" @click="notificationGuideOpen = true">持久通知…</Button><Button variant="outline" size="sm" @click="systemCommand('open_notification_settings')">系统设置…</Button></div></section>
-    <section class="surface settings-section"><h2>通用</h2><div class="setting-row"><label for="refresh-interval">刷新间隔</label><Popover v-model:open="intervalOpen"><PopoverAnchor as-child><NativeSelect id="refresh-interval" :model-value="intervalSelection" @change="selectInterval(($event.target as HTMLSelectElement).value)"><NativeSelectOption v-for="item in intervals" :key="item.value" :value="item.value">{{ item.label }}</NativeSelectOption><NativeSelectOption v-if="!intervals.some(item => item.value === state.settings.refreshInterval)" :value="state.settings.refreshInterval">{{ state.settings.refreshInterval }} 秒</NativeSelectOption><NativeSelectOption value="custom">自定义…</NativeSelectOption></NativeSelect></PopoverAnchor><PopoverContent class="interval-popover" align="end"><form @submit.prevent="saveInterval"><label class="field" for="custom-interval">刷新间隔（秒）<input id="custom-interval" v-model.number="intervalDraft" type="number" min="30" step="1" required autofocus /></label><p class="muted">最低 30 秒</p><div class="dialog-actions"><Button size="sm" type="button" variant="outline" @click="intervalOpen = false">取消</Button><Button size="sm" type="submit">保存</Button></div></form></PopoverContent></Popover></div><div class="setting-row"><span id="show-tray-label">{{ state.platform === 'windows' ? '系统托盘显示 Codex' : '菜单栏显示 Codex' }}</span><Switch id="show-tray" aria-labelledby="show-tray-label" :model-value="state.settings.showTray" @update:model-value="changeSettings({ showTray: $event })" /></div><div class="setting-row"><span id="antigravity-tray-label">{{ state.platform === 'windows' ? '系统托盘显示 Antigravity' : '菜单栏显示 Antigravity' }}</span><Switch aria-labelledby="antigravity-tray-label" :model-value="state.settings.antigravityShowTray" @update:model-value="changeSettings({ antigravityShowTray: $event })" /></div><div class="setting-row"><span id="autostart-label">登录时启动</span><Switch id="autostart" aria-labelledby="autostart-label" :model-value="state.settings.launchAtLogin" @update:model-value="changeSettings({ launchAtLogin: $event })" /></div><div class="setting-row"><span id="animations-label" title="图表与界面过渡动画；遵循系统减少动态效果设置。">动画特性</span><Switch id="animations" aria-labelledby="animations-label" :model-value="state.settings.animations" @update:model-value="changeSettings({ animations: $event })" /></div></section>
+    <section class="surface settings-section"><h2>通用</h2><div class="setting-row"><label for="refresh-interval">刷新间隔</label><Popover v-model:open="intervalOpen"><PopoverAnchor as-child><NativeSelect id="refresh-interval" :model-value="intervalSelection" @change="selectInterval(($event.target as HTMLSelectElement).value)"><NativeSelectOption v-for="item in intervals" :key="item.value" :value="item.value">{{ item.label }}</NativeSelectOption><NativeSelectOption v-if="!intervals.some(item => item.value === state.settings.refreshInterval)" :value="state.settings.refreshInterval">{{ state.settings.refreshInterval }} 秒</NativeSelectOption><NativeSelectOption value="custom">自定义…</NativeSelectOption></NativeSelect></PopoverAnchor><PopoverContent class="interval-popover" align="end"><form @submit.prevent="saveInterval"><label class="field" for="custom-interval">刷新间隔（秒）<input id="custom-interval" v-model.number="intervalDraft" type="number" min="30" step="1" required autofocus /></label><p class="muted">最低 30 秒</p><div class="dialog-actions"><Button size="sm" type="button" variant="outline" @click="intervalOpen = false">取消</Button><Button size="sm" type="submit">保存</Button></div></form></PopoverContent></Popover></div><div class="setting-row"><span id="show-tray-label">{{ state.platform === 'windows' ? '系统托盘显示 Codex' : '菜单栏显示 Codex' }}</span><Switch id="show-tray" aria-labelledby="show-tray-label" :model-value="state.settings.showTray" @update:model-value="changeSettings({ showTray: $event })" /></div><div class="setting-row"><span id="antigravity-tray-label">{{ state.platform === 'windows' ? '系统托盘显示 Antigravity' : '菜单栏显示 Antigravity' }}</span><Switch aria-labelledby="antigravity-tray-label" :model-value="state.settings.antigravityShowTray" @update:model-value="changeSettings({ antigravityShowTray: $event })" /></div><div class="setting-row"><span id="autostart-label">登录时启动</span><Switch id="autostart" aria-labelledby="autostart-label" :model-value="state.settings.launchAtLogin" @update:model-value="changeSettings({ launchAtLogin: $event })" /></div><div class="setting-row"><span id="animations-label" title="控制数字、图表与界面过渡动画，遵循系统减少动态效果设置。">动画特性</span><Switch id="animations" aria-labelledby="animations-label" :model-value="state.settings.animations" @update:model-value="changeSettings({ animations: $event })" /></div></section>
     <section class="surface settings-section"><h2>用量显示</h2><div class="setting-row"><span>侧栏今日用量</span><Popover><PopoverTrigger as-child><Button variant="outline" size="sm" :aria-label="`侧栏今日用量：${selectedMetrics}`">{{ selectedMetrics }}<ChevronDown aria-hidden="true" /></Button></PopoverTrigger><PopoverContent class="choices-popover" align="end"><label v-for="item in metrics" :key="item.value" class="checkbox-row"><Checkbox :model-value="state.settings.todayMetrics.includes(item.value)" @update:model-value="selectMany('todayMetrics', item.value, $event)" />{{ item.label }}</label></PopoverContent></Popover></div><div class="setting-row"><span>明细可选列</span><DetailColumnsMenu :selected="state.settings.detailColumns" /></div></section>
     <section class="surface settings-section"><div class="setting-row"><h2>模型定价</h2><Button variant="outline" size="sm" @click="pricingOpen = true">管理定价…</Button></div></section>
     <section class="surface settings-section"><h2>用量历史</h2><div class="setting-actions"><NativeSelect v-model="historyService" aria-label="历史服务"><NativeSelectOption value="codex">Codex</NativeSelectOption><NativeSelectOption value="antigravity">Antigravity</NativeSelectOption></NativeSelect><Button variant="outline" size="sm" :disabled="state.usage.refreshing" @click="execute('scan_usage', { rescan: true, service: historyService })">重新扫描 {{ serviceName(historyService) }}</Button><Button variant="outline" size="sm" @click="clearOpen = true">清除已保存历史…</Button></div></section>
-    <section class="surface settings-section"><div class="section-heading"><h2>软件更新 <span class="version">{{ state.version }}</span></h2><div class="setting-actions"><Button v-if="state.update.status === 'checking'" variant="outline" size="sm" @click="cancelUpdate">取消检查</Button><Button v-else-if="state.update.status === 'downloading'" variant="outline" size="sm" @click="cancelUpdate">取消下载</Button><Button v-else variant="outline" size="sm" :disabled="state.update.status === 'installing'" @click="checkForUpdates">检查更新</Button><Button v-if="state.update.canInstall" size="sm" variant="outline" :disabled="['downloading', 'installing'].includes(state.update.status)" @click="execute('install_update')">下载并安装…</Button></div></div><div class="update-status"><button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/releases')">发布页 <ArrowUpRight :size="13" /></button><span :title="state.update.error ?? ''">{{ state.update.error ?? ({ idle: '', checking: '正在检查…', available: `发现新版本 ${state.update.version}`, current: '已是最新版本', downloading: `正在下载${state.update.progress != null ? ` ${Math.round(state.update.progress)}%` : ''}`, installing: '正在安装…', error: '检查失败' }[state.update.status]) }}</span></div><div v-if="state.update.status === 'downloading'" class="download-track"><div :style="{ width: `${state.update.progress ?? 0}%` }" /></div><div v-if="state.update.version && state.update.notes" class="release-notes"><ReleaseNotes :notes="state.update.notes" /></div><div class="setting-row update-toggle"><span id="auto-update-label">自动检查更新</span><Switch id="auto-update" aria-labelledby="auto-update-label" :model-value="state.settings.automaticUpdates" @update:model-value="changeSettings({ automaticUpdates: $event })" /></div></section>
+    <section class="surface settings-section"><div class="section-heading"><h2>软件更新 <span class="version">{{ state.version }}</span></h2><div class="setting-actions"><Button v-if="state.update.status === 'checking'" variant="outline" size="sm" @click="cancelUpdate">取消检查</Button><Button v-else-if="state.update.status === 'downloading'" variant="outline" size="sm" @click="cancelUpdate">取消下载</Button><Button v-else variant="outline" size="sm" :disabled="state.update.status === 'installing'" @click="checkForUpdates">检查更新</Button><Button v-if="state.update.canInstall" size="sm" variant="outline" :disabled="['downloading', 'installing'].includes(state.update.status)" @click="execute('install_update')">下载并安装…</Button></div></div><div class="update-status"><button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/releases')">发布页 <ArrowUpRight :size="13" /></button><span :title="state.update.error ?? ''">{{ state.update.error ?? ({ idle: '', checking: '正在检查…', available: `发现新版本 ${state.update.version}`, current: '已是最新版本', downloading: '正在下载', installing: '正在安装…', error: '检查失败' }[state.update.status]) }}<template v-if="!state.update.error && state.update.status === 'downloading' && state.update.progress !== null"> <AnimatedNumber :value="Math.round(state.update.progress)" suffix="%" /></template></span></div><div v-if="state.update.status === 'downloading'" class="download-track"><div :style="{ width: `${state.update.progress ?? 0}%` }" /></div><div v-if="state.update.version && state.update.notes" class="release-notes"><ReleaseNotes :notes="state.update.notes" /></div><div class="setting-row update-toggle"><span id="auto-update-label">自动检查更新</span><Switch id="auto-update" aria-labelledby="auto-update-label" :model-value="state.settings.automaticUpdates" @update:model-value="changeSettings({ automaticUpdates: $event })" /></div></section>
     <PricingDialog v-model:open="pricingOpen" :state="state" />
     <Dialog v-model:open="clearOpen"><DialogContent><DialogHeader><DialogTitle>清除已保存历史？</DialogTitle><DialogDescription>只清除本应用保存的 {{ serviceName(historyService) }} 用量历史{{ historyService === 'antigravity' ? '（含未纳入统计的旧版记录）' : '' }}，其他服务历史不受影响。源日志保持不变，随后重新采集仍在本机的记录。</DialogDescription></DialogHeader><div class="dialog-actions"><Button variant="outline" @click="clearOpen = false">取消</Button><Button variant="destructive" @click="execute('clear_history', { service: historyService }).then(() => { if (!actionError) clearOpen = false })">清除历史</Button></div></DialogContent></Dialog>
 
@@ -129,9 +165,9 @@ watch(() => props.state.settings.lowQuotaThreshold, value => { lowQuotaDraft.val
 </template>
 
 <style scoped>
-.low-quota-setting { justify-content: flex-start; gap: 12px; }
-.low-quota-inputs { display: flex; align-items: center; gap: 8px; }
-.low-quota-inputs input { width: 84px; font-variant-numeric: tabular-nums; }
+.low-quota-setting { justify-content: flex-start; flex-wrap: wrap; gap: 8px 12px; }
+.low-quota-setting label { display: inline-flex; align-items: center; gap: 6px; }
+.low-quota-setting input { width: 70px; font-variant-numeric: tabular-nums; }
 .release-notes { white-space: normal; }
 .antigravity-setup { display: grid; gap: 8px; }
 .reminder-note { font-size: 12px; }

@@ -1,5 +1,6 @@
 use quota_core::{
-    DeadlineReminderTracker, LowQuotaTracker, ModelPricing, QuotaHistory, QuotaSeries, QuotaWindow,
+    CodexCredits, DeadlineReminderTracker, LowQuotaThresholds, LowQuotaTracker, ModelPricing,
+    QuotaHistory, QuotaSeries, QuotaWindow,
     RateLimitResetCredits, RecoveryTracker, RefreshSchedule, ResetAnnouncement,
     ResetAnnouncementFeed, ResetAnnouncementTracker, UsageRecord, SWIFT_EPOCH_OFFSET,
 };
@@ -14,16 +15,27 @@ pub fn now() -> f64 {
     chrono::Utc::now().timestamp_millis() as f64 / 1000.0
 }
 
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AntigravitySource {
+    #[default]
+    Cli,
+    Ide,
+    Desktop,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     pub monitoring_enabled: bool,
     pub antigravity_enabled: bool,
+    #[serde(default)]
+    pub antigravity_source: AntigravitySource,
     pub antigravity_announcement_notifications: bool,
     pub antigravity_show_tray: bool,
     pub recovery_notifications: bool,
     pub low_quota_notifications: bool,
-    pub low_quota_threshold: u8,
+    pub low_quota_thresholds: LowQuotaThresholds,
     pub reset_credit_reminders: bool,
     pub reset_credit_reminder_minutes: Vec<u32>,
     pub quota_reset_reminders: bool,
@@ -41,6 +53,12 @@ pub struct Settings {
 impl Settings {
     pub fn from_preferences(p: &BTreeMap<String, Value>) -> Self {
         let flag = |key: &str, default| p.get(key).and_then(Value::as_bool).unwrap_or(default);
+        let threshold = |key: &str| {
+            p.get(key).and_then(Value::as_u64)
+                .filter(|value| (1..=99).contains(value))
+                .map(|value| value as u8)
+        };
+        let fallback = threshold("quota.lowThreshold").unwrap_or(20);
         let reminder_minutes = |key: &str, default| {
             p.get(key)
                 .and_then(|value| serde_json::from_value::<Vec<u32>>(value.clone()).ok())
@@ -59,15 +77,22 @@ impl Settings {
         Self {
             monitoring_enabled: flag("service.codex.enabled", true),
             antigravity_enabled: flag("antigravity.cli.enabled", false),
+            antigravity_source: p.get("antigravity.quotaSource")
+                .and_then(|value| serde_json::from_value(value.clone()).ok())
+                .unwrap_or_else(|| if flag("antigravity.cli.enabled", false) {
+                    AntigravitySource::Cli
+                } else {
+                    AntigravitySource::Ide
+                }),
             antigravity_announcement_notifications: flag("antigravity.cli.announcementNotifications", false),
             antigravity_show_tray: flag("antigravity.cli.showTray", true),
             recovery_notifications: flag("service.codex.notifications", true),
             low_quota_notifications: flag("quota.lowNotifications", false),
-            low_quota_threshold: p
-                .get("quota.lowThreshold")
-                .and_then(Value::as_u64)
-                .filter(|value| (1..=99).contains(value))
-                .unwrap_or(20) as u8,
+            low_quota_thresholds: LowQuotaThresholds {
+                five_hour: threshold("quota.lowThreshold.fiveHour").unwrap_or(fallback),
+                weekly: threshold("quota.lowThreshold.weekly").unwrap_or(fallback),
+                other: fallback,
+            },
             reset_credit_reminders: flag("resetCredits.expirationReminders", false),
             reset_credit_reminder_minutes: reminder_minutes("resetCredits.reminderMinutes", 1440),
             quota_reset_reminders: flag("quota.resetReminders", false),
@@ -107,7 +132,10 @@ impl Settings {
     }
 
     pub fn validate(&self) -> Result<(), String> {
-        if !(1..=99).contains(&self.low_quota_threshold) {
+        let thresholds = self.low_quota_thresholds;
+        if [thresholds.five_hour, thresholds.weekly, thresholds.other]
+            .iter().any(|value| !(1..=99).contains(value))
+        {
             return Err("剩余额度阈值必须为 1–99 的整数百分比。".into());
         }
         if self.refresh_interval < 30 || self.refresh_interval > i32::MAX as u64 {
@@ -139,6 +167,7 @@ impl Settings {
     }
 
     pub fn save_into(&self, p: &mut BTreeMap<String, Value>) {
+        p.insert("antigravity.quotaSource".into(), json!(self.antigravity_source));
         for (key, value) in [
             ("service.codex.enabled", self.monitoring_enabled),
             ("antigravity.cli.enabled", self.antigravity_enabled),
@@ -163,10 +192,10 @@ impl Settings {
         ] {
             p.insert(key.into(), json!(value));
         }
-        p.insert(
-            "quota.lowThreshold".into(),
-            json!(self.low_quota_threshold),
-        );
+        let thresholds = self.low_quota_thresholds;
+        p.insert("quota.lowThreshold".into(), json!(thresholds.other));
+        p.insert("quota.lowThreshold.fiveHour".into(), json!(thresholds.five_hour));
+        p.insert("quota.lowThreshold.weekly".into(), json!(thresholds.weekly));
         p.insert(
             "resetCredits.reminderMinutes".into(),
             json!(self.reset_credit_reminder_minutes),
@@ -198,6 +227,7 @@ impl Settings {
 #[serde(rename_all = "camelCase")]
 pub struct QuotaSnapshot {
     pub windows: Vec<QuotaWindow>,
+    pub credits: Option<CodexCredits>,
     pub reset_credits: Option<RateLimitResetCredits>,
     pub history: BTreeMap<String, QuotaSeries>,
     pub error: Option<String>,
@@ -494,9 +524,19 @@ pub struct Store {
     pub writable: bool,
     pub continuous: bool,
     pub updating_prices: bool,
+    pub next_local_quota_read: f64,
+    pub antigravity_readings: BTreeMap<AntigravitySource, AntigravitySnapshot>,
 }
 
 impl Store {
+    pub fn can_refresh_antigravity(&self, force: bool) -> bool {
+        match self.snapshot.settings.antigravity_source {
+            AntigravitySource::Ide | AntigravitySource::Desktop => force || now() >= self.next_local_quota_read,
+            AntigravitySource::Cli => (force || !self.snapshot.antigravity.requires_action)
+                && self.saved.antigravity_schedule.can_refresh(force, now()),
+        }
+    }
+
     pub fn commit(&mut self, saved: SavedState) -> Result<(), String> {
         let previous = std::mem::replace(&mut self.saved, saved);
         let result = self.persist();
