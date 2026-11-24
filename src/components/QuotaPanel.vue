@@ -12,6 +12,7 @@ import AntigravityPanel from './AntigravityPanel.vue'
 import AnnouncementPanel from './AnnouncementPanel.vue'
 import SlidingSelection from './SlidingSelection.vue'
 import DeadlineCountdown from './DeadlineCountdown.vue'
+import AnimatedNumber from './AnimatedNumber.vue'
 import antigravityIcon from '@/assets/antigravity.svg'
 
 const props = defineProps<{ state: AppSnapshot; now: number }>()
@@ -102,11 +103,11 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
               <div>
                 <div class="quota-window-title">
                   <h3>{{ quotaLabel(window.durationMinutes, window.label) }}</h3>
-                  <span class="quota-daily-usage" title="按本地日期累计该窗口的额度消耗。采样不全时显示已确认的下限，无法确定时显示 —。">今日已用 {{ dailyUsage[window.id] ?? '—' }}</span>
+                  <span class="quota-daily-usage" title="按本地日期累计该窗口的额度消耗。采样不全时显示已确认的下限，无法确定时显示 —。">今日已用 <AnimatedNumber :value="dailyUsage[window.id]?.value ?? null" kind="quota" :prefix="dailyUsage[window.id]?.prefix" suffix="%" /></span>
                 </div>
                 <small v-if="window.bucket !== 'codex'">{{ window.name }}</small>
               </div>
-              <strong>{{ Math.floor(100 - window.usedPercent) }}%</strong>
+              <strong><AnimatedNumber :value="Math.floor(100 - window.usedPercent)" suffix="%" /></strong>
             </div>
             <div class="quota-track" aria-hidden="true"><div :style="{ width: `${100 - window.usedPercent}%` }" /></div>
             <div class="quota-time-row">
@@ -116,7 +117,7 @@ const quotaCharts = computed(() => Object.values(props.state.quota.history).map(
           </div>
         </div>
         <div v-if="state.quota.resetCredits" class="credits">
-          <div class="section-heading"><h3>重置卡</h3><span>{{ state.quota.resetCredits.availableCount }} 张可用</span></div>
+          <div class="section-heading"><h3>重置卡</h3><span><AnimatedNumber :value="state.quota.resetCredits.availableCount" /> 张可用</span></div>
           <div v-for="(credit, index) in availableCredits" :key="credit.id" class="credit-row">
             <span>重置卡 {{ index + 1 }}<template v-if="credit.expiresAt != null && credit.expiresAt <= now"> · 已到期</template></span>
             <span class="credit-expiry"><DeadlineCountdown v-if="credit.expiresAt != null && credit.expiresAt > now" :resets-at="credit.expiresAt" :now="now" :data-tone="deadlineTone(credit.expiresAt)" /><span v-if="credit.expiresAt != null" class="muted">到期 · {{ dateText(credit.expiresAt) }}</span><span v-else class="muted">到期时间未知</span></span>

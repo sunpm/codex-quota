@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | [Tauri](https://github.com/tauri-apps/tauri) 与官方插件 | 桌面窗口、托盘、通知、自启动、窗口状态、更新 | MIT OR Apache-2.0 |
 | [Vue](https://github.com/vuejs/core) | 界面与响应式状态 | MIT |
+| [NumberFlow for Vue](https://github.com/barvian/number-flow) | 用量、额度与倒计时数字动画 | MIT，Copyright (c) 2024 Maxwell Barvian |
 | [@pmun/utils](https://github.com/sunpm/sunpm-utils) | 类型判断、本地日期运算、分组排序、金额尾零与草稿拷贝 | MIT |
 | [Day.js](https://github.com/iamkun/dayjs) | @pmun/utils 的日期处理依赖 | MIT |
 | [markdown-it](https://github.com/markdown-it/markdown-it) | 更新说明 Markdown 渲染 | MIT；Copyright (c) 2014 Vitaly Puzrin, Alex Kocharin |
@@ -24,7 +25,7 @@
 | [rust_decimal](https://github.com/paupino/rust-decimal) | 十进制定价计算 | MIT |
 | [zstd-rs](https://github.com/gyscos/zstd-rs) | Rust 压缩日志流式解码 | BSD-3-Clause |
 
-以上许可核对于 2026-11-06，准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect、Pagination）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
+准确版本和其他传递依赖见锁文件及生成声明。shadcn-vue 生成组件（含 NativeSelect、Pagination）的上游许可单独保存在 `Resources/ThirdPartyNotices/shadcn-vue-LICENSE.txt`；组件通过官方 CLI 引入，按需调整在调用层和主题 token 完成，不手改生成文件。
 
 `@pmun/utils` 0.17.0 与 Day.js 的 MIT 许可于 2026-11-07 核对，随生成的依赖声明分发；工具方法的使用边界见 [开发说明](docs/development.md#通用工具方法)。
 

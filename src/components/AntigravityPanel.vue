@@ -5,6 +5,7 @@ import { execute } from '@/lib/app'
 import { dateText } from '@/lib/usage'
 import { Button } from '@/components/ui/button'
 import DeadlineCountdown from './DeadlineCountdown.vue'
+import AnimatedNumber from './AnimatedNumber.vue'
 import antigravityIcon from '@/assets/antigravity.svg'
 
 defineProps<{ state: AppSnapshot; now: number }>()
@@ -39,7 +40,7 @@ const tone = (remaining: number | null) => remaining === null ? 'unknown' : rema
                 <h4>{{ windowLabel(bucket.window) }}</h4>
                 <small>{{ bucket.name }}</small>
               </div>
-              <strong>{{ bucket.disabled ? '未启用' : bucket.remainingPercent === null ? '未知' : `${Math.floor(bucket.remainingPercent)}%` }}</strong>
+              <strong><AnimatedNumber :value="bucket.disabled || bucket.remainingPercent === null ? null : Math.floor(bucket.remainingPercent)" :empty="bucket.disabled ? '未启用' : '未知'" suffix="%" /></strong>
             </div>
             <div v-if="bucket.remainingPercent !== null" class="quota-track" aria-hidden="true">
               <div :style="{ width: `${bucket.remainingPercent}%` }" />
