@@ -55,7 +55,7 @@ export function emptySnapshot(): AppSnapshot {
     antigravity: { groups: [], error: null, lastSuccess: null, refreshing: false, requiresAction: false },
     antigravityAnnouncements: { events: [], error: null, sourceStatus: null, refreshing: false, lastSuccess: null },
     usage: { records: [], projectRoots: {}, sessionTitles: {}, warnings: [], scannedAt: null, fileCount: 0, refreshing: false, source: '' },
-    prices: [], priceDate: '', version, platform: 'preview', update: { status: 'idle', version: null, notes: null, error: null, progress: null, canInstall: false }, installedReleaseNotes: null, notificationGuideShown: false,
+    prices: [], priceDate: '', updatingPrices: false, priceUpdateError: null, version, platform: 'preview', update: { status: 'idle', version: null, notes: null, error: null, progress: null, canInstall: false }, installedReleaseNotes: null, notificationGuideShown: false,
   }
 }
 export function previewSnapshot(): AppSnapshot {

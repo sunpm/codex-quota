@@ -309,6 +309,8 @@ pub struct AppSnapshot {
     pub usage: UsageSnapshot,
     pub prices: Vec<DisplayPrice>,
     pub price_date: String,
+    pub updating_prices: bool,
+    pub price_update_error: Option<String>,
     pub version: String,
     pub platform: String,
     pub update: UpdateState,
@@ -345,6 +347,7 @@ pub struct SavedState {
     pub official_pricing: bool,
     pub overrides: BTreeMap<String, ModelPricing>,
     pub price_date: String,
+    pub price_schedule: RefreshSchedule,
     pub next_update_check: f64,
 }
 
@@ -366,6 +369,7 @@ impl Default for SavedState {
             official_pricing: true,
             overrides: BTreeMap::new(),
             price_date: quota_core::BUNDLED_PRICE_DATE.into(),
+            price_schedule: RefreshSchedule::default(),
             next_update_check: 0.0,
         }
     }
@@ -523,7 +527,6 @@ pub struct Store {
     pub path: PathBuf,
     pub writable: bool,
     pub continuous: bool,
-    pub updating_prices: bool,
     pub next_local_quota_read: f64,
     pub antigravity_readings: BTreeMap<AntigravitySource, AntigravitySnapshot>,
 }

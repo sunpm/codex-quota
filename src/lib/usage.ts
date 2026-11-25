@@ -114,9 +114,9 @@ export function countdownTickMs(deadlines: (number | null | undefined)[], now: n
 }
 export const quotaLabel = (minutes: number | null, label: string | null) => label ?? (minutes ? minutes % 1440 === 0 ? `${minutes / 1440} 天额度` : minutes % 60 === 0 ? `${minutes / 60} 小时额度` : `${minutes} 分钟额度` : '额度')
 
-export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number) {
+export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number): string {
   const first = points.findIndex(point => point.date >= midnight)
-  if (first < 0) return null
+  if (first < 0) return '—'
 
   let used = 0
   let complete = points[first].date === midnight
@@ -142,7 +142,7 @@ export function dailyQuotaUsage({ points }: QuotaSeries, midnight: number) {
       used += Math.max(0, increase)
     }
   }
-  if (complete) return { value: used }
-  if (used === 0) return null
-  return used < 0.1 ? { value: 0, prefix: '>' } : { value: Math.floor(used * 10) / 10, prefix: '≥' }
+  if (complete) return `${used.toLocaleString('zh-CN', { maximumFractionDigits: 1 })}%`
+  if (used === 0) return '—'
+  return used < 0.1 ? '>0%' : `≥${Math.floor(used * 10) / 10}%`
 }
