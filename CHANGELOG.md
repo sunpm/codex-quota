@@ -2,6 +2,18 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex。
 
+## [0.28.1](https://github.com/sunpm/codex-quota/releases/tag/v0.28.1)
+
+<!-- Release notes generated using configuration in .github/release.yml at d3b26728b4989a58c317e97d50dcb625352fe6d7 -->
+
+### What's Changed
+#### 更新内容
+* fix: 精简数字动画并自动刷新官方定价 by @sunpm in https://github.com/sunpm/codex-quota/pull/57
+* fix(macos): 让 ⌘W 优先关闭最上层弹窗 by @sunpm in https://github.com/sunpm/codex-quota/pull/58
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.28.0...v0.28.1
+
 ## [0.28.0](https://github.com/sunpm/codex-quota/releases/tag/v0.28.0)
 
 <!-- Release notes generated using configuration in .github/release.yml at 864e6ad37311608f7c7ebb66b090be6835856b7b -->
