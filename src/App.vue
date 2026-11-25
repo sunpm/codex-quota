@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useCanAnimate } from '@number-flow/vue'
 import { ChartNoAxesCombined, List, ChartPie, Settings as SettingsIcon, RefreshCw, Download, X } from '@lucide/vue'
 import { listen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import type { Page } from './types'
 import { actionError, connected, execute, initialize, isDesktop, isPreview, snapshot } from './lib/app'
 import { countdownTickMs, dateText, percent, serviceName, shortTokens, shiftDay, startOfDay, summarize, summaryMoney } from './lib/usage'
@@ -98,6 +99,14 @@ function keydown(event: KeyboardEvent) {
   if (event.key === ',') { event.preventDefault(); navigate('settings') }
   else if (event.key.toLowerCase() === 'r') { event.preventDefault(); if (isUsage.value) void execute('scan_usage', { rescan: false }) }
 }
+function closeActiveView() {
+  const dialog = Array.from(document.querySelectorAll('[data-slot="dialog-content"][data-state="open"]')).at(-1)
+  if (dialog) {
+    dialog.querySelector<HTMLButtonElement>('[data-slot="dialog-close"]')?.click()
+    return
+  }
+  void getCurrentWindow().close().catch(error => { actionError.value = String(error) })
+}
 function resizeSidebar(event: PointerEvent) {
   const handle = event.currentTarget as HTMLElement
   handle.setPointerCapture(event.pointerId)
@@ -108,6 +117,7 @@ function resizeSidebar(event: PointerEvent) {
 onMounted(async () => {
   updateTheme(); darkQuery.addEventListener('change', updateTheme); window.addEventListener('keydown', keydown)
   scheduleClock()
+  if (isDesktop) menuListeners.push(await getCurrentWindow().listen('close-active-view', closeActiveView))
   unlisten = await initialize().catch(error => { actionError.value = String(error); return undefined })
   if (isDesktop) {
     menuListeners.push(await listen<Page>('navigate', event => navigate(event.payload)))

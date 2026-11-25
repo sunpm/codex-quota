@@ -622,6 +622,10 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             &PredefinedMenuItem::select_all(app, None)?,
         ],
     )?;
+    #[cfg(target_os = "macos")]
+    let close = MenuItem::with_id(app, "close", "Close Window", true, Some("Cmd+W"))?;
+    #[cfg(not(target_os = "macos"))]
+    let close = PredefinedMenuItem::close_window(app, None)?;
     let window = Submenu::with_items(
         app,
         "窗口",
@@ -631,7 +635,7 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
             &refresh,
             &PredefinedMenuItem::minimize(app, None)?,
             &PredefinedMenuItem::maximize(app, Some("缩放"))?,
-            &PredefinedMenuItem::close_window(app, None)?,
+            &close,
         ],
     )?;
     #[cfg(target_os = "macos")]
@@ -645,6 +649,10 @@ pub fn setup(app: &AppHandle) -> tauri::Result<()> {
         let _ = window.hide_menu();
     }
     app.on_menu_event(|app, event| match event.id.as_ref() {
+        #[cfg(target_os = "macos")]
+        "close" => {
+            let _ = app.emit_to("main", "close-active-view", ());
+        }
         "settings" => {
             open_window(app);
             let _ = app.emit("navigate", "settings");
