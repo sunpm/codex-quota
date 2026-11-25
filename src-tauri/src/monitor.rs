@@ -2,8 +2,9 @@ use crate::{
     client::{fingerprint, CodexClient},
     state::*,
 };
-use quota_core::{LocalUsageReader, ResetAnnouncementFeed};
+use quota_core::{LocalUsageReader, ModelPricing, ResetAnnouncementFeed};
 use std::{
+    collections::BTreeMap,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -101,6 +102,8 @@ impl Controller {
             },
             prices: Vec::new(),
             price_date: saved.price_date.clone(),
+            updating_prices: false,
+            price_update_error: None,
             version: app.package_info().version.to_string(),
             platform: std::env::consts::OS.into(),
             update: UpdateState::default(),
@@ -119,7 +122,6 @@ impl Controller {
             path,
             writable: error.is_none(),
             continuous: false,
-            updating_prices: false,
             next_local_quota_read: 0.0,
             antigravity_readings: Default::default(),
         };
@@ -548,6 +550,117 @@ pub async fn scan_usage(app: &AppHandle, rescan: bool) {
     state.emit(app);
 }
 
+fn retry_after(response: &reqwest::Response) -> Option<f64> {
+    if !matches!(response.status().as_u16(), 429 | 503) {
+        return None;
+    }
+    let value = response
+        .headers()
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+    let seconds = value.parse::<f64>().ok().or_else(|| {
+        chrono::DateTime::parse_from_rfc2822(value)
+            .ok()
+            .map(|date| date.timestamp() as f64 - now())
+    });
+    Some(
+        seconds
+            .filter(|value| value.is_finite())
+            .unwrap_or(600.0)
+            .max(600.0),
+    )
+}
+
+async fn download_prices(
+    http: &reqwest::Client,
+    date: chrono::NaiveDate,
+) -> Result<BTreeMap<String, ModelPricing>, (String, Option<f64>)> {
+    let mut catalog = BTreeMap::new();
+    for (provider, url) in quota_core::OFFICIAL_PRICE_SOURCES {
+        let response = http
+            .get(url)
+            .header(reqwest::header::ACCEPT, "text/markdown")
+            .send()
+            .await
+            .map_err(|_| (format!("无法下载 {provider} 官方价格，请检查网络。"), None))?;
+        if !response.status().is_success() {
+            return Err((
+                format!(
+                    "{provider} 官方价格暂不可用（HTTP {}）。",
+                    response.status().as_u16()
+                ),
+                retry_after(&response),
+            ));
+        }
+        let text = response
+            .text()
+            .await
+            .map_err(|_| ("官方价格下载未完成。".to_string(), None))?;
+        catalog.extend(
+            quota_core::decode_official_prices(provider, &text, date)
+                .map_err(|error| (error, None))?,
+        );
+    }
+    Ok(catalog)
+}
+
+pub async fn refresh_prices(app: &AppHandle, manual: bool) -> Result<(), String> {
+    let state = controller(app);
+    {
+        let mut store = state.store.lock().unwrap();
+        if state.preview {
+            return Err("离线预览不下载官方价格。".into());
+        }
+        if !manual && !store.snapshot.settings.automatic_updates {
+            return Ok(());
+        }
+        if store.snapshot.updating_prices {
+            return Err("官方价格正在更新。".into());
+        }
+        if !store.saved.price_schedule.can_refresh(manual, now()) {
+            return Err("官方价格仍在冷却时间内，请稍后重试。".into());
+        }
+        store.snapshot.updating_prices = true;
+        store.snapshot.price_update_error = None;
+    }
+    state.emit(app);
+    let date = chrono::Utc::now().date_naive();
+    let download = download_prices(&state.http, date).await;
+    let result = {
+        let mut store = state.store.lock().unwrap();
+        store.snapshot.updating_prices = false;
+        let result = match download {
+            Ok(catalog) => {
+                let mut saved = store.saved.clone();
+                saved.price_schedule.succeeded();
+                saved.price_schedule.next_attempt = now() + 86_400.0;
+                saved.catalog = catalog;
+                saved.official_pricing = true;
+                saved.price_date = date.to_string();
+                if let Err(error) = store.commit(saved) {
+                    store.saved.price_schedule.next_attempt = now() + 3_600.0;
+                    Err(error)
+                } else {
+                    store.reprice();
+                    Ok(())
+                }
+            }
+            Err((error, retry)) => {
+                store.saved.price_schedule.failed(retry, now());
+                store.saved.price_schedule.next_attempt =
+                    store.saved.price_schedule.next_attempt.max(now() + 3_600.0);
+                let _ = store.persist();
+                Err(error)
+            }
+        };
+        store.snapshot.price_update_error = result.as_ref().err().cloned();
+        result
+    };
+    state.emit(app);
+    result
+}
+
 pub async fn refresh_announcements(app: &AppHandle) {
     refresh_announcement_feed(app, false).await;
 }
@@ -592,26 +705,7 @@ async fn refresh_announcement_feed(app: &AppHandle, antigravity: bool) {
             return Ok(None);
         }
         if !status.is_success() {
-            let retry = if [429, 503].contains(&status.as_u16()) {
-                let value = response
-                    .headers()
-                    .get("Retry-After")
-                    .and_then(|v| v.to_str().ok())
-                    .unwrap_or("");
-                let seconds = value.parse::<f64>().ok().or_else(|| {
-                    chrono::DateTime::parse_from_rfc2822(value)
-                        .ok()
-                        .map(|v| v.timestamp() as f64 - now())
-                });
-                Some(
-                    seconds
-                        .filter(|v| v.is_finite())
-                        .unwrap_or(600.0)
-                        .max(600.0),
-                )
-            } else {
-                None
-            };
+            let retry = retry_after(&response);
             return Err((
                 format!("AIHOT 请求失败（HTTP {}），稍后自动重试。", status.as_u16()),
                 retry,
@@ -696,7 +790,7 @@ pub fn start(app: AppHandle) {
             if state.paused.load(Ordering::Relaxed) {
                 continue;
             }
-            let (quota, announcements, antigravity, antigravity_announcements, usage, update) = {
+            let (quota, announcements, antigravity, antigravity_announcements, usage, prices, update) = {
                 let store = state.store.lock().unwrap();
                 let visible = app.get_webview_window("main").is_some_and(|w| {
                     w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false)
@@ -716,6 +810,8 @@ pub fn start(app: AppHandle) {
                             .usage
                             .scanned_at
                             .is_none_or(|t| now() - t >= 30.0),
+                    store.snapshot.settings.automatic_updates && !store.snapshot.updating_prices
+                        && store.saved.price_schedule.can_refresh(false, now()),
                     store.snapshot.settings.automatic_updates
                         && now() >= store.saved.next_update_check,
                 )
@@ -745,6 +841,10 @@ pub fn start(app: AppHandle) {
                 tauri::async_runtime::spawn(async move {
                     scan_usage(&app, false).await;
                 });
+            }
+            if prices {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { let _ = refresh_prices(&app, false).await; });
             }
             if update {
                 let app = app.clone();

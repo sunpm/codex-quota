@@ -226,37 +226,7 @@ fn reset_price(app: AppHandle, service: String, model: String) -> Result<AppSnap
 
 #[tauri::command]
 async fn update_prices(app: AppHandle) -> Result<AppSnapshot, String> {
-    let state = controller(&app);
-    {
-        let mut store = state.store.lock().unwrap();
-        if store.updating_prices {
-            return Ok(store.snapshot.clone());
-        }
-        store.updating_prices = true;
-    }
-    let result = async {
-        let date = chrono::Utc::now().date_naive();
-        let mut catalog = std::collections::BTreeMap::new();
-        for (provider, url) in quota_core::OFFICIAL_PRICE_SOURCES {
-            let response = state.http.get(url).header(reqwest::header::ACCEPT, "text/markdown").send().await
-                .map_err(|_| format!("无法下载 {provider} 官方价格，请检查网络。"))?
-                .error_for_status().map_err(|_| format!("{provider} 官方价格暂不可用。"))?;
-            let text = response.text().await.map_err(|_| "官方价格下载未完成。")?;
-            catalog.extend(quota_core::decode_official_prices(provider, &text, date)?);
-        }
-        let mut store = state.store.lock().unwrap();
-        let mut saved = store.saved.clone();
-        saved.catalog = catalog;
-        saved.official_pricing = true;
-        saved.price_date = date.to_string();
-        store.commit(saved)?;
-        store.reprice();
-        Ok::<(), String>(())
-    }
-    .await;
-    state.store.lock().unwrap().updating_prices = false;
-    state.emit(&app);
-    result?;
+    monitor::refresh_prices(&app, true).await?;
     Ok(get_snapshot(app))
 }
 

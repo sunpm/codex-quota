@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import AnimatedNumber from './AnimatedNumber.vue'
 import { deepClone } from '@pmun/utils'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { Plus, RefreshCw, Search } from '@lucide/vue'
@@ -18,6 +17,7 @@ const service = ref<UsageService>('codex')
 const scope = ref<'all' | 'used' | 'unpriced' | 'custom'>('all')
 const editing = ref<ModelPricing | null>(null)
 const busy = ref<'update' | 'save' | 'reset' | null>(null)
+const updatingPrices = computed(() => busy.value === 'update' || props.state.updatingPrices)
 const error = ref<string | null>(null)
 const updated = ref(false)
 const returnTarget = ref<string | null>(null)
@@ -122,11 +122,11 @@ async function save() {
           <NativeSelect v-model="service" aria-label="定价服务" :disabled="!!busy"><NativeSelectOption value="codex">Codex</NativeSelectOption><NativeSelectOption value="antigravity">Antigravity</NativeSelectOption></NativeSelect>
           <NativeSelect v-model="scope" aria-label="模型范围" :disabled="!!busy"><NativeSelectOption value="all">全部模型</NativeSelectOption><NativeSelectOption value="used">有用量</NativeSelectOption><NativeSelectOption value="unpriced">含未定价</NativeSelectOption><NativeSelectOption value="custom">自定义</NativeSelectOption></NativeSelect>
           <label class="search-box"><Search :size="14" /><input v-model="search" :disabled="!!busy" placeholder="搜索模型" aria-label="搜索模型" /></label>
-          <Button variant="outline" size="sm" :disabled="!!busy" @click="updatePrices"><RefreshCw :size="14" :class="{ spinning: busy === 'update' }" />{{ busy === 'update' ? '更新中…' : '更新官方价格' }}</Button>
+          <Button variant="outline" size="sm" :disabled="!!busy || updatingPrices" @click="updatePrices"><RefreshCw :size="14" :class="{ spinning: updatingPrices }" />{{ updatingPrices ? '更新中…' : '更新官方价格' }}</Button>
           <Button id="pricing-add-button" variant="outline" size="sm" :disabled="!!busy" @click="edit()"><Plus :size="14" />添加…</Button>
         </div>
-        <div class="pricing-meta muted"><span>价格快照 · {{ state.priceDate || '内置' }}</span><span class="pricing-sources"><button @click="openExternal('https://developers.openai.com/api/docs/pricing')">OpenAI</button><template v-if="service === 'antigravity'"><button @click="openExternal('https://ai.google.dev/gemini-api/docs/pricing')">Google</button><button @click="openExternal('https://platform.claude.com/docs/en/about-claude/pricing')">Anthropic</button></template></span><span><AnimatedNumber :value="filtered.length" /> 个模型</span></div>
-        <p v-if="error" class="notice warning" role="alert">{{ error }}</p>
+        <div class="pricing-meta muted"><span>价格快照 · {{ state.priceDate || '内置' }}</span><span class="pricing-sources"><button @click="openExternal('https://developers.openai.com/api/docs/pricing')">OpenAI</button><template v-if="service === 'antigravity'"><button @click="openExternal('https://ai.google.dev/gemini-api/docs/pricing')">Google</button><button @click="openExternal('https://platform.claude.com/docs/en/about-claude/pricing')">Anthropic</button></template></span><span>{{ filtered.length.toLocaleString('zh-CN') }} 个模型</span></div>
+        <p v-if="error || state.priceUpdateError" class="notice warning" role="alert">{{ error || state.priceUpdateError }}</p>
         <p v-else-if="updated" class="muted" role="status">{{ isPreview ? '离线预览不下载官方价格。' : '官方价格已更新，自定义价格已保留。' }}</p>
         <div ref="tableScroll" class="table-scroll">
           <table class="pricing-table">
@@ -134,7 +134,7 @@ async function save() {
             <tbody><tr v-for="row in filtered" :key="`${row.price.service}:${row.price.model}`">
               <td><span class="model-cell">{{ row.price.model }}</span><small v-if="row.price.custom" class="muted"> 自定义</small><small v-else-if="row.missing" class="unpriced-text"> 未定价</small><small v-if="row.price.contextThreshold" class="pricing-rule muted">长上下文 &gt; {{ row.price.contextThreshold.toLocaleString('zh-CN') }}</small></td>
               <td class="number">{{ row.price.rates.input ?? '—' }}</td><td class="number">{{ row.price.rates.output ?? '—' }}</td><td class="number">{{ row.price.rates.cached ?? '—' }}</td>
-              <td class="number" :class="{ 'unpriced-text': row.usage?.unpriced }"><AnimatedNumber :value="row.usage?.unpriced ?? null" /></td>
+              <td class="number" :class="{ 'unpriced-text': row.usage?.unpriced }">{{ row.usage ? row.usage.unpriced.toLocaleString('zh-CN') : '—' }}</td>
               <td class="number"><span v-if="row.price.model === 'unknown'" class="muted" title="日志未报告模型，无法指定价格">模型未知</span><Button v-else variant="ghost" size="sm" :disabled="!!busy" :data-edit-model="row.price.model" :aria-label="`编辑 ${row.price.model} 定价`" @click="edit(row.price)">编辑…</Button></td>
             </tr></tbody>
           </table>

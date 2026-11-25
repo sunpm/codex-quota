@@ -73,6 +73,8 @@ export interface AppSnapshot {
   usage: { records: UsageRecord[]; projectRoots: Record<string, string>; sessionTitles: Record<string, string>; warnings: string[]; scannedAt: number | null; fileCount: number; refreshing: boolean; source: string }
   prices: ModelPricing[]
   priceDate: string
+  updatingPrices: boolean
+  priceUpdateError: string | null
   version: string
   platform: string
   update: UpdateState
