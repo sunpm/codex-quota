@@ -4,7 +4,7 @@ title: 使用说明
 
 ## 开始使用
 
-打开 Codex Quota 后，在「用量」查看本机现有日志，无需开启额度监测。要查看剩余额度和重置时间，先登录对应的官方 CLI，再到「设置」开启该服务的监测。首次安装可参考 [Codex CLI 指南](https://learn.chatgpt.com/docs/codex/cli)或 [Antigravity CLI 指南](https://github.com/google-antigravity/antigravity-cli)。
+打开 Codex Quota 后，在「用量」查看本机现有日志，无需开启额度监测。要查看剩余额度和重置时间，到「设置」开启对应服务的监测：Codex 需先安装并登录[官方 CLI](https://learn.chatgpt.com/docs/codex/cli)；Antigravity 可选择 IDE、独立桌面 App 或 CLI，准备条件见 [Antigravity 额度](#antigravity-额度)。
 
 ## 日常使用
 
