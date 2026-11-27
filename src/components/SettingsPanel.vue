@@ -18,11 +18,6 @@ import ReleaseNotes from './ReleaseNotes.vue'
 import ReminderSchedule from './ReminderSchedule.vue'
 
 const props = defineProps<{ state: AppSnapshot }>()
-const sourceInstructions = {
-  ide: '请打开 Antigravity IDE 并登录。',
-  desktop: '请在 Antigravity 桌面 App 中打开「设置 → 模型」。',
-  cli: '请先安装官方 agy，并在终端运行 agy 登录。',
-}
 const quotaSource = computed({
   get: () => props.state.settings.antigravitySource,
   set: (value: Settings['antigravitySource']) => { void changeSettings({ antigravitySource: value }) },
@@ -142,7 +137,7 @@ for (const { key } of thresholdFields) {
           </div>
           <div class="setting-row"><span id="antigravity-announcements-label">Antigravity 重置动态通知</span><Switch aria-labelledby="antigravity-announcements-label" :model-value="state.settings.antigravityAnnouncementNotifications" :disabled="!state.settings.antigravityEnabled" @update:model-value="notifications('antigravityAnnouncementNotifications', $event)" /></div>
           <div v-if="state.settings.antigravityEnabled && !state.antigravity.groups.length" class="antigravity-setup">
-            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取额度…' : state.antigravity.error ?? sourceInstructions[state.settings.antigravitySource] }}</p>
+            <p class="notice" :class="{ warning: state.antigravity.error && !state.antigravity.refreshing }" role="status">{{ state.antigravity.refreshing ? '正在读取额度…' : state.antigravity.error ?? '等待自动刷新' }}</p>
             <div class="setting-actions">
               <button class="text-link" @click="openExternal('https://github.com/sunpm/codex-quota/blob/main/docs/usage.md#antigravity-额度')">使用说明 <ArrowUpRight :size="13" /></button>
               <Button variant="outline" size="sm" :disabled="state.antigravity.refreshing" @click="execute('refresh_antigravity')">{{ state.antigravity.refreshing ? '读取中…' : '重新读取' }}</Button>
