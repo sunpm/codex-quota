@@ -1,7 +1,7 @@
 // Log formats and deduplication adapted from nanvon/cc-bar (MIT).
 // Copyright (c) 2026 nanvon. See Resources/ThirdPartyNotices/cc-bar-LICENSE.txt.
 use crate::{parse_timestamp, project::main_project_path, write_json_atomic, SWIFT_EPOCH_OFFSET};
-use serde::{Deserialize, Serialize};
+use serde::{de::{MapAccess, Visitor}, ser::SerializeMap, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Map, Value};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -104,11 +104,11 @@ pub struct UsageScan {
     pub file_count: usize,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct UsageHistory {
     version: u32,
-    records: BTreeMap<String, Value>,
+    records: HistoryRecords,
     #[serde(default)]
     project_roots: BTreeMap<String, String>,
     // 未接入服务的旧记录及其他元数据保持原值，不参与展示。
@@ -116,11 +116,63 @@ struct UsageHistory {
     extra: BTreeMap<String, Value>,
 }
 
+#[derive(Default)]
+struct HistoryRecords {
+    supported: BTreeMap<String, UsageRecord>,
+    other: BTreeMap<String, Value>,
+}
+
+impl<'de> Deserialize<'de> for HistoryRecords {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct RecordsVisitor;
+        impl<'de> Visitor<'de> for RecordsVisitor {
+            type Value = HistoryRecords;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str("a map of usage records")
+            }
+
+            fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<Self::Value, M::Error> {
+                let mut records = HistoryRecords::default();
+                while let Some((id, value)) = map.next_entry::<String, Value>()? {
+                    let service = value.get("service").and_then(Value::as_str);
+                    if service == Some("codex") || (service == Some("antigravity") && id.starts_with("antigravity:v2:")) {
+                        let mut record: UsageRecord = serde_json::from_value(value).map_err(serde::de::Error::custom)?;
+                        record.date += SWIFT_EPOCH_OFFSET;
+                        record.cost = None;
+                        records.supported.insert(id, record);
+                    } else {
+                        records.other.insert(id, value);
+                    }
+                }
+                Ok(records)
+            }
+        }
+        deserializer.deserialize_map(RecordsVisitor)
+    }
+}
+
+impl Serialize for HistoryRecords {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(self.supported.len() + self.other.len()))?;
+        for (id, record) in &self.supported {
+            let mut value = serde_json::to_value(record).map_err(serde::ser::Error::custom)?;
+            value["date"] = Value::from(record.date - SWIFT_EPOCH_OFFSET);
+            value.as_object_mut().expect("typed usage record").remove("cost");
+            map.serialize_entry(id, &value)?;
+        }
+        for (id, value) in &self.other {
+            map.serialize_entry(id, value)?;
+        }
+        map.end()
+    }
+}
+
 impl Default for UsageHistory {
     fn default() -> Self {
         Self {
             version: 1,
-            records: BTreeMap::new(),
+            records: HistoryRecords::default(),
             project_roots: BTreeMap::new(),
             extra: BTreeMap::new(),
         }
@@ -139,37 +191,10 @@ impl UsageHistory {
         if history.version != 1 {
             return Err("历史版本暂不兼容，原文件已保留；当前仅显示现存日志。".into());
         }
+        if history.records.supported.values().any(|record| !record.tokens.valid_history()) {
+            return Err("已保存历史包含无效用量，原文件已保留。".into());
+        }
         Ok(history)
-    }
-    fn supported_records(&self) -> Result<BTreeMap<String, UsageRecord>, String> {
-        let mut records = BTreeMap::new();
-        for (key, value) in &self.records {
-            let service = value.get("service").and_then(Value::as_str);
-            if service != Some("codex")
-                && !(service == Some("antigravity") && key.starts_with("antigravity:v2:"))
-            {
-                continue;
-            }
-            let mut record: UsageRecord = serde_json::from_value(value.clone())
-                .map_err(|_| "已保存历史无法读取，原文件已保留；当前仅显示现存日志。")?;
-            if !record.tokens.valid_history() {
-                return Err("已保存历史包含无效用量，原文件已保留。".into());
-            }
-            record.date += SWIFT_EPOCH_OFFSET;
-            record.cost = None;
-            records.insert(key.clone(), record);
-        }
-        Ok(records)
-    }
-    fn merge_records(&mut self, records: &BTreeMap<String, UsageRecord>) {
-        for (id, record) in records {
-            let mut persisted = record.clone();
-            persisted.date -= SWIFT_EPOCH_OFFSET;
-            persisted.cost = None;
-            let mut value = serde_json::to_value(persisted).expect("typed usage record");
-            value.as_object_mut().expect("usage object").remove("cost");
-            self.records.insert(id.clone(), value);
-        }
     }
 }
 
@@ -207,9 +232,8 @@ pub struct LocalUsageReader {
     history_path: PathBuf,
     cache: HashMap<PathBuf, CachedFile>,
     history: UsageHistory,
-    saved_history: UsageHistory,
+    history_dirty: bool,
     history_loaded: bool,
-    records: BTreeMap<String, UsageRecord>,
     antigravity: crate::antigravity_usage::AntigravityUsageReader,
 }
 
@@ -220,9 +244,8 @@ impl LocalUsageReader {
             history_path,
             cache: HashMap::new(),
             history: UsageHistory::default(),
-            saved_history: UsageHistory::default(),
+            history_dirty: false,
             history_loaded: false,
-            records: BTreeMap::new(),
             antigravity: crate::antigravity_usage::AntigravityUsageReader::new(gemini_home),
         }
     }
@@ -231,20 +254,23 @@ impl LocalUsageReader {
             return Err("请选择要清除历史的服务。".into());
         }
         let mut history = UsageHistory::load(&self.history_path)?;
-        let mut retained = history.supported_records()?;
-        retained.retain(|_, record| record.service != service);
-        history
-            .records
+        history.records.supported.retain(|_, record| record.service != service);
+        history.records.other
             .retain(|_, value| value.get("service").and_then(Value::as_str) != Some(service));
-        let projects: BTreeSet<_> = history
-            .records
-            .values()
+        // Include the other service's in-memory observations in the same atomic write.
+        for (id, record) in &self.history.records.supported {
+            if record.service != service && history.records.supported.get(id) != Some(record) {
+                history.records.supported.insert(id.clone(), record.clone());
+            }
+        }
+        let projects: BTreeSet<_> = history.records.other.values()
             .filter_map(|value| value.get("project").and_then(Value::as_str))
+            .chain(history.records.supported.values().map(|record| record.project.as_str()))
             .collect();
         history
             .project_roots
             .retain(|project, _| projects.contains(project.as_str()));
-        if history.records.is_empty() {
+        if history.records.supported.is_empty() && history.records.other.is_empty() {
             match fs::remove_file(&self.history_path) {
                 Ok(()) => {}
                 Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -254,11 +280,9 @@ impl LocalUsageReader {
         } else {
             write_json_atomic(&self.history_path, &history)?;
         }
-        self.history = history.clone();
-        self.saved_history = history;
+        self.history_dirty = false;
+        self.history = history;
         self.history_loaded = true;
-        self.records.retain(|_, record| record.service != service);
-        for (id, record) in retained { self.records.entry(id).or_insert(record); }
         if service == "codex" { self.cache.clear(); }
         else { self.antigravity.clear_cache(); }
         Ok(())
@@ -269,22 +293,19 @@ impl LocalUsageReader {
         }
         let mut result = UsageScan::default();
         if !self.history_loaded {
-            match UsageHistory::load(&self.history_path)
-                .and_then(|history| history.supported_records().map(|records| (history, records)))
-            {
-                Ok((history, records)) => {
-                    self.history = history.clone();
-                    self.saved_history = history;
+            match UsageHistory::load(&self.history_path) {
+                Ok(history) => {
+                    self.history = history;
                     self.history_loaded = true;
-                    self.records = records;
+                    self.history_dirty = false;
                 }
                 Err(error) => {
                     result.history_error = Some(error);
-                    self.records.clear();
+                    self.history.records.supported.clear();
                 }
             }
         }
-        let mut records = std::mem::take(&mut self.records);
+        let mut records = std::mem::take(&mut self.history.records.supported);
         let mut files = Vec::new();
         let mut failures = 0;
         for name in ["sessions", "archived_sessions"] {
@@ -319,22 +340,24 @@ impl LocalUsageReader {
                     continuations.insert(segment.clone(), thread.clone());
                 }
                 for record in &saved.records {
-                    merge_record(&mut records, record);
+                    self.history_dirty |= merge_record(&mut records, record);
                 }
             }
         }
         self.cache.retain(|file, _| alive.contains(file));
         for record in records.values_mut() {
             if let Some(thread) = continuations.get(&record.session).filter(|_| record.service == "codex") {
-                record.session = thread.clone();
+                if record.session != *thread {
+                    record.session.clone_from(thread);
+                    self.history_dirty = true;
+                }
             }
         }
         let antigravity = self.antigravity.scan(rescan);
         result.file_count += antigravity.file_count;
         result.warnings.extend(antigravity.warnings);
         for id in antigravity.replaced_ids {
-            records.remove(&id);
-            self.history.records.remove(&id);
+            self.history_dirty |= records.remove(&id).is_some();
         }
         for mut record in antigravity.records {
             if let Some(old) = records.get(&record.id) {
@@ -343,7 +366,10 @@ impl LocalUsageReader {
                 record.estimated_duration = record.estimated_duration.or(old.estimated_duration);
                 record.estimated_first_token = record.estimated_first_token.or(old.estimated_first_token);
             }
-            records.insert(record.id.clone(), record);
+            if records.get(&record.id) != Some(&record) {
+                records.insert(record.id.clone(), record);
+                self.history_dirty = true;
+            }
         }
         let projects: BTreeSet<_> = records
             .values()
@@ -356,14 +382,18 @@ impl LocalUsageReader {
                 result.project_roots.insert(project, root);
             }
         }
+        result.records = records.values().cloned().collect();
+        self.history.records.supported = records;
         if self.history_loaded {
-            self.history.merge_records(&records);
-            self.history
-                .project_roots
-                .extend(result.project_roots.clone());
-            if self.history != self.saved_history {
+            for (project, root) in &result.project_roots {
+                if self.history.project_roots.get(project) != Some(root) {
+                    self.history.project_roots.insert(project.clone(), root.clone());
+                    self.history_dirty = true;
+                }
+            }
+            if self.history_dirty {
                 match write_json_atomic(&self.history_path, &self.history) {
-                    Ok(()) => self.saved_history = self.history.clone(),
+                    Ok(()) => self.history_dirty = false,
                     Err(_) => {
                         result.history_error =
                             Some("历史保存失败，新增用量暂仅保留在内存；下次刷新会重试。".into())
@@ -371,8 +401,6 @@ impl LocalUsageReader {
                 }
             }
         }
-        result.records = records.values().cloned().collect();
-        self.records = records;
         result
             .records
             .sort_by(|a, b| a.date.total_cmp(&b.date).then_with(|| a.id.cmp(&b.id)));
@@ -460,10 +488,10 @@ fn collect_files(directory: &Path, files: &mut Vec<PathBuf>, failures: &mut usiz
     }
 }
 
-fn merge_record(records: &mut BTreeMap<String, UsageRecord>, record: &UsageRecord) {
+fn merge_record(records: &mut BTreeMap<String, UsageRecord>, record: &UsageRecord) -> bool {
     if let Some(old) = records.get_mut(&record.id) {
         if record.date > old.date {
-            return;
+            return false;
         }
         if record.date == old.date {
             if [
@@ -479,19 +507,25 @@ fn merge_record(records: &mut BTreeMap<String, UsageRecord>, record: &UsageRecor
                 record.tokens.cache_write,
                 record.tokens.cache_write_long,
             ] {
-                return;
+                return false;
             }
-            old.estimated_duration = old.estimated_duration.or(record.estimated_duration);
-            old.estimated_first_token = old.estimated_first_token.or(record.estimated_first_token);
-            old.service_tier_reported = old.service_tier_reported.or(record.service_tier_reported);
-            old.tokens.cache_write_reported = old
-                .tokens
-                .cache_write_reported
-                .or(record.tokens.cache_write_reported);
-            return;
+            // All four fields can receive new information from a replay of the same event.
+            let mut changed = false;
+            changed |= fill_missing(&mut old.estimated_duration, record.estimated_duration);
+            changed |= fill_missing(&mut old.estimated_first_token, record.estimated_first_token);
+            changed |= fill_missing(&mut old.service_tier_reported, record.service_tier_reported);
+            changed |= fill_missing(&mut old.tokens.cache_write_reported, record.tokens.cache_write_reported);
+            return changed;
         }
     }
     records.insert(record.id.clone(), record.clone());
+    true
+}
+
+fn fill_missing<T>(target: &mut Option<T>, value: Option<T>) -> bool {
+    if target.is_some() || value.is_none() { return false; }
+    *target = value;
+    true
 }
 
 pub(crate) fn is_uuid(value: &str) -> bool {

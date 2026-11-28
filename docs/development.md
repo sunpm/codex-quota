@@ -63,6 +63,8 @@ bash scripts/test.sh
 
 会话标题读取位于 `src-tauri/src/session_titles.rs`，通过 rusqlite 的只读连接访问既有 `state_5.sqlite`，并读取标题索引。自定义数据库目录从 TOML 配置或环境变量解析；不创建或迁移 Codex 数据库。新增依赖后按既有流程运行 `node scripts/collect-licenses.mjs` 重新生成随包许可。
 
+桌面端的 `app-state` 事件和状态命令通过 `usage` 字段传递扫描状态与明细版本号。前端首次连接或版本号变化时，通过 `get_usage_details` 读取记录、项目映射和会话标题。同一版本的额度刷新复用已加载的明细。扫描器按记录读取和写入 `usage-history.json`，保留未接入的历史条目与元数据。保存失败时保留待写入的改动，在下次扫描时重试。
+
 生产入口为 `src/`、`src-tauri/`、`crates/quota-core/`。旧 Swift 应用、测试和打包工具已移除，历史源码与验收记录见 [Swift / Sparkle 归档](archive/updating-sparkle.md)。当前 macOS 系统集成与旧数据迁移仍由 Rust 实现，图标生成脚本继续保留。
 
 ## 官网与使用文档

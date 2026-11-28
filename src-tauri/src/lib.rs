@@ -22,10 +22,19 @@ fn get_snapshot(app: AppHandle) -> AppSnapshot {
 }
 
 #[tauri::command]
+async fn get_usage_details(app: AppHandle) -> Result<tauri::ipc::Response, String> {
+    let state = controller(&app);
+    let store = state.store.lock().unwrap();
+    serde_json::to_string(&store.usage_details)
+        .map(tauri::ipc::Response::new)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn usage_cost_detail(app: AppHandle, record_id: String) -> Result<quota_core::CostBreakdown, String> {
     let state = controller(&app);
     let store = state.store.lock().unwrap();
-    let record = store.snapshot.usage.records.iter().find(|record| record.id == record_id)
+    let record = store.usage_details.records.iter().find(|record| record.id == record_id)
         .ok_or("这条用量记录已不在当前历史中，请刷新后重试。")?;
     Ok(quota_core::price_record_breakdown(record, &store.saved.prices()))
 }
@@ -240,7 +249,7 @@ async fn clear_history(app: AppHandle, service: String) -> Result<AppSnapshot, S
         .map_err(|_| "清除历史未完成。")??;
     {
         let mut store = state.store.lock().unwrap();
-        store.snapshot.usage.records.retain(|record| record.service != service);
+        store.usage_details.records.retain(|record| record.service != service);
         store.snapshot.usage.scanned_at = None;
         store.reprice();
     }
@@ -356,6 +365,7 @@ pub fn run() {
             .build())
         .invoke_handler(tauri::generate_handler![
             get_snapshot,
+            get_usage_details,
             usage_cost_detail,
             refresh_quota,
             refresh_codex,

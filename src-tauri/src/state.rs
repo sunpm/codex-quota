@@ -255,12 +255,18 @@ pub struct AntigravitySnapshot {
     pub requires_action: bool,
 }
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UsageSnapshot {
+pub struct UsageDetails {
     pub records: Vec<UsageRecord>,
     pub project_roots: BTreeMap<String, String>,
     pub session_titles: BTreeMap<String, String>,
+}
+
+#[derive(Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageSnapshot {
+    pub revision: u64,
     pub warnings: Vec<String>,
     pub scanned_at: Option<f64>,
     pub file_count: usize,
@@ -524,6 +530,7 @@ fn convert_swift_dates(value: &mut Value, field: &str) {
 pub struct Store {
     pub saved: SavedState,
     pub snapshot: AppSnapshot,
+    pub usage_details: UsageDetails,
     pub path: PathBuf,
     pub writable: bool,
     pub continuous: bool,
@@ -564,16 +571,12 @@ impl Store {
 
     pub fn reprice(&mut self) {
         let prices = self.saved.prices();
-        for record in &mut self.snapshot.usage.records {
+        for record in &mut self.usage_details.records {
             record.cost = quota_core::price_record(record, &prices).map(|v| v.to_string());
         }
+        self.snapshot.usage.revision += 1;
         let mut display_prices = prices.clone();
-        for record in self
-            .snapshot
-            .usage
-            .records
-            .iter()
-        {
+        for record in &self.usage_details.records {
             let key = format!("{}:{}", record.service, record.model.to_lowercase());
             display_prices.entry(key).or_insert_with(|| {
                 let mut price = quota_core::lookup_price(&record.service, &record.model, &prices)
