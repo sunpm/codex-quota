@@ -231,8 +231,9 @@ const recordFilterKey = computed(() => JSON.stringify([usageService.value, perio
 const summaryTotal = computed(() => recordView.value ? summarize(matchingRecords.value) : props.page === 'details' && search.value.trim() ? summarize(groups.value.flatMap(group => group.records)) : total.value)
 const currentCost = computed(() => hasReadableUsage.value ? summaryAmount(summaryTotal.value) : null)
 const previousCost = computed(() => previous.value ? summaryAmount(previous.value.total) : null)
+const shareMetrics = computed<Metric[]>(() => grouping.value === 'model' ? ['tokens', 'cost'] : [metric.value])
 const summaryRows = computed(() => pageRows.value.map(group => ({
-  ...group, share: metricShare(group.total, summaryTotal.value, metric.value),
+  ...group, shares: shareMetrics.value.map(metric => ({ metric, value: metricShare(group.total, summaryTotal.value, metric) })),
 })))
 const tokenColumnWidth = computed(() => `calc(${groups.value.reduce((width, group) => Math.max(width, group.total.tokens.toLocaleString('zh-CN').length), 14)}ch + 26px)`)
 const heatmapDays = computed(() => {
@@ -394,14 +395,14 @@ function openHeatmapRecords(index: number) {
         </template>
       </div>
       <UsageRecordTable v-if="recordView" :records="matchingRecords" :state="state" :reset-key="recordFilterKey" show-identity />
-      <template v-else><div ref="tableScroll" class="table-scroll"><table class="usage-table" :class="{ 'project-table': grouping === 'project' }" :style="{ '--tokens-column-width': tokenColumnWidth }">
+      <template v-else><div ref="tableScroll" class="table-scroll"><table class="usage-table" :class="{ 'project-table': grouping === 'project', 'model-table': grouping === 'model' }" :style="{ '--tokens-column-width': tokenColumnWidth }">
         <thead><tr>
           <th class="name-column">{{ grouping === 'session' ? '对话' : grouping === 'project' ? '项目' : '模型' }}</th>
           <th v-if="grouping !== 'model'" class="secondary-column" :class="{ 'time-column': grouping === 'session' }" :aria-sort="grouping === 'session' ? sortState('last') : undefined"><TableSortButton v-if="grouping === 'session'" label="最近用量" :active="sort === 'last'" :direction="direction" @click="selectSort('last')" /><template v-else>目录</template></th>
           <th class="number count-column" :aria-sort="sortState('count')"><TableSortButton label="记录数" :active="sort === 'count'" :direction="direction" @click="selectSort('count')" /></th>
           <th class="number tokens-column" :aria-sort="sortState('tokens')"><TableSortButton label="Tokens" :active="sort === 'tokens'" :direction="direction" @click="selectSort('tokens')" /></th>
           <th class="number cost-column" :aria-sort="sortState('cost')"><TableSortButton :label="costColumnLabel(summaryTotal)" :active="sort === 'cost'" :direction="direction" @click="selectSort('cost')" /></th>
-          <th class="number share-column" :title="metric === 'tokens' ? 'Tokens 占比' : '费用占比'">{{ metric === 'tokens' ? 'Tokens 占比' : '费用占比' }}</th>
+          <th v-for="shareMetric in shareMetrics" :key="shareMetric" class="number share-column">{{ shareMetric === 'tokens' ? 'Tokens 占比' : '费用占比' }}</th>
           <th class="number cache-column" :aria-sort="sortState('hitRate')"><TableSortButton label="缓存命中率" :active="sort === 'hitRate'" :direction="direction" @click="selectSort('hitRate')" /></th>
         </tr></thead>
         <tbody><tr v-for="group in summaryRows" :key="group.key">
@@ -410,7 +411,12 @@ function openHeatmapRecords(index: number) {
           <td class="number" :title="group.total.count.toLocaleString()">{{ group.total.count.toLocaleString() }}</td>
           <td class="number">{{ group.total.tokens.toLocaleString('zh-CN') }}</td>
           <td class="number" :title="costTooltip(group.total)"><span :class="{ 'unpriced-text': group.total.count && !group.total.priced }">{{ summaryMoney(group.total) }}</span></td>
-          <td class="number muted"><div class="usage-share"><span v-if="group.share !== null" class="usage-share-track" aria-hidden="true"><span :style="{ width: `${group.share * 100}%` }" /></span><span>{{ percent(group.share) }}</span></div></td>
+          <td v-for="share in group.shares" :key="share.metric" class="number muted share-cell">
+            <div class="usage-share">
+              <span class="usage-share-value">{{ percent(share.value) }}</span>
+              <span v-if="share.value !== null" class="usage-share-track" aria-hidden="true"><span :style="{ width: `${share.value * 100}%` }" /></span>
+            </div>
+          </td>
           <td class="number muted">{{ percent(group.total.hitRate) }}</td>
         </tr></tbody>
       </table><div v-if="!groups.length" class="empty-state">{{ state.usage.scannedAt === null ? '尚未读取本机日志' : search ? '没有匹配的记录' : '此时间范围没有用量记录' }}</div></div>
