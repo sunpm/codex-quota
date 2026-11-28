@@ -119,6 +119,7 @@ impl Controller {
         let mut store = Store {
             saved,
             snapshot,
+            usage_details: UsageDetails::default(),
             path,
             writable: error.is_none(),
             continuous: false,
@@ -520,19 +521,23 @@ pub async fn scan_usage(app: &AppHandle, rescan: bool) {
         store.snapshot.usage.refreshing = false;
         match scan {
             Ok((scan, titles, title_warnings)) => {
-                let changed = store.snapshot.usage.records.len() != scan.records.len()
+                let changed = store.usage_details.records.len() != scan.records.len()
                     || !store
-                        .snapshot
-                        .usage
+                        .usage_details
                         .records
                         .iter()
                         .zip(&scan.records)
                         .all(|(old, new)| old.same_usage(new));
                 if changed {
-                    store.snapshot.usage.records = scan.records;
+                    store.usage_details.records = scan.records;
+                    store.reprice();
+                } else if store.usage_details.project_roots != scan.project_roots
+                    || store.usage_details.session_titles != titles
+                {
+                    store.snapshot.usage.revision += 1;
                 }
-                store.snapshot.usage.project_roots = scan.project_roots;
-                store.snapshot.usage.session_titles = titles;
+                store.usage_details.project_roots = scan.project_roots;
+                store.usage_details.session_titles = titles;
                 store.snapshot.usage.warnings = scan.warnings;
                 store.snapshot.usage.warnings.extend(title_warnings);
                 if let Some(error) = scan.history_error {
@@ -540,9 +545,6 @@ pub async fn scan_usage(app: &AppHandle, rescan: bool) {
                 }
                 store.snapshot.usage.file_count = scan.file_count;
                 store.snapshot.usage.scanned_at = Some(now());
-                if changed {
-                    store.reprice();
-                }
             }
             Err(_) => store.snapshot.usage.warnings = vec!["用量扫描未完成，请重新扫描。".into()],
         }

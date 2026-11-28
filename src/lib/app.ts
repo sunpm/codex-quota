@@ -13,9 +13,35 @@ export const connected = shallowRef(isPreview)
 export const settings = computed(() => snapshot.value.settings)
 export const notificationStatus = shallowRef<NotificationStatus | null>(null)
 export const notificationGuideOpen = shallowRef(false)
+
+type UsageDetails = Pick<AppSnapshot['usage'], 'records' | 'projectRoots' | 'sessionTitles'>
+type DesktopSnapshot = Omit<AppSnapshot, 'usage'> & {
+  usage: Omit<AppSnapshot['usage'], keyof UsageDetails> & { revision: number }
+}
+let latestState: DesktopSnapshot | undefined
+let usageRequest: { revision: number; result: Promise<UsageDetails> } | undefined
+
+async function applySnapshot(state: DesktopSnapshot) {
+  const { revision, ...usage } = state.usage
+  if (usageRequest && revision < usageRequest.revision) return
+  latestState = state
+  if (usageRequest?.revision !== revision) {
+    usageRequest = { revision, result: invoke<UsageDetails>('get_usage_details') }
+  }
+  await usageRequest.result.then(details => {
+    if (latestState !== state) return
+    snapshot.value = { ...state, usage: { ...usage, ...details } }
+    connected.value = true
+  }, error => {
+    if (latestState !== state) return
+    usageRequest = undefined
+    actionError.value = String(error)
+  })
+}
+
 export async function initialize() {
   if (!isDesktop) return
-  const unlisten = await listen<AppSnapshot>('app-state', event => { snapshot.value = event.payload; connected.value = true })
+  const unlisten = await listen<DesktopSnapshot>('app-state', event => applySnapshot(event.payload))
   await execute('get_snapshot')
   const preferences = snapshot.value.settings
   if (preferences.monitoringEnabled && (preferences.recoveryNotifications || preferences.lowQuotaNotifications || preferences.resetCreditReminders || preferences.quotaResetReminders || preferences.announcementNotifications) || preferences.antigravityEnabled && preferences.antigravityAnnouncementNotifications) {
@@ -48,9 +74,7 @@ export async function execute(command: string, args?: Record<string, unknown>) {
     return
   }
   if (!isDesktop) { actionError.value = '请在 Codex Quota 桌面应用中操作。'; return }
-  await invoke<AppSnapshot>(command, args).then(value => {
-    snapshot.value = value; connected.value = true
-  }, error => { actionError.value = String(error) })
+  await invoke<DesktopSnapshot>(command, args).then(applySnapshot, error => { actionError.value = String(error) })
 }
 export async function systemCommand<T = void>(command: string, args?: Record<string, unknown>): Promise<T | undefined> {
   actionError.value = null
