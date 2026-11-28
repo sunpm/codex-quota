@@ -1,1127 +1,1110 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-13T13:20:10.021Z",
+  "generatedAt": "2026-11-28T03:07:24Z",
   "title": "Design System: Codex Quota",
   "extensions": {
     "colorMeta": {
       "background-light": {
         "role": "neutral",
         "displayName": "页面背景 · 浅色",
+        "canonical": "#fafafa",
         "tonalRamp": [
-          "oklch(from #fafafa 15% calc(c * 0.35) h)",
-          "oklch(from #fafafa 25% calc(c * 0.6) h)",
-          "oklch(from #fafafa 35% calc(c * 0.85) h)",
-          "oklch(from #fafafa 45% calc(c * 1) h)",
-          "oklch(from #fafafa 55% calc(c * 1) h)",
-          "oklch(from #fafafa 65% calc(c * 0.85) h)",
-          "oklch(from #fafafa 80% calc(c * 0.6) h)",
-          "oklch(from #fafafa 95% calc(c * 0.2) h)"
-        ]
-      },
-      "foreground-light": {
-        "role": "neutral",
-        "displayName": "正文 · 浅色",
-        "tonalRamp": [
-          "oklch(from #252629 15% calc(c * 0.35) h)",
-          "oklch(from #252629 25% calc(c * 0.6) h)",
-          "oklch(from #252629 35% calc(c * 0.85) h)",
-          "oklch(from #252629 45% calc(c * 1) h)",
-          "oklch(from #252629 55% calc(c * 1) h)",
-          "oklch(from #252629 65% calc(c * 0.85) h)",
-          "oklch(from #252629 80% calc(c * 0.6) h)",
-          "oklch(from #252629 95% calc(c * 0.2) h)"
-        ]
-      },
-      "card-light": {
-        "role": "neutral",
-        "displayName": "内容表面 · 浅色",
-        "tonalRamp": [
-          "oklch(from #fff 15% calc(c * 0.35) h)",
-          "oklch(from #fff 25% calc(c * 0.6) h)",
-          "oklch(from #fff 35% calc(c * 0.85) h)",
-          "oklch(from #fff 45% calc(c * 1) h)",
-          "oklch(from #fff 55% calc(c * 1) h)",
-          "oklch(from #fff 65% calc(c * 0.85) h)",
-          "oklch(from #fff 80% calc(c * 0.6) h)",
-          "oklch(from #fff 95% calc(c * 0.2) h)"
-        ]
-      },
-      "popover-light": {
-        "role": "neutral",
-        "displayName": "浮层 · 浅色",
-        "tonalRamp": [
-          "oklch(from #fff 15% calc(c * 0.35) h)",
-          "oklch(from #fff 25% calc(c * 0.6) h)",
-          "oklch(from #fff 35% calc(c * 0.85) h)",
-          "oklch(from #fff 45% calc(c * 1) h)",
-          "oklch(from #fff 55% calc(c * 1) h)",
-          "oklch(from #fff 65% calc(c * 0.85) h)",
-          "oklch(from #fff 80% calc(c * 0.6) h)",
-          "oklch(from #fff 95% calc(c * 0.2) h)"
-        ]
-      },
-      "sidebar-light": {
-        "role": "neutral",
-        "displayName": "侧栏 · 浅色",
-        "tonalRamp": [
-          "oklch(from #f2f3f4 15% calc(c * 0.35) h)",
-          "oklch(from #f2f3f4 25% calc(c * 0.6) h)",
-          "oklch(from #f2f3f4 35% calc(c * 0.85) h)",
-          "oklch(from #f2f3f4 45% calc(c * 1) h)",
-          "oklch(from #f2f3f4 55% calc(c * 1) h)",
-          "oklch(from #f2f3f4 65% calc(c * 0.85) h)",
-          "oklch(from #f2f3f4 80% calc(c * 0.6) h)",
-          "oklch(from #f2f3f4 95% calc(c * 0.2) h)"
-        ]
-      },
-      "primary-light": {
-        "role": "primary",
-        "displayName": "操作蓝 · 浅色",
-        "tonalRamp": [
-          "oklch(from #286fae 15% calc(c * 0.35) h)",
-          "oklch(from #286fae 25% calc(c * 0.6) h)",
-          "oklch(from #286fae 35% calc(c * 0.85) h)",
-          "oklch(from #286fae 45% calc(c * 1) h)",
-          "oklch(from #286fae 55% calc(c * 1) h)",
-          "oklch(from #286fae 65% calc(c * 0.85) h)",
-          "oklch(from #286fae 80% calc(c * 0.6) h)",
-          "oklch(from #286fae 95% calc(c * 0.2) h)"
-        ]
-      },
-      "primary-foreground-light": {
-        "role": "neutral",
-        "displayName": "选中内容 · 浅色",
-        "tonalRamp": [
-          "oklch(from #fff 15% calc(c * 0.35) h)",
-          "oklch(from #fff 25% calc(c * 0.6) h)",
-          "oklch(from #fff 35% calc(c * 0.85) h)",
-          "oklch(from #fff 45% calc(c * 1) h)",
-          "oklch(from #fff 55% calc(c * 1) h)",
-          "oklch(from #fff 65% calc(c * 0.85) h)",
-          "oklch(from #fff 80% calc(c * 0.6) h)",
-          "oklch(from #fff 95% calc(c * 0.2) h)"
-        ]
-      },
-      "secondary-light": {
-        "role": "neutral",
-        "displayName": "控件底色 · 浅色",
-        "tonalRamp": [
-          "oklch(from #eceef0 15% calc(c * 0.35) h)",
-          "oklch(from #eceef0 25% calc(c * 0.6) h)",
-          "oklch(from #eceef0 35% calc(c * 0.85) h)",
-          "oklch(from #eceef0 45% calc(c * 1) h)",
-          "oklch(from #eceef0 55% calc(c * 1) h)",
-          "oklch(from #eceef0 65% calc(c * 0.85) h)",
-          "oklch(from #eceef0 80% calc(c * 0.6) h)",
-          "oklch(from #eceef0 95% calc(c * 0.2) h)"
-        ]
-      },
-      "accent-light": {
-        "role": "neutral",
-        "displayName": "悬停底色 · 浅色",
-        "tonalRamp": [
-          "oklch(from #e6e9ed 15% calc(c * 0.35) h)",
-          "oklch(from #e6e9ed 25% calc(c * 0.6) h)",
-          "oklch(from #e6e9ed 35% calc(c * 0.85) h)",
-          "oklch(from #e6e9ed 45% calc(c * 1) h)",
-          "oklch(from #e6e9ed 55% calc(c * 1) h)",
-          "oklch(from #e6e9ed 65% calc(c * 0.85) h)",
-          "oklch(from #e6e9ed 80% calc(c * 0.6) h)",
-          "oklch(from #e6e9ed 95% calc(c * 0.2) h)"
-        ]
-      },
-      "muted-light": {
-        "role": "neutral",
-        "displayName": "次要文字 · 浅色",
-        "tonalRamp": [
-          "oklch(from #686c72 15% calc(c * 0.35) h)",
-          "oklch(from #686c72 25% calc(c * 0.6) h)",
-          "oklch(from #686c72 35% calc(c * 0.85) h)",
-          "oklch(from #686c72 45% calc(c * 1) h)",
-          "oklch(from #686c72 55% calc(c * 1) h)",
-          "oklch(from #686c72 65% calc(c * 0.85) h)",
-          "oklch(from #686c72 80% calc(c * 0.6) h)",
-          "oklch(from #686c72 95% calc(c * 0.2) h)"
-        ]
-      },
-      "border-light": {
-        "role": "neutral",
-        "displayName": "分隔线 · 浅色",
-        "tonalRamp": [
-          "oklch(from #dedfe2 15% calc(c * 0.35) h)",
-          "oklch(from #dedfe2 25% calc(c * 0.6) h)",
-          "oklch(from #dedfe2 35% calc(c * 0.85) h)",
-          "oklch(from #dedfe2 45% calc(c * 1) h)",
-          "oklch(from #dedfe2 55% calc(c * 1) h)",
-          "oklch(from #dedfe2 65% calc(c * 0.85) h)",
-          "oklch(from #dedfe2 80% calc(c * 0.6) h)",
-          "oklch(from #dedfe2 95% calc(c * 0.2) h)"
-        ]
-      },
-      "input-light": {
-        "role": "neutral",
-        "displayName": "输入边框 · 浅色",
-        "tonalRamp": [
-          "oklch(from #d7d9dd 15% calc(c * 0.35) h)",
-          "oklch(from #d7d9dd 25% calc(c * 0.6) h)",
-          "oklch(from #d7d9dd 35% calc(c * 0.85) h)",
-          "oklch(from #d7d9dd 45% calc(c * 1) h)",
-          "oklch(from #d7d9dd 55% calc(c * 1) h)",
-          "oklch(from #d7d9dd 65% calc(c * 0.85) h)",
-          "oklch(from #d7d9dd 80% calc(c * 0.6) h)",
-          "oklch(from #d7d9dd 95% calc(c * 0.2) h)"
-        ]
-      },
-      "destructive-light": {
-        "role": "secondary",
-        "displayName": "破坏性操作 · 浅色",
-        "tonalRamp": [
-          "oklch(from #bd354b 15% calc(c * 0.35) h)",
-          "oklch(from #bd354b 25% calc(c * 0.6) h)",
-          "oklch(from #bd354b 35% calc(c * 0.85) h)",
-          "oklch(from #bd354b 45% calc(c * 1) h)",
-          "oklch(from #bd354b 55% calc(c * 1) h)",
-          "oklch(from #bd354b 65% calc(c * 0.85) h)",
-          "oklch(from #bd354b 80% calc(c * 0.6) h)",
-          "oklch(from #bd354b 95% calc(c * 0.2) h)"
-        ]
-      },
-      "usage-increase-light": {
-        "role": "secondary",
-        "displayName": "用量增加红 · 浅色",
-        "tonalRamp": [
-          "oklch(from #bd354b 15% calc(c * 0.35) h)",
-          "oklch(from #bd354b 25% calc(c * 0.6) h)",
-          "oklch(from #bd354b 35% calc(c * 0.85) h)",
-          "oklch(from #bd354b 45% calc(c * 1) h)",
-          "oklch(from #bd354b 55% calc(c * 1) h)",
-          "oklch(from #bd354b 65% calc(c * 0.85) h)",
-          "oklch(from #bd354b 80% calc(c * 0.6) h)",
-          "oklch(from #bd354b 95% calc(c * 0.2) h)"
-        ]
-      },
-      "usage-decrease-light": {
-        "role": "secondary",
-        "displayName": "用量减少绿 · 浅色",
-        "tonalRamp": [
-          "oklch(from #287448 15% calc(c * 0.35) h)",
-          "oklch(from #287448 25% calc(c * 0.6) h)",
-          "oklch(from #287448 35% calc(c * 0.85) h)",
-          "oklch(from #287448 45% calc(c * 1) h)",
-          "oklch(from #287448 55% calc(c * 1) h)",
-          "oklch(from #287448 65% calc(c * 0.85) h)",
-          "oklch(from #287448 80% calc(c * 0.6) h)",
-          "oklch(from #287448 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-text-light": {
-        "role": "tertiary",
-        "displayName": "图表文字 · 浅色",
-        "tonalRamp": [
-          "oklch(from #666b72 15% calc(c * 0.35) h)",
-          "oklch(from #666b72 25% calc(c * 0.6) h)",
-          "oklch(from #666b72 35% calc(c * 0.85) h)",
-          "oklch(from #666b72 45% calc(c * 1) h)",
-          "oklch(from #666b72 55% calc(c * 1) h)",
-          "oklch(from #666b72 65% calc(c * 0.85) h)",
-          "oklch(from #666b72 80% calc(c * 0.6) h)",
-          "oklch(from #666b72 95% calc(c * 0.2) h)"
-        ]
-      },
-      "quota-normal-light": {
-        "role": "secondary",
-        "displayName": "正常额度灰蓝 · 浅色",
-        "tonalRamp": [
-          "oklch(from #63798c 15% calc(c * 0.35) h)",
-          "oklch(from #63798c 25% calc(c * 0.6) h)",
-          "oklch(from #63798c 35% calc(c * 0.85) h)",
-          "oklch(from #63798c 45% calc(c * 1) h)",
-          "oklch(from #63798c 55% calc(c * 1) h)",
-          "oklch(from #63798c 65% calc(c * 0.85) h)",
-          "oklch(from #63798c 80% calc(c * 0.6) h)",
-          "oklch(from #63798c 95% calc(c * 0.2) h)"
-        ]
-      },
-      "quota-warning-light": {
-        "role": "secondary",
-        "displayName": "低额度橙 · 浅色",
-        "tonalRamp": [
-          "oklch(from #ae661f 15% calc(c * 0.35) h)",
-          "oklch(from #ae661f 25% calc(c * 0.6) h)",
-          "oklch(from #ae661f 35% calc(c * 0.85) h)",
-          "oklch(from #ae661f 45% calc(c * 1) h)",
-          "oklch(from #ae661f 55% calc(c * 1) h)",
-          "oklch(from #ae661f 65% calc(c * 0.85) h)",
-          "oklch(from #ae661f 80% calc(c * 0.6) h)",
-          "oklch(from #ae661f 95% calc(c * 0.2) h)"
-        ]
-      },
-      "quota-exhausted-light": {
-        "role": "secondary",
-        "displayName": "耗尽额度红 · 浅色",
-        "tonalRamp": [
-          "oklch(from #bd354b 15% calc(c * 0.35) h)",
-          "oklch(from #bd354b 25% calc(c * 0.6) h)",
-          "oklch(from #bd354b 35% calc(c * 0.85) h)",
-          "oklch(from #bd354b 45% calc(c * 1) h)",
-          "oklch(from #bd354b 55% calc(c * 1) h)",
-          "oklch(from #bd354b 65% calc(c * 0.85) h)",
-          "oklch(from #bd354b 80% calc(c * 0.6) h)",
-          "oklch(from #bd354b 95% calc(c * 0.2) h)"
-        ]
-      },
-      "deadline-normal-light": {
-        "role": "secondary",
-        "displayName": "充裕时间绿 · 浅色",
-        "tonalRamp": [
-          "oklch(from #287448 15% calc(c * 0.35) h)",
-          "oklch(from #287448 25% calc(c * 0.6) h)",
-          "oklch(from #287448 35% calc(c * 0.85) h)",
-          "oklch(from #287448 45% calc(c * 1) h)",
-          "oklch(from #287448 55% calc(c * 1) h)",
-          "oklch(from #287448 65% calc(c * 0.85) h)",
-          "oklch(from #287448 80% calc(c * 0.6) h)",
-          "oklch(from #287448 95% calc(c * 0.2) h)"
-        ]
-      },
-      "deadline-warning-light": {
-        "role": "secondary",
-        "displayName": "临近时间黄 · 浅色",
-        "tonalRamp": [
-          "oklch(from #866a08 15% calc(c * 0.35) h)",
-          "oklch(from #866a08 25% calc(c * 0.6) h)",
-          "oklch(from #866a08 35% calc(c * 0.85) h)",
-          "oklch(from #866a08 45% calc(c * 1) h)",
-          "oklch(from #866a08 55% calc(c * 1) h)",
-          "oklch(from #866a08 65% calc(c * 0.85) h)",
-          "oklch(from #866a08 80% calc(c * 0.6) h)",
-          "oklch(from #866a08 95% calc(c * 0.2) h)"
-        ]
-      },
-      "deadline-urgent-light": {
-        "role": "secondary",
-        "displayName": "紧迫时间橙 · 浅色",
-        "tonalRamp": [
-          "oklch(from #b45214 15% calc(c * 0.35) h)",
-          "oklch(from #b45214 25% calc(c * 0.6) h)",
-          "oklch(from #b45214 35% calc(c * 0.85) h)",
-          "oklch(from #b45214 45% calc(c * 1) h)",
-          "oklch(from #b45214 55% calc(c * 1) h)",
-          "oklch(from #b45214 65% calc(c * 0.85) h)",
-          "oklch(from #b45214 80% calc(c * 0.6) h)",
-          "oklch(from #b45214 95% calc(c * 0.2) h)"
-        ]
-      },
-      "deadline-critical-light": {
-        "role": "secondary",
-        "displayName": "即将到期红 · 浅色",
-        "tonalRamp": [
-          "oklch(from #bd354b 15% calc(c * 0.35) h)",
-          "oklch(from #bd354b 25% calc(c * 0.6) h)",
-          "oklch(from #bd354b 35% calc(c * 0.85) h)",
-          "oklch(from #bd354b 45% calc(c * 1) h)",
-          "oklch(from #bd354b 55% calc(c * 1) h)",
-          "oklch(from #bd354b 65% calc(c * 0.85) h)",
-          "oklch(from #bd354b 80% calc(c * 0.6) h)",
-          "oklch(from #bd354b 95% calc(c * 0.2) h)"
-        ]
-      },
-      "warning-surface-light": {
-        "role": "secondary",
-        "displayName": "警告底色 · 浅色",
-        "tonalRamp": [
-          "oklch(from #fff7ec 15% calc(c * 0.35) h)",
-          "oklch(from #fff7ec 25% calc(c * 0.6) h)",
-          "oklch(from #fff7ec 35% calc(c * 0.85) h)",
-          "oklch(from #fff7ec 45% calc(c * 1) h)",
-          "oklch(from #fff7ec 55% calc(c * 1) h)",
-          "oklch(from #fff7ec 65% calc(c * 0.85) h)",
-          "oklch(from #fff7ec 80% calc(c * 0.6) h)",
-          "oklch(from #fff7ec 95% calc(c * 0.2) h)"
-        ]
-      },
-      "warning-text-light": {
-        "role": "secondary",
-        "displayName": "警告文字 · 浅色",
-        "tonalRamp": [
-          "oklch(from #86531e 15% calc(c * 0.35) h)",
-          "oklch(from #86531e 25% calc(c * 0.6) h)",
-          "oklch(from #86531e 35% calc(c * 0.85) h)",
-          "oklch(from #86531e 45% calc(c * 1) h)",
-          "oklch(from #86531e 55% calc(c * 1) h)",
-          "oklch(from #86531e 65% calc(c * 0.85) h)",
-          "oklch(from #86531e 80% calc(c * 0.6) h)",
-          "oklch(from #86531e 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0000 0.0)",
+          "oklch(26% 0.0000 0.0)",
+          "oklch(38% 0.0000 0.0)",
+          "oklch(49% 0.0000 0.0)",
+          "oklch(61% 0.0000 0.0)",
+          "oklch(72% 0.0000 0.0)",
+          "oklch(84% 0.0000 0.0)",
+          "oklch(95% 0.0000 0.0)"
         ]
       },
       "background-dark": {
         "role": "neutral",
         "displayName": "页面背景 · 深色",
+        "canonical": "#18191c",
         "tonalRamp": [
-          "oklch(from #18191c 15% calc(c * 0.35) h)",
-          "oklch(from #18191c 25% calc(c * 0.6) h)",
-          "oklch(from #18191c 35% calc(c * 0.85) h)",
-          "oklch(from #18191c 45% calc(c * 1) h)",
-          "oklch(from #18191c 55% calc(c * 1) h)",
-          "oklch(from #18191c 65% calc(c * 0.85) h)",
-          "oklch(from #18191c 80% calc(c * 0.6) h)",
-          "oklch(from #18191c 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0028 271.1)",
+          "oklch(26% 0.0044 271.1)",
+          "oklch(38% 0.0056 271.1)",
+          "oklch(49% 0.0061 271.1)",
+          "oklch(61% 0.0057 271.1)",
+          "oklch(72% 0.0047 271.1)",
+          "oklch(84% 0.0029 271.1)",
+          "oklch(95% 0.0010 271.1)"
+        ]
+      },
+      "foreground-light": {
+        "role": "neutral",
+        "displayName": "正文 · 浅色",
+        "canonical": "#252629",
+        "tonalRamp": [
+          "oklch(15% 0.0026 271.2)",
+          "oklch(26% 0.0042 271.2)",
+          "oklch(38% 0.0053 271.2)",
+          "oklch(49% 0.0057 271.2)",
+          "oklch(61% 0.0054 271.2)",
+          "oklch(72% 0.0044 271.2)",
+          "oklch(84% 0.0028 271.2)",
+          "oklch(95% 0.0009 271.2)"
         ]
       },
       "foreground-dark": {
         "role": "neutral",
         "displayName": "正文 · 深色",
+        "canonical": "#e9eaed",
         "tonalRamp": [
-          "oklch(from #e9eaed 15% calc(c * 0.35) h)",
-          "oklch(from #e9eaed 25% calc(c * 0.6) h)",
-          "oklch(from #e9eaed 35% calc(c * 0.85) h)",
-          "oklch(from #e9eaed 45% calc(c * 1) h)",
-          "oklch(from #e9eaed 55% calc(c * 1) h)",
-          "oklch(from #e9eaed 65% calc(c * 0.85) h)",
-          "oklch(from #e9eaed 80% calc(c * 0.6) h)",
-          "oklch(from #e9eaed 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0019 271.4)",
+          "oklch(26% 0.0030 271.4)",
+          "oklch(38% 0.0039 271.4)",
+          "oklch(49% 0.0042 271.4)",
+          "oklch(61% 0.0039 271.4)",
+          "oklch(72% 0.0032 271.4)",
+          "oklch(84% 0.0020 271.4)",
+          "oklch(95% 0.0007 271.4)"
         ]
       },
-      "card-dark": {
+      "sidebar-light": {
         "role": "neutral",
-        "displayName": "内容表面 · 深色",
+        "displayName": "侧栏 · 浅色",
+        "canonical": "#f2f3f4",
         "tonalRamp": [
-          "oklch(from #202125 15% calc(c * 0.35) h)",
-          "oklch(from #202125 25% calc(c * 0.6) h)",
-          "oklch(from #202125 35% calc(c * 0.85) h)",
-          "oklch(from #202125 45% calc(c * 1) h)",
-          "oklch(from #202125 55% calc(c * 1) h)",
-          "oklch(from #202125 65% calc(c * 0.85) h)",
-          "oklch(from #202125 80% calc(c * 0.6) h)",
-          "oklch(from #202125 95% calc(c * 0.2) h)"
-        ]
-      },
-      "popover-dark": {
-        "role": "neutral",
-        "displayName": "浮层 · 深色",
-        "tonalRamp": [
-          "oklch(from #27292e 15% calc(c * 0.35) h)",
-          "oklch(from #27292e 25% calc(c * 0.6) h)",
-          "oklch(from #27292e 35% calc(c * 0.85) h)",
-          "oklch(from #27292e 45% calc(c * 1) h)",
-          "oklch(from #27292e 55% calc(c * 1) h)",
-          "oklch(from #27292e 65% calc(c * 0.85) h)",
-          "oklch(from #27292e 80% calc(c * 0.6) h)",
-          "oklch(from #27292e 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0008 247.8)",
+          "oklch(26% 0.0013 247.8)",
+          "oklch(38% 0.0016 247.8)",
+          "oklch(49% 0.0017 247.8)",
+          "oklch(61% 0.0016 247.8)",
+          "oklch(72% 0.0013 247.8)",
+          "oklch(84% 0.0008 247.8)",
+          "oklch(95% 0.0003 247.8)"
         ]
       },
       "sidebar-dark": {
         "role": "neutral",
         "displayName": "侧栏 · 深色",
+        "canonical": "#131417",
         "tonalRamp": [
-          "oklch(from #131417 15% calc(c * 0.35) h)",
-          "oklch(from #131417 25% calc(c * 0.6) h)",
-          "oklch(from #131417 35% calc(c * 0.85) h)",
-          "oklch(from #131417 45% calc(c * 1) h)",
-          "oklch(from #131417 55% calc(c * 1) h)",
-          "oklch(from #131417 65% calc(c * 0.85) h)",
-          "oklch(from #131417 80% calc(c * 0.6) h)",
-          "oklch(from #131417 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0028 271.1)",
+          "oklch(26% 0.0046 271.1)",
+          "oklch(38% 0.0058 271.1)",
+          "oklch(49% 0.0062 271.1)",
+          "oklch(61% 0.0059 271.1)",
+          "oklch(72% 0.0048 271.1)",
+          "oklch(84% 0.0030 271.1)",
+          "oklch(95% 0.0010 271.1)"
         ]
       },
-      "primary-dark": {
-        "role": "primary",
-        "displayName": "操作蓝 · 深色",
-        "tonalRamp": [
-          "oklch(from #3178b7 15% calc(c * 0.35) h)",
-          "oklch(from #3178b7 25% calc(c * 0.6) h)",
-          "oklch(from #3178b7 35% calc(c * 0.85) h)",
-          "oklch(from #3178b7 45% calc(c * 1) h)",
-          "oklch(from #3178b7 55% calc(c * 1) h)",
-          "oklch(from #3178b7 65% calc(c * 0.85) h)",
-          "oklch(from #3178b7 80% calc(c * 0.6) h)",
-          "oklch(from #3178b7 95% calc(c * 0.2) h)"
-        ]
-      },
-      "primary-foreground-dark": {
+      "card-light": {
         "role": "neutral",
-        "displayName": "选中内容 · 深色",
+        "displayName": "卡片与输入底色 · 浅色",
+        "canonical": "#fff",
         "tonalRamp": [
-          "oklch(from #fff 15% calc(c * 0.35) h)",
-          "oklch(from #fff 25% calc(c * 0.6) h)",
-          "oklch(from #fff 35% calc(c * 0.85) h)",
-          "oklch(from #fff 45% calc(c * 1) h)",
-          "oklch(from #fff 55% calc(c * 1) h)",
-          "oklch(from #fff 65% calc(c * 0.85) h)",
-          "oklch(from #fff 80% calc(c * 0.6) h)",
-          "oklch(from #fff 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0000 0.0)",
+          "oklch(26% 0.0000 0.0)",
+          "oklch(38% 0.0000 0.0)",
+          "oklch(49% 0.0000 0.0)",
+          "oklch(61% 0.0000 0.0)",
+          "oklch(72% 0.0000 0.0)",
+          "oklch(84% 0.0000 0.0)",
+          "oklch(95% 0.0000 0.0)"
         ]
       },
-      "secondary-dark": {
+      "card-dark": {
         "role": "neutral",
-        "displayName": "控件底色 · 深色",
+        "displayName": "卡片与输入底色 · 深色",
+        "canonical": "#202125",
         "tonalRamp": [
-          "oklch(from #2a2c31 15% calc(c * 0.35) h)",
-          "oklch(from #2a2c31 25% calc(c * 0.6) h)",
-          "oklch(from #2a2c31 35% calc(c * 0.85) h)",
-          "oklch(from #2a2c31 45% calc(c * 1) h)",
-          "oklch(from #2a2c31 55% calc(c * 1) h)",
-          "oklch(from #2a2c31 65% calc(c * 0.85) h)",
-          "oklch(from #2a2c31 80% calc(c * 0.6) h)",
-          "oklch(from #2a2c31 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0035 274.6)",
+          "oklch(26% 0.0056 274.6)",
+          "oklch(38% 0.0071 274.6)",
+          "oklch(49% 0.0077 274.6)",
+          "oklch(61% 0.0072 274.6)",
+          "oklch(72% 0.0059 274.6)",
+          "oklch(84% 0.0037 274.6)",
+          "oklch(95% 0.0012 274.6)"
         ]
       },
-      "accent-dark": {
+      "popover-light": {
         "role": "neutral",
-        "displayName": "悬停底色 · 深色",
+        "displayName": "浮层 · 浅色",
+        "canonical": "#fff",
         "tonalRamp": [
-          "oklch(from #32353b 15% calc(c * 0.35) h)",
-          "oklch(from #32353b 25% calc(c * 0.6) h)",
-          "oklch(from #32353b 35% calc(c * 0.85) h)",
-          "oklch(from #32353b 45% calc(c * 1) h)",
-          "oklch(from #32353b 55% calc(c * 1) h)",
-          "oklch(from #32353b 65% calc(c * 0.85) h)",
-          "oklch(from #32353b 80% calc(c * 0.6) h)",
-          "oklch(from #32353b 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0000 0.0)",
+          "oklch(26% 0.0000 0.0)",
+          "oklch(38% 0.0000 0.0)",
+          "oklch(49% 0.0000 0.0)",
+          "oklch(61% 0.0000 0.0)",
+          "oklch(72% 0.0000 0.0)",
+          "oklch(84% 0.0000 0.0)",
+          "oklch(95% 0.0000 0.0)"
         ]
       },
-      "muted-dark": {
+      "popover-dark": {
         "role": "neutral",
-        "displayName": "次要文字 · 深色",
+        "displayName": "浮层 · 深色",
+        "canonical": "#27292e",
         "tonalRamp": [
-          "oklch(from #a3a7af 15% calc(c * 0.35) h)",
-          "oklch(from #a3a7af 25% calc(c * 0.6) h)",
-          "oklch(from #a3a7af 35% calc(c * 0.85) h)",
-          "oklch(from #a3a7af 45% calc(c * 1) h)",
-          "oklch(from #a3a7af 55% calc(c * 1) h)",
-          "oklch(from #a3a7af 65% calc(c * 0.85) h)",
-          "oklch(from #a3a7af 80% calc(c * 0.6) h)",
-          "oklch(from #a3a7af 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0044 268.3)",
+          "oklch(26% 0.0070 268.3)",
+          "oklch(38% 0.0089 268.3)",
+          "oklch(49% 0.0096 268.3)",
+          "oklch(61% 0.0090 268.3)",
+          "oklch(72% 0.0074 268.3)",
+          "oklch(84% 0.0046 268.3)",
+          "oklch(95% 0.0015 268.3)"
+        ]
+      },
+      "border-light": {
+        "role": "neutral",
+        "displayName": "容器边框 · 浅色",
+        "canonical": "#dedfe2",
+        "tonalRamp": [
+          "oklch(15% 0.0019 271.4)",
+          "oklch(26% 0.0031 271.4)",
+          "oklch(38% 0.0039 271.4)",
+          "oklch(49% 0.0042 271.4)",
+          "oklch(61% 0.0040 271.4)",
+          "oklch(72% 0.0032 271.4)",
+          "oklch(84% 0.0020 271.4)",
+          "oklch(95% 0.0007 271.4)"
         ]
       },
       "border-dark": {
         "role": "neutral",
-        "displayName": "分隔线 · 深色",
+        "displayName": "容器边框 · 深色",
+        "canonical": "#34363d",
         "tonalRamp": [
-          "oklch(from #34363d 15% calc(c * 0.35) h)",
-          "oklch(from #34363d 25% calc(c * 0.6) h)",
-          "oklch(from #34363d 35% calc(c * 0.85) h)",
-          "oklch(from #34363d 45% calc(c * 1) h)",
-          "oklch(from #34363d 55% calc(c * 1) h)",
-          "oklch(from #34363d 65% calc(c * 0.85) h)",
-          "oklch(from #34363d 80% calc(c * 0.6) h)",
-          "oklch(from #34363d 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0057 273.0)",
+          "oklch(26% 0.0092 273.0)",
+          "oklch(38% 0.0117 273.0)",
+          "oklch(49% 0.0126 273.0)",
+          "oklch(61% 0.0118 273.0)",
+          "oklch(72% 0.0097 273.0)",
+          "oklch(84% 0.0061 273.0)",
+          "oklch(95% 0.0020 273.0)"
+        ]
+      },
+      "input-light": {
+        "role": "neutral",
+        "displayName": "输入边框 · 浅色",
+        "canonical": "#d7d9dd",
+        "tonalRamp": [
+          "oklch(15% 0.0027 264.5)",
+          "oklch(26% 0.0043 264.5)",
+          "oklch(38% 0.0055 264.5)",
+          "oklch(49% 0.0059 264.5)",
+          "oklch(61% 0.0055 264.5)",
+          "oklch(72% 0.0045 264.5)",
+          "oklch(84% 0.0028 264.5)",
+          "oklch(95% 0.0009 264.5)"
         ]
       },
       "input-dark": {
         "role": "neutral",
         "displayName": "输入边框 · 深色",
+        "canonical": "#424650",
         "tonalRamp": [
-          "oklch(from #424650 15% calc(c * 0.35) h)",
-          "oklch(from #424650 25% calc(c * 0.6) h)",
-          "oklch(from #424650 35% calc(c * 0.85) h)",
-          "oklch(from #424650 45% calc(c * 1) h)",
-          "oklch(from #424650 55% calc(c * 1) h)",
-          "oklch(from #424650 65% calc(c * 0.85) h)",
-          "oklch(from #424650 80% calc(c * 0.6) h)",
-          "oklch(from #424650 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0080 268.2)",
+          "oklch(26% 0.0129 268.2)",
+          "oklch(38% 0.0165 268.2)",
+          "oklch(49% 0.0177 268.2)",
+          "oklch(61% 0.0166 268.2)",
+          "oklch(72% 0.0136 268.2)",
+          "oklch(84% 0.0085 268.2)",
+          "oklch(95% 0.0028 268.2)"
+        ]
+      },
+      "secondary-light": {
+        "role": "neutral",
+        "displayName": "轨道与次级底色 · 浅色",
+        "canonical": "#eceef0",
+        "tonalRamp": [
+          "oklch(15% 0.0016 247.9)",
+          "oklch(26% 0.0025 247.9)",
+          "oklch(38% 0.0032 247.9)",
+          "oklch(49% 0.0034 247.9)",
+          "oklch(61% 0.0032 247.9)",
+          "oklch(72% 0.0027 247.9)",
+          "oklch(84% 0.0017 247.9)",
+          "oklch(95% 0.0005 247.9)"
+        ]
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "轨道与次级底色 · 深色",
+        "canonical": "#2a2c31",
+        "tonalRamp": [
+          "oklch(15% 0.0043 268.3)",
+          "oklch(26% 0.0069 268.3)",
+          "oklch(38% 0.0088 268.3)",
+          "oklch(49% 0.0095 268.3)",
+          "oklch(61% 0.0089 268.3)",
+          "oklch(72% 0.0073 268.3)",
+          "oklch(84% 0.0046 268.3)",
+          "oklch(95% 0.0015 268.3)"
+        ]
+      },
+      "muted-light": {
+        "role": "neutral",
+        "displayName": "次要文字 · 浅色",
+        "canonical": "#686c72",
+        "tonalRamp": [
+          "oklch(15% 0.0048 258.4)",
+          "oklch(26% 0.0077 258.4)",
+          "oklch(38% 0.0099 258.4)",
+          "oklch(49% 0.0106 258.4)",
+          "oklch(61% 0.0100 258.4)",
+          "oklch(72% 0.0082 258.4)",
+          "oklch(84% 0.0051 258.4)",
+          "oklch(95% 0.0017 258.4)"
+        ]
+      },
+      "muted-dark": {
+        "role": "neutral",
+        "displayName": "次要文字 · 深色",
+        "canonical": "#a3a7af",
+        "tonalRamp": [
+          "oklch(15% 0.0056 264.5)",
+          "oklch(26% 0.0090 264.5)",
+          "oklch(38% 0.0115 264.5)",
+          "oklch(49% 0.0124 264.5)",
+          "oklch(61% 0.0117 264.5)",
+          "oklch(72% 0.0095 264.5)",
+          "oklch(84% 0.0060 264.5)",
+          "oklch(95% 0.0019 264.5)"
+        ]
+      },
+      "accent-light": {
+        "role": "neutral",
+        "displayName": "悬停底色 · 浅色",
+        "canonical": "#e6e9ed",
+        "tonalRamp": [
+          "oklch(15% 0.0029 255.5)",
+          "oklch(26% 0.0046 255.5)",
+          "oklch(38% 0.0059 255.5)",
+          "oklch(49% 0.0063 255.5)",
+          "oklch(61% 0.0059 255.5)",
+          "oklch(72% 0.0049 255.5)",
+          "oklch(84% 0.0030 255.5)",
+          "oklch(95% 0.0010 255.5)"
+        ]
+      },
+      "accent-dark": {
+        "role": "neutral",
+        "displayName": "悬停底色 · 深色",
+        "canonical": "#32353b",
+        "tonalRamp": [
+          "oklch(15% 0.0052 264.4)",
+          "oklch(26% 0.0083 264.4)",
+          "oklch(38% 0.0106 264.4)",
+          "oklch(49% 0.0114 264.4)",
+          "oklch(61% 0.0107 264.4)",
+          "oklch(72% 0.0088 264.4)",
+          "oklch(84% 0.0055 264.4)",
+          "oklch(95% 0.0018 264.4)"
+        ]
+      },
+      "primary-light": {
+        "role": "primary",
+        "displayName": "选中项与主要操作 · 浅色",
+        "canonical": "#286fae",
+        "tonalRamp": [
+          "oklch(15% 0.0551 249.1)",
+          "oklch(26% 0.0884 249.1)",
+          "oklch(38% 0.1128 249.1)",
+          "oklch(49% 0.1212 249.1)",
+          "oklch(61% 0.1141 249.1)",
+          "oklch(72% 0.0934 249.1)",
+          "oklch(84% 0.0584 249.1)",
+          "oklch(95% 0.0190 249.1)"
+        ]
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "选中项与主要操作 · 深色",
+        "canonical": "#3178b7",
+        "tonalRamp": [
+          "oklch(15% 0.0548 248.6)",
+          "oklch(26% 0.0880 248.6)",
+          "oklch(38% 0.1123 248.6)",
+          "oklch(49% 0.1207 248.6)",
+          "oklch(61% 0.1136 248.6)",
+          "oklch(72% 0.0931 248.6)",
+          "oklch(84% 0.0582 248.6)",
+          "oklch(95% 0.0189 248.6)"
+        ]
+      },
+      "primary-foreground-light": {
+        "role": "primary",
+        "displayName": "主色上的文字 · 浅色",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(15% 0.0000 0.0)",
+          "oklch(26% 0.0000 0.0)",
+          "oklch(38% 0.0000 0.0)",
+          "oklch(49% 0.0000 0.0)",
+          "oklch(61% 0.0000 0.0)",
+          "oklch(72% 0.0000 0.0)",
+          "oklch(84% 0.0000 0.0)",
+          "oklch(95% 0.0000 0.0)"
+        ]
+      },
+      "primary-foreground-dark": {
+        "role": "primary",
+        "displayName": "主色上的文字 · 深色",
+        "canonical": "#fff",
+        "tonalRamp": [
+          "oklch(15% 0.0000 0.0)",
+          "oklch(26% 0.0000 0.0)",
+          "oklch(38% 0.0000 0.0)",
+          "oklch(49% 0.0000 0.0)",
+          "oklch(61% 0.0000 0.0)",
+          "oklch(72% 0.0000 0.0)",
+          "oklch(84% 0.0000 0.0)",
+          "oklch(95% 0.0000 0.0)"
+        ]
+      },
+      "destructive-light": {
+        "role": "tertiary",
+        "displayName": "清除操作 · 浅色",
+        "canonical": "#bd354b",
+        "tonalRamp": [
+          "oklch(15% 0.0780 16.1)",
+          "oklch(26% 0.1252 16.1)",
+          "oklch(38% 0.1596 16.1)",
+          "oklch(49% 0.1716 16.1)",
+          "oklch(61% 0.1616 16.1)",
+          "oklch(72% 0.1323 16.1)",
+          "oklch(84% 0.0827 16.1)",
+          "oklch(95% 0.0269 16.1)"
         ]
       },
       "destructive-dark": {
-        "role": "secondary",
-        "displayName": "破坏性操作 · 深色",
+        "role": "tertiary",
+        "displayName": "清除操作 · 深色",
+        "canonical": "#e47786",
         "tonalRamp": [
-          "oklch(from #e47786 15% calc(c * 0.35) h)",
-          "oklch(from #e47786 25% calc(c * 0.6) h)",
-          "oklch(from #e47786 35% calc(c * 0.85) h)",
-          "oklch(from #e47786 45% calc(c * 1) h)",
-          "oklch(from #e47786 55% calc(c * 1) h)",
-          "oklch(from #e47786 65% calc(c * 0.85) h)",
-          "oklch(from #e47786 80% calc(c * 0.6) h)",
-          "oklch(from #e47786 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0615 12.5)",
+          "oklch(26% 0.0987 12.5)",
+          "oklch(38% 0.1259 12.5)",
+          "oklch(49% 0.1353 12.5)",
+          "oklch(61% 0.1274 12.5)",
+          "oklch(72% 0.1043 12.5)",
+          "oklch(84% 0.0652 12.5)",
+          "oklch(95% 0.0212 12.5)"
+        ]
+      },
+      "usage-increase-light": {
+        "role": "tertiary",
+        "displayName": "消耗增加 · 浅色",
+        "canonical": "#bd354b",
+        "tonalRamp": [
+          "oklch(15% 0.0780 16.1)",
+          "oklch(26% 0.1252 16.1)",
+          "oklch(38% 0.1596 16.1)",
+          "oklch(49% 0.1716 16.1)",
+          "oklch(61% 0.1616 16.1)",
+          "oklch(72% 0.1323 16.1)",
+          "oklch(84% 0.0827 16.1)",
+          "oklch(95% 0.0269 16.1)"
         ]
       },
       "usage-increase-dark": {
-        "role": "secondary",
-        "displayName": "用量增加红 · 深色",
+        "role": "tertiary",
+        "displayName": "消耗增加 · 深色",
+        "canonical": "#e47786",
         "tonalRamp": [
-          "oklch(from #e47786 15% calc(c * 0.35) h)",
-          "oklch(from #e47786 25% calc(c * 0.6) h)",
-          "oklch(from #e47786 35% calc(c * 0.85) h)",
-          "oklch(from #e47786 45% calc(c * 1) h)",
-          "oklch(from #e47786 55% calc(c * 1) h)",
-          "oklch(from #e47786 65% calc(c * 0.85) h)",
-          "oklch(from #e47786 80% calc(c * 0.6) h)",
-          "oklch(from #e47786 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0615 12.5)",
+          "oklch(26% 0.0987 12.5)",
+          "oklch(38% 0.1259 12.5)",
+          "oklch(49% 0.1353 12.5)",
+          "oklch(61% 0.1274 12.5)",
+          "oklch(72% 0.1043 12.5)",
+          "oklch(84% 0.0652 12.5)",
+          "oklch(95% 0.0212 12.5)"
+        ]
+      },
+      "usage-decrease-light": {
+        "role": "tertiary",
+        "displayName": "消耗减少 · 浅色",
+        "canonical": "#287448",
+        "tonalRamp": [
+          "oklch(15% 0.0466 154.5)",
+          "oklch(26% 0.0748 154.5)",
+          "oklch(38% 0.0954 154.5)",
+          "oklch(49% 0.1026 154.5)",
+          "oklch(61% 0.0966 154.5)",
+          "oklch(72% 0.0791 154.5)",
+          "oklch(84% 0.0494 154.5)",
+          "oklch(95% 0.0161 154.5)"
         ]
       },
       "usage-decrease-dark": {
-        "role": "secondary",
-        "displayName": "用量减少绿 · 深色",
+        "role": "tertiary",
+        "displayName": "消耗减少 · 深色",
+        "canonical": "#78c99a",
         "tonalRamp": [
-          "oklch(from #78c99a 15% calc(c * 0.35) h)",
-          "oklch(from #78c99a 25% calc(c * 0.6) h)",
-          "oklch(from #78c99a 35% calc(c * 0.85) h)",
-          "oklch(from #78c99a 45% calc(c * 1) h)",
-          "oklch(from #78c99a 55% calc(c * 1) h)",
-          "oklch(from #78c99a 65% calc(c * 0.85) h)",
-          "oklch(from #78c99a 80% calc(c * 0.6) h)",
-          "oklch(from #78c99a 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0478 157.3)",
+          "oklch(26% 0.0767 157.3)",
+          "oklch(38% 0.0978 157.3)",
+          "oklch(49% 0.1052 157.3)",
+          "oklch(61% 0.0990 157.3)",
+          "oklch(72% 0.0811 157.3)",
+          "oklch(84% 0.0507 157.3)",
+          "oklch(95% 0.0165 157.3)"
+        ]
+      },
+      "chart-text-light": {
+        "role": "neutral",
+        "displayName": "图表文字 · 浅色",
+        "canonical": "#666b72",
+        "tonalRamp": [
+          "oklch(15% 0.0057 256.7)",
+          "oklch(26% 0.0092 256.7)",
+          "oklch(38% 0.0117 256.7)",
+          "oklch(49% 0.0126 256.7)",
+          "oklch(61% 0.0118 256.7)",
+          "oklch(72% 0.0097 256.7)",
+          "oklch(84% 0.0061 256.7)",
+          "oklch(95% 0.0020 256.7)"
         ]
       },
       "chart-text-dark": {
-        "role": "tertiary",
+        "role": "neutral",
         "displayName": "图表文字 · 深色",
+        "canonical": "#a3a7af",
         "tonalRamp": [
-          "oklch(from #a3a7af 15% calc(c * 0.35) h)",
-          "oklch(from #a3a7af 25% calc(c * 0.6) h)",
-          "oklch(from #a3a7af 35% calc(c * 0.85) h)",
-          "oklch(from #a3a7af 45% calc(c * 1) h)",
-          "oklch(from #a3a7af 55% calc(c * 1) h)",
-          "oklch(from #a3a7af 65% calc(c * 0.85) h)",
-          "oklch(from #a3a7af 80% calc(c * 0.6) h)",
-          "oklch(from #a3a7af 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0056 264.5)",
+          "oklch(26% 0.0090 264.5)",
+          "oklch(38% 0.0115 264.5)",
+          "oklch(49% 0.0124 264.5)",
+          "oklch(61% 0.0117 264.5)",
+          "oklch(72% 0.0095 264.5)",
+          "oklch(84% 0.0060 264.5)",
+          "oklch(95% 0.0019 264.5)"
+        ]
+      },
+      "quota-normal-light": {
+        "role": "tertiary",
+        "displayName": "额度正常 · 浅色",
+        "canonical": "#63798c",
+        "tonalRamp": [
+          "oklch(15% 0.0178 244.6)",
+          "oklch(26% 0.0286 244.6)",
+          "oklch(38% 0.0365 244.6)",
+          "oklch(49% 0.0392 244.6)",
+          "oklch(61% 0.0369 244.6)",
+          "oklch(72% 0.0302 244.6)",
+          "oklch(84% 0.0189 244.6)",
+          "oklch(95% 0.0061 244.6)"
         ]
       },
       "quota-normal-dark": {
-        "role": "secondary",
-        "displayName": "正常额度灰蓝 · 深色",
+        "role": "tertiary",
+        "displayName": "额度正常 · 深色",
+        "canonical": "#96adbf",
         "tonalRamp": [
-          "oklch(from #96adbf 15% calc(c * 0.35) h)",
-          "oklch(from #96adbf 25% calc(c * 0.6) h)",
-          "oklch(from #96adbf 35% calc(c * 0.85) h)",
-          "oklch(from #96adbf 45% calc(c * 1) h)",
-          "oklch(from #96adbf 55% calc(c * 1) h)",
-          "oklch(from #96adbf 65% calc(c * 0.85) h)",
-          "oklch(from #96adbf 80% calc(c * 0.6) h)",
-          "oklch(from #96adbf 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0166 241.6)",
+          "oklch(26% 0.0266 241.6)",
+          "oklch(38% 0.0340 241.6)",
+          "oklch(49% 0.0365 241.6)",
+          "oklch(61% 0.0344 241.6)",
+          "oklch(72% 0.0282 241.6)",
+          "oklch(84% 0.0176 241.6)",
+          "oklch(95% 0.0057 241.6)"
+        ]
+      },
+      "quota-warning-light": {
+        "role": "tertiary",
+        "displayName": "额度偏低 · 浅色",
+        "canonical": "#ae661f",
+        "tonalRamp": [
+          "oklch(15% 0.0557 59.8)",
+          "oklch(26% 0.0895 59.8)",
+          "oklch(38% 0.1142 59.8)",
+          "oklch(49% 0.1227 59.8)",
+          "oklch(61% 0.1155 59.8)",
+          "oklch(72% 0.0946 59.8)",
+          "oklch(84% 0.0592 59.8)",
+          "oklch(95% 0.0192 59.8)"
         ]
       },
       "quota-warning-dark": {
-        "role": "secondary",
-        "displayName": "低额度橙 · 深色",
+        "role": "tertiary",
+        "displayName": "额度偏低 · 深色",
+        "canonical": "#e5a05b",
         "tonalRamp": [
-          "oklch(from #e5a05b 15% calc(c * 0.35) h)",
-          "oklch(from #e5a05b 25% calc(c * 0.6) h)",
-          "oklch(from #e5a05b 35% calc(c * 0.85) h)",
-          "oklch(from #e5a05b 45% calc(c * 1) h)",
-          "oklch(from #e5a05b 55% calc(c * 1) h)",
-          "oklch(from #e5a05b 65% calc(c * 0.85) h)",
-          "oklch(from #e5a05b 80% calc(c * 0.6) h)",
-          "oklch(from #e5a05b 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0539 64.3)",
+          "oklch(26% 0.0865 64.3)",
+          "oklch(38% 0.1103 64.3)",
+          "oklch(49% 0.1186 64.3)",
+          "oklch(61% 0.1117 64.3)",
+          "oklch(72% 0.0914 64.3)",
+          "oklch(84% 0.0572 64.3)",
+          "oklch(95% 0.0186 64.3)"
+        ]
+      },
+      "quota-exhausted-light": {
+        "role": "tertiary",
+        "displayName": "额度耗尽 · 浅色",
+        "canonical": "#bd354b",
+        "tonalRamp": [
+          "oklch(15% 0.0780 16.1)",
+          "oklch(26% 0.1252 16.1)",
+          "oklch(38% 0.1596 16.1)",
+          "oklch(49% 0.1716 16.1)",
+          "oklch(61% 0.1616 16.1)",
+          "oklch(72% 0.1323 16.1)",
+          "oklch(84% 0.0827 16.1)",
+          "oklch(95% 0.0269 16.1)"
         ]
       },
       "quota-exhausted-dark": {
-        "role": "secondary",
-        "displayName": "耗尽额度红 · 深色",
+        "role": "tertiary",
+        "displayName": "额度耗尽 · 深色",
+        "canonical": "#e47786",
         "tonalRamp": [
-          "oklch(from #e47786 15% calc(c * 0.35) h)",
-          "oklch(from #e47786 25% calc(c * 0.6) h)",
-          "oklch(from #e47786 35% calc(c * 0.85) h)",
-          "oklch(from #e47786 45% calc(c * 1) h)",
-          "oklch(from #e47786 55% calc(c * 1) h)",
-          "oklch(from #e47786 65% calc(c * 0.85) h)",
-          "oklch(from #e47786 80% calc(c * 0.6) h)",
-          "oklch(from #e47786 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0615 12.5)",
+          "oklch(26% 0.0987 12.5)",
+          "oklch(38% 0.1259 12.5)",
+          "oklch(49% 0.1353 12.5)",
+          "oklch(61% 0.1274 12.5)",
+          "oklch(72% 0.1043 12.5)",
+          "oklch(84% 0.0652 12.5)",
+          "oklch(95% 0.0212 12.5)"
+        ]
+      },
+      "deadline-normal-light": {
+        "role": "tertiary",
+        "displayName": "距重置超过一天 · 浅色",
+        "canonical": "#287448",
+        "tonalRamp": [
+          "oklch(15% 0.0466 154.5)",
+          "oklch(26% 0.0748 154.5)",
+          "oklch(38% 0.0954 154.5)",
+          "oklch(49% 0.1026 154.5)",
+          "oklch(61% 0.0966 154.5)",
+          "oklch(72% 0.0791 154.5)",
+          "oklch(84% 0.0494 154.5)",
+          "oklch(95% 0.0161 154.5)"
         ]
       },
       "deadline-normal-dark": {
-        "role": "secondary",
-        "displayName": "充裕时间绿 · 深色",
+        "role": "tertiary",
+        "displayName": "距重置超过一天 · 深色",
+        "canonical": "#78c99a",
         "tonalRamp": [
-          "oklch(from #78c99a 15% calc(c * 0.35) h)",
-          "oklch(from #78c99a 25% calc(c * 0.6) h)",
-          "oklch(from #78c99a 35% calc(c * 0.85) h)",
-          "oklch(from #78c99a 45% calc(c * 1) h)",
-          "oklch(from #78c99a 55% calc(c * 1) h)",
-          "oklch(from #78c99a 65% calc(c * 0.85) h)",
-          "oklch(from #78c99a 80% calc(c * 0.6) h)",
-          "oklch(from #78c99a 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0478 157.3)",
+          "oklch(26% 0.0767 157.3)",
+          "oklch(38% 0.0978 157.3)",
+          "oklch(49% 0.1052 157.3)",
+          "oklch(61% 0.0990 157.3)",
+          "oklch(72% 0.0811 157.3)",
+          "oklch(84% 0.0507 157.3)",
+          "oklch(95% 0.0165 157.3)"
+        ]
+      },
+      "deadline-warning-light": {
+        "role": "tertiary",
+        "displayName": "距重置六至二十四小时 · 浅色",
+        "canonical": "#866a08",
+        "tonalRamp": [
+          "oklch(15% 0.0487 89.9)",
+          "oklch(26% 0.0782 89.9)",
+          "oklch(38% 0.0998 89.9)",
+          "oklch(49% 0.1072 89.9)",
+          "oklch(61% 0.1010 89.9)",
+          "oklch(72% 0.0827 89.9)",
+          "oklch(84% 0.0517 89.9)",
+          "oklch(95% 0.0168 89.9)"
         ]
       },
       "deadline-warning-dark": {
-        "role": "secondary",
-        "displayName": "临近时间黄 · 深色",
+        "role": "tertiary",
+        "displayName": "距重置六至二十四小时 · 深色",
+        "canonical": "#dfc55b",
         "tonalRamp": [
-          "oklch(from #dfc55b 15% calc(c * 0.35) h)",
-          "oklch(from #dfc55b 25% calc(c * 0.6) h)",
-          "oklch(from #dfc55b 35% calc(c * 0.85) h)",
-          "oklch(from #dfc55b 45% calc(c * 1) h)",
-          "oklch(from #dfc55b 55% calc(c * 1) h)",
-          "oklch(from #dfc55b 65% calc(c * 0.85) h)",
-          "oklch(from #dfc55b 80% calc(c * 0.6) h)",
-          "oklch(from #dfc55b 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0585 95.6)",
+          "oklch(26% 0.0939 95.6)",
+          "oklch(38% 0.1197 95.6)",
+          "oklch(49% 0.1287 95.6)",
+          "oklch(61% 0.1211 95.6)",
+          "oklch(72% 0.0992 95.6)",
+          "oklch(84% 0.0620 95.6)",
+          "oklch(95% 0.0201 95.6)"
+        ]
+      },
+      "deadline-urgent-light": {
+        "role": "tertiary",
+        "displayName": "距重置一至六小时 · 浅色",
+        "canonical": "#b45214",
+        "tonalRamp": [
+          "oklch(15% 0.0655 47.0)",
+          "oklch(26% 0.1052 47.0)",
+          "oklch(38% 0.1342 47.0)",
+          "oklch(49% 0.1443 47.0)",
+          "oklch(61% 0.1358 47.0)",
+          "oklch(72% 0.1112 47.0)",
+          "oklch(84% 0.0695 47.0)",
+          "oklch(95% 0.0226 47.0)"
         ]
       },
       "deadline-urgent-dark": {
-        "role": "secondary",
-        "displayName": "紧迫时间橙 · 深色",
+        "role": "tertiary",
+        "displayName": "距重置一至六小时 · 深色",
+        "canonical": "#efa063",
         "tonalRamp": [
-          "oklch(from #efa063 15% calc(c * 0.35) h)",
-          "oklch(from #efa063 25% calc(c * 0.6) h)",
-          "oklch(from #efa063 35% calc(c * 0.85) h)",
-          "oklch(from #efa063 45% calc(c * 1) h)",
-          "oklch(from #efa063 55% calc(c * 1) h)",
-          "oklch(from #efa063 65% calc(c * 0.85) h)",
-          "oklch(from #efa063 80% calc(c * 0.6) h)",
-          "oklch(from #efa063 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0553 57.4)",
+          "oklch(26% 0.0888 57.4)",
+          "oklch(38% 0.1133 57.4)",
+          "oklch(49% 0.1217 57.4)",
+          "oklch(61% 0.1146 57.4)",
+          "oklch(72% 0.0939 57.4)",
+          "oklch(84% 0.0587 57.4)",
+          "oklch(95% 0.0191 57.4)"
+        ]
+      },
+      "deadline-critical-light": {
+        "role": "tertiary",
+        "displayName": "距重置一小时内 · 浅色",
+        "canonical": "#bd354b",
+        "tonalRamp": [
+          "oklch(15% 0.0780 16.1)",
+          "oklch(26% 0.1252 16.1)",
+          "oklch(38% 0.1596 16.1)",
+          "oklch(49% 0.1716 16.1)",
+          "oklch(61% 0.1616 16.1)",
+          "oklch(72% 0.1323 16.1)",
+          "oklch(84% 0.0827 16.1)",
+          "oklch(95% 0.0269 16.1)"
         ]
       },
       "deadline-critical-dark": {
-        "role": "secondary",
-        "displayName": "即将到期红 · 深色",
+        "role": "tertiary",
+        "displayName": "距重置一小时内 · 深色",
+        "canonical": "#e47786",
         "tonalRamp": [
-          "oklch(from #e47786 15% calc(c * 0.35) h)",
-          "oklch(from #e47786 25% calc(c * 0.6) h)",
-          "oklch(from #e47786 35% calc(c * 0.85) h)",
-          "oklch(from #e47786 45% calc(c * 1) h)",
-          "oklch(from #e47786 55% calc(c * 1) h)",
-          "oklch(from #e47786 65% calc(c * 0.85) h)",
-          "oklch(from #e47786 80% calc(c * 0.6) h)",
-          "oklch(from #e47786 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0615 12.5)",
+          "oklch(26% 0.0987 12.5)",
+          "oklch(38% 0.1259 12.5)",
+          "oklch(49% 0.1353 12.5)",
+          "oklch(61% 0.1274 12.5)",
+          "oklch(72% 0.1043 12.5)",
+          "oklch(84% 0.0652 12.5)",
+          "oklch(95% 0.0212 12.5)"
+        ]
+      },
+      "unpriced-light": {
+        "role": "tertiary",
+        "displayName": "费用未定价 · 浅色",
+        "canonical": "#ab743e",
+        "tonalRamp": [
+          "oklch(15% 0.0448 63.5)",
+          "oklch(26% 0.0719 63.5)",
+          "oklch(38% 0.0918 63.5)",
+          "oklch(49% 0.0986 63.5)",
+          "oklch(61% 0.0929 63.5)",
+          "oklch(72% 0.0760 63.5)",
+          "oklch(84% 0.0475 63.5)",
+          "oklch(95% 0.0154 63.5)"
+        ]
+      },
+      "unpriced-dark": {
+        "role": "tertiary",
+        "displayName": "费用未定价 · 深色",
+        "canonical": "#e5a05b",
+        "tonalRamp": [
+          "oklch(15% 0.0539 64.3)",
+          "oklch(26% 0.0865 64.3)",
+          "oklch(38% 0.1103 64.3)",
+          "oklch(49% 0.1186 64.3)",
+          "oklch(61% 0.1117 64.3)",
+          "oklch(72% 0.0914 64.3)",
+          "oklch(84% 0.0572 64.3)",
+          "oklch(95% 0.0186 64.3)"
+        ]
+      },
+      "warning-surface-light": {
+        "role": "tertiary",
+        "displayName": "读取警告底色 · 浅色",
+        "canonical": "#fff7ec",
+        "tonalRamp": [
+          "oklch(15% 0.0077 76.1)",
+          "oklch(26% 0.0123 76.1)",
+          "oklch(38% 0.0157 76.1)",
+          "oklch(49% 0.0169 76.1)",
+          "oklch(61% 0.0159 76.1)",
+          "oklch(72% 0.0130 76.1)",
+          "oklch(84% 0.0081 76.1)",
+          "oklch(95% 0.0026 76.1)"
         ]
       },
       "warning-surface-dark": {
-        "role": "secondary",
-        "displayName": "警告底色 · 深色",
+        "role": "tertiary",
+        "displayName": "读取警告底色 · 深色",
+        "canonical": "#2d2620",
         "tonalRamp": [
-          "oklch(from #2d2620 15% calc(c * 0.35) h)",
-          "oklch(from #2d2620 25% calc(c * 0.6) h)",
-          "oklch(from #2d2620 35% calc(c * 0.85) h)",
-          "oklch(from #2d2620 45% calc(c * 1) h)",
-          "oklch(from #2d2620 55% calc(c * 1) h)",
-          "oklch(from #2d2620 65% calc(c * 0.85) h)",
-          "oklch(from #2d2620 80% calc(c * 0.6) h)",
-          "oklch(from #2d2620 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0068 62.7)",
+          "oklch(26% 0.0110 62.7)",
+          "oklch(38% 0.0140 62.7)",
+          "oklch(49% 0.0150 62.7)",
+          "oklch(61% 0.0142 62.7)",
+          "oklch(72% 0.0116 62.7)",
+          "oklch(84% 0.0072 62.7)",
+          "oklch(95% 0.0024 62.7)"
+        ]
+      },
+      "warning-text-light": {
+        "role": "tertiary",
+        "displayName": "读取警告文字 · 浅色",
+        "canonical": "#86531e",
+        "tonalRamp": [
+          "oklch(15% 0.0432 62.9)",
+          "oklch(26% 0.0694 62.9)",
+          "oklch(38% 0.0885 62.9)",
+          "oklch(49% 0.0951 62.9)",
+          "oklch(61% 0.0895 62.9)",
+          "oklch(72% 0.0733 62.9)",
+          "oklch(84% 0.0458 62.9)",
+          "oklch(95% 0.0149 62.9)"
         ]
       },
       "warning-text-dark": {
+        "role": "tertiary",
+        "displayName": "读取警告文字 · 深色",
+        "canonical": "#e5b983",
+        "tonalRamp": [
+          "oklch(15% 0.0393 71.8)",
+          "oklch(26% 0.0631 71.8)",
+          "oklch(38% 0.0805 71.8)",
+          "oklch(49% 0.0865 71.8)",
+          "oklch(61% 0.0814 71.8)",
+          "oklch(72% 0.0667 71.8)",
+          "oklch(84% 0.0417 71.8)",
+          "oklch(95% 0.0135 71.8)"
+        ]
+      },
+      "service-codex": {
+        "role": "primary",
+        "displayName": "Codex 用量",
+        "canonical": "#3279bd",
+        "tonalRamp": [
+          "oklch(15% 0.0577 250.3)",
+          "oklch(26% 0.0926 250.3)",
+          "oklch(38% 0.1181 250.3)",
+          "oklch(49% 0.1269 250.3)",
+          "oklch(61% 0.1195 250.3)",
+          "oklch(72% 0.0979 250.3)",
+          "oklch(84% 0.0612 250.3)",
+          "oklch(95% 0.0199 250.3)"
+        ]
+      },
+      "service-antigravity": {
         "role": "secondary",
-        "displayName": "警告文字 · 深色",
+        "displayName": "Antigravity 用量",
+        "canonical": "#448d86",
         "tonalRamp": [
-          "oklch(from #e5b983 15% calc(c * 0.35) h)",
-          "oklch(from #e5b983 25% calc(c * 0.6) h)",
-          "oklch(from #e5b983 35% calc(c * 0.85) h)",
-          "oklch(from #e5b983 45% calc(c * 1) h)",
-          "oklch(from #e5b983 55% calc(c * 1) h)",
-          "oklch(from #e5b983 65% calc(c * 0.85) h)",
-          "oklch(from #e5b983 80% calc(c * 0.6) h)",
-          "oklch(from #e5b983 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-blue": {
-        "role": "tertiary",
-        "displayName": "Tokens 柱形蓝",
-        "tonalRamp": [
-          "oklch(from #3279bd 15% calc(c * 0.35) h)",
-          "oklch(from #3279bd 25% calc(c * 0.6) h)",
-          "oklch(from #3279bd 35% calc(c * 0.85) h)",
-          "oklch(from #3279bd 45% calc(c * 1) h)",
-          "oklch(from #3279bd 55% calc(c * 1) h)",
-          "oklch(from #3279bd 65% calc(c * 0.85) h)",
-          "oklch(from #3279bd 80% calc(c * 0.6) h)",
-          "oklch(from #3279bd 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-teal": {
-        "role": "tertiary",
-        "displayName": "费用折线青绿",
-        "tonalRamp": [
-          "oklch(from #448d86 15% calc(c * 0.35) h)",
-          "oklch(from #448d86 25% calc(c * 0.6) h)",
-          "oklch(from #448d86 35% calc(c * 0.85) h)",
-          "oklch(from #448d86 45% calc(c * 1) h)",
-          "oklch(from #448d86 55% calc(c * 1) h)",
-          "oklch(from #448d86 65% calc(c * 0.85) h)",
-          "oklch(from #448d86 80% calc(c * 0.6) h)",
-          "oklch(from #448d86 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-amber": {
-        "role": "tertiary",
-        "displayName": "图表琥珀",
-        "tonalRamp": [
-          "oklch(from #ad8044 15% calc(c * 0.35) h)",
-          "oklch(from #ad8044 25% calc(c * 0.6) h)",
-          "oklch(from #ad8044 35% calc(c * 0.85) h)",
-          "oklch(from #ad8044 45% calc(c * 1) h)",
-          "oklch(from #ad8044 55% calc(c * 1) h)",
-          "oklch(from #ad8044 65% calc(c * 0.85) h)",
-          "oklch(from #ad8044 80% calc(c * 0.6) h)",
-          "oklch(from #ad8044 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-purple": {
-        "role": "tertiary",
-        "displayName": "图表紫",
-        "tonalRamp": [
-          "oklch(from #9e6686 15% calc(c * 0.35) h)",
-          "oklch(from #9e6686 25% calc(c * 0.6) h)",
-          "oklch(from #9e6686 35% calc(c * 0.85) h)",
-          "oklch(from #9e6686 45% calc(c * 1) h)",
-          "oklch(from #9e6686 55% calc(c * 1) h)",
-          "oklch(from #9e6686 65% calc(c * 0.85) h)",
-          "oklch(from #9e6686 80% calc(c * 0.6) h)",
-          "oklch(from #9e6686 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-grid": {
-        "role": "tertiary",
-        "displayName": "图表分隔线",
-        "tonalRamp": [
-          "oklch(from #88888820 15% calc(c * 0.35) h)",
-          "oklch(from #88888820 25% calc(c * 0.6) h)",
-          "oklch(from #88888820 35% calc(c * 0.85) h)",
-          "oklch(from #88888820 45% calc(c * 1) h)",
-          "oklch(from #88888820 55% calc(c * 1) h)",
-          "oklch(from #88888820 65% calc(c * 0.85) h)",
-          "oklch(from #88888820 80% calc(c * 0.6) h)",
-          "oklch(from #88888820 95% calc(c * 0.2) h)"
-        ]
-      },
-      "chart-calendar-label": {
-        "role": "tertiary",
-        "displayName": "日历文字",
-        "tonalRamp": [
-          "oklch(from #888 15% calc(c * 0.35) h)",
-          "oklch(from #888 25% calc(c * 0.6) h)",
-          "oklch(from #888 35% calc(c * 0.85) h)",
-          "oklch(from #888 45% calc(c * 1) h)",
-          "oklch(from #888 55% calc(c * 1) h)",
-          "oklch(from #888 65% calc(c * 0.85) h)",
-          "oklch(from #888 80% calc(c * 0.6) h)",
-          "oklch(from #888 95% calc(c * 0.2) h)"
-        ]
-      },
-      "heatmap-empty": {
-        "role": "tertiary",
-        "displayName": "热力图空值",
-        "tonalRamp": [
-          "oklch(from #88888815 15% calc(c * 0.35) h)",
-          "oklch(from #88888815 25% calc(c * 0.6) h)",
-          "oklch(from #88888815 35% calc(c * 0.85) h)",
-          "oklch(from #88888815 45% calc(c * 1) h)",
-          "oklch(from #88888815 55% calc(c * 1) h)",
-          "oklch(from #88888815 65% calc(c * 0.85) h)",
-          "oklch(from #88888815 80% calc(c * 0.6) h)",
-          "oklch(from #88888815 95% calc(c * 0.2) h)"
-        ]
-      },
-      "composition": {
-        "role": "tertiary",
-        "displayName": "用量构成蓝灰",
-        "tonalRamp": [
-          "oklch(from #5d8b9e 15% calc(c * 0.35) h)",
-          "oklch(from #5d8b9e 25% calc(c * 0.6) h)",
-          "oklch(from #5d8b9e 35% calc(c * 0.85) h)",
-          "oklch(from #5d8b9e 45% calc(c * 1) h)",
-          "oklch(from #5d8b9e 55% calc(c * 1) h)",
-          "oklch(from #5d8b9e 65% calc(c * 0.85) h)",
-          "oklch(from #5d8b9e 80% calc(c * 0.6) h)",
-          "oklch(from #5d8b9e 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0336 187.1)",
+          "oklch(26% 0.0539 187.1)",
+          "oklch(38% 0.0688 187.1)",
+          "oklch(49% 0.0739 187.1)",
+          "oklch(61% 0.0696 187.1)",
+          "oklch(72% 0.0570 187.1)",
+          "oklch(84% 0.0356 187.1)",
+          "oklch(95% 0.0116 187.1)"
         ]
       },
       "heatmap-low": {
-        "role": "tertiary",
-        "displayName": "低用量青绿",
+        "role": "secondary",
+        "displayName": "较低的每日用量",
+        "canonical": "#a3d1ca",
         "tonalRamp": [
-          "oklch(from #a3d1ca 15% calc(c * 0.35) h)",
-          "oklch(from #a3d1ca 25% calc(c * 0.6) h)",
-          "oklch(from #a3d1ca 35% calc(c * 0.85) h)",
-          "oklch(from #a3d1ca 45% calc(c * 1) h)",
-          "oklch(from #a3d1ca 55% calc(c * 1) h)",
-          "oklch(from #a3d1ca 65% calc(c * 0.85) h)",
-          "oklch(from #a3d1ca 80% calc(c * 0.6) h)",
-          "oklch(from #a3d1ca 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0223 184.8)",
+          "oklch(26% 0.0358 184.8)",
+          "oklch(38% 0.0457 184.8)",
+          "oklch(49% 0.0491 184.8)",
+          "oklch(61% 0.0462 184.8)",
+          "oklch(72% 0.0378 184.8)",
+          "oklch(84% 0.0237 184.8)",
+          "oklch(95% 0.0077 184.8)"
         ]
       },
       "heatmap-mid": {
-        "role": "tertiary",
-        "displayName": "中用量青绿",
+        "role": "secondary",
+        "displayName": "中等的每日用量",
+        "canonical": "#679e94",
         "tonalRamp": [
-          "oklch(from #679e94 15% calc(c * 0.35) h)",
-          "oklch(from #679e94 25% calc(c * 0.6) h)",
-          "oklch(from #679e94 35% calc(c * 0.85) h)",
-          "oklch(from #679e94 45% calc(c * 1) h)",
-          "oklch(from #679e94 55% calc(c * 1) h)",
-          "oklch(from #679e94 65% calc(c * 0.85) h)",
-          "oklch(from #679e94 80% calc(c * 0.6) h)",
-          "oklch(from #679e94 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0273 181.7)",
+          "oklch(26% 0.0438 181.7)",
+          "oklch(38% 0.0559 181.7)",
+          "oklch(49% 0.0601 181.7)",
+          "oklch(61% 0.0566 181.7)",
+          "oklch(72% 0.0463 181.7)",
+          "oklch(84% 0.0290 181.7)",
+          "oklch(95% 0.0094 181.7)"
         ]
       },
       "heatmap-high": {
-        "role": "tertiary",
-        "displayName": "高用量青绿",
+        "role": "secondary",
+        "displayName": "较高的每日用量",
+        "canonical": "#33786c",
         "tonalRamp": [
-          "oklch(from #33786c 15% calc(c * 0.35) h)",
-          "oklch(from #33786c 25% calc(c * 0.6) h)",
-          "oklch(from #33786c 35% calc(c * 0.85) h)",
-          "oklch(from #33786c 45% calc(c * 1) h)",
-          "oklch(from #33786c 55% calc(c * 1) h)",
-          "oklch(from #33786c 65% calc(c * 0.85) h)",
-          "oklch(from #33786c 80% calc(c * 0.6) h)",
-          "oklch(from #33786c 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0328 180.2)",
+          "oklch(26% 0.0527 180.2)",
+          "oklch(38% 0.0672 180.2)",
+          "oklch(49% 0.0723 180.2)",
+          "oklch(61% 0.0680 180.2)",
+          "oklch(72% 0.0557 180.2)",
+          "oklch(84% 0.0348 180.2)",
+          "oklch(95% 0.0113 180.2)"
         ]
       },
       "chart-quota-normal": {
         "role": "tertiary",
-        "displayName": "额度曲线灰蓝",
+        "displayName": "正常额度历史",
+        "canonical": "#647d93",
         "tonalRamp": [
-          "oklch(from #647d93 15% calc(c * 0.35) h)",
-          "oklch(from #647d93 25% calc(c * 0.6) h)",
-          "oklch(from #647d93 35% calc(c * 0.85) h)",
-          "oklch(from #647d93 45% calc(c * 1) h)",
-          "oklch(from #647d93 55% calc(c * 1) h)",
-          "oklch(from #647d93 65% calc(c * 0.85) h)",
-          "oklch(from #647d93 80% calc(c * 0.6) h)",
-          "oklch(from #647d93 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0203 245.2)",
+          "oklch(26% 0.0326 245.2)",
+          "oklch(38% 0.0416 245.2)",
+          "oklch(49% 0.0447 245.2)",
+          "oklch(61% 0.0421 245.2)",
+          "oklch(72% 0.0345 245.2)",
+          "oklch(84% 0.0215 245.2)",
+          "oklch(95% 0.0070 245.2)"
         ]
       },
       "chart-quota-warning": {
         "role": "tertiary",
-        "displayName": "额度曲线橙",
+        "displayName": "预警额度历史",
+        "canonical": "#b87530",
         "tonalRamp": [
-          "oklch(from #b87530 15% calc(c * 0.35) h)",
-          "oklch(from #b87530 25% calc(c * 0.6) h)",
-          "oklch(from #b87530 35% calc(c * 0.85) h)",
-          "oklch(from #b87530 45% calc(c * 1) h)",
-          "oklch(from #b87530 55% calc(c * 1) h)",
-          "oklch(from #b87530 65% calc(c * 0.85) h)",
-          "oklch(from #b87530 80% calc(c * 0.6) h)",
-          "oklch(from #b87530 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0536 63.0)",
+          "oklch(26% 0.0861 63.0)",
+          "oklch(38% 0.1098 63.0)",
+          "oklch(49% 0.1180 63.0)",
+          "oklch(61% 0.1111 63.0)",
+          "oklch(72% 0.0910 63.0)",
+          "oklch(84% 0.0569 63.0)",
+          "oklch(95% 0.0185 63.0)"
         ]
       },
       "chart-quota-exhausted": {
         "role": "tertiary",
-        "displayName": "额度曲线红",
+        "displayName": "耗尽额度历史",
+        "canonical": "#c33f53",
         "tonalRamp": [
-          "oklch(from #c33f53 15% calc(c * 0.35) h)",
-          "oklch(from #c33f53 25% calc(c * 0.6) h)",
-          "oklch(from #c33f53 35% calc(c * 0.85) h)",
-          "oklch(from #c33f53 45% calc(c * 1) h)",
-          "oklch(from #c33f53 55% calc(c * 1) h)",
-          "oklch(from #c33f53 65% calc(c * 0.85) h)",
-          "oklch(from #c33f53 80% calc(c * 0.6) h)",
-          "oklch(from #c33f53 95% calc(c * 0.2) h)"
-        ]
-      },
-      "unpriced": {
-        "role": "tertiary",
-        "displayName": "未定价标记",
-        "tonalRamp": [
-          "oklch(from #ab743e 15% calc(c * 0.35) h)",
-          "oklch(from #ab743e 25% calc(c * 0.6) h)",
-          "oklch(from #ab743e 35% calc(c * 0.85) h)",
-          "oklch(from #ab743e 45% calc(c * 1) h)",
-          "oklch(from #ab743e 55% calc(c * 1) h)",
-          "oklch(from #ab743e 65% calc(c * 0.85) h)",
-          "oklch(from #ab743e 80% calc(c * 0.6) h)",
-          "oklch(from #ab743e 95% calc(c * 0.2) h)"
+          "oklch(15% 0.0760 15.6)",
+          "oklch(26% 0.1220 15.6)",
+          "oklch(38% 0.1557 15.6)",
+          "oklch(49% 0.1673 15.6)",
+          "oklch(61% 0.1575 15.6)",
+          "oklch(72% 0.1290 15.6)",
+          "oklch(84% 0.0806 15.6)",
+          "oklch(95% 0.0262 15.6)"
         ]
       }
     },
     "typographyMeta": {
-      "caption": {
-        "displayName": "短说明",
-        "purpose": "版本、图例等简短辅助信息；短 ID 在调用处使用等宽字体。"
+      "usage-value": {
+        "displayName": "用量主读数",
+        "purpose": "总 Tokens、估算费用和缓存命中率。"
       },
-      "small": {
-        "displayName": "紧凑说明",
-        "purpose": "同期比较、模型名和辅助时间。"
-      },
-      "monospace": {
-        "displayName": "模型与短 ID",
-        "purpose": "短 ID 与模型名使用等宽字体，只有数值采用等宽数字特性。"
-      },
-      "detail": {
-        "displayName": "表格与说明",
-        "purpose": "表格、筛选项、Tooltip 与辅助信息。"
-      },
-      "control": {
-        "displayName": "正文与控件",
-        "purpose": "正文、默认按钮、输入与导航。"
-      },
-      "dialog-title": {
-        "displayName": "弹窗标题",
-        "purpose": "对话框标题。"
+      "quota-value": {
+        "displayName": "额度主读数",
+        "purpose": "额度窗口右侧的剩余百分比。"
       },
       "page-title": {
         "displayName": "页标题",
-        "purpose": "四个主入口的页面标题。"
+        "purpose": "固定页头中的当前页面名称。"
       },
-      "compact-value": {
-        "displayName": "明细汇总",
-        "purpose": "明细页行内汇总。"
+      "dialog-title": {
+        "displayName": "弹窗标题",
+        "purpose": "定价、费用拆分和确认弹窗的标题。"
       },
-      "responsive-value": {
-        "displayName": "紧凑主指标",
-        "purpose": "紧凑布局中的概览主指标。"
+      "summary-detail": {
+        "displayName": "汇总分项",
+        "purpose": "卡片底部的分项与明细页的行内汇总。"
       },
-      "quota-value": {
-        "displayName": "额度读数",
-        "purpose": "剩余额度百分比。"
+      "section-title": {
+        "displayName": "分组标题",
+        "purpose": "设置分组与图表标题。"
       },
-      "usage-value": {
-        "displayName": "用量读数",
-        "purpose": "概览中的总 Tokens 和费用。"
+      "body": {
+        "displayName": "正文",
+        "purpose": "设置标签和界面正文。"
+      },
+      "detail": {
+        "displayName": "明细文字",
+        "purpose": "表格、筛选项和来源说明。"
+      },
+      "monospace": {
+        "displayName": "模型名",
+        "purpose": "模型表格单元格。"
+      },
+      "caption": {
+        "displayName": "短标签",
+        "purpose": "公告来源和服务标签。"
       }
     },
     "shadows": [
       {
         "name": "shadow-xs",
         "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
-        "purpose": "outline 按钮和文本输入的微弱阴影；NativeSelect 在应用主题中关闭。"
+        "purpose": "常规 outline 按钮与文本输入的边缘。"
       },
       {
         "name": "shadow-md",
         "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-        "purpose": "Popover 浮层。"
+        "purpose": "贴近触发控件的 Popover。"
       },
       {
         "name": "shadow-lg",
         "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
-        "purpose": "Dialog 弹窗。"
+        "purpose": "模态对话框及其遮罩之上的内容。"
       }
     ],
     "motion": [
       {
-        "name": "selection-transition",
-        "value": "clip-path .16s ease-out",
-        "purpose": "SlidingSelection 裁剪区域过渡；关闭动画或减少动态效果时禁用。"
+        "name": "selection",
+        "value": "clip-path 160ms ease-out",
+        "purpose": "侧栏与分段选择器的选中块。"
       },
       {
-        "name": "navigation-transition",
-        "value": "background-color .16s, color .16s",
-        "purpose": "导航悬停背景和文字变化。"
-      },
-      {
-        "name": "control-transition",
-        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
-        "purpose": "组件库按钮与输入的状态过渡。"
-      },
-      {
-        "name": "chart-animation",
+        "name": "chart-entry",
         "value": "220ms",
-        "purpose": "图表动画；应用设置与减少动态效果均可关闭。"
+        "purpose": "用量和额度图表入场。"
       },
       {
-        "name": "tooltip-delay",
+        "name": "reading",
+        "value": "240ms ease-out",
+        "purpose": "用量与额度主读数滚动，以及缓存命中率的条宽变化。"
+      },
+      {
+        "name": "source-tooltip-delay",
         "value": "200ms",
-        "purpose": "本机日志统计范围提示的悬停延迟。"
+        "purpose": "悬停后显示统计范围说明。"
       }
     ],
     "breakpoints": [
       {
-        "name": "quota-columns",
-        "value": "820px"
-      },
-      {
-        "name": "usage-summary",
-        "value": "1100px"
-      },
-      {
-        "name": "compact-desktop",
+        "name": "viewport-compact",
         "value": "960px"
+      },
+      {
+        "name": "overview-container-summary",
+        "value": "780px"
+      },
+      {
+        "name": "overview-table-container-model",
+        "value": "800px"
+      },
+      {
+        "name": "viewport-quota-columns",
+        "value": "820px"
       }
     ]
   },
   "components": [
     {
-      "name": "保存按钮",
+      "name": "保存",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "default variant；32px，提交编辑。",
+      "description": "提交当前编辑。",
       "html": "<button type=\"button\" class=\"ds-button\">保存</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:32px;padding:4px 12px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--primary, #286fae);color:var(--primary-foreground, #fff)}.ds-button:hover{background:color-mix(in srgb,var(--primary, #286fae) 90%,transparent);}.ds-button:focus-visible{outline: 2px solid var(--primary-foreground, #fff); outline-offset: -3px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "css": ":host { color-scheme: light dark; }\n.ds-button {display:inline-flex;align-items:center;justify-content:center;height:32px;padding:4px 12px;border:0;border-radius:6px;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;cursor:pointer;background:var(--primary, light-dark(#286fae, #3178b7));color:var(--primary-foreground, #fff)}\n.ds-button:hover {background:color-mix(in srgb, var(--primary, light-dark(#286fae, #3178b7)) 90%, transparent)}\n.ds-button:focus-visible {outline:2px solid var(--primary-foreground, #fff);outline-offset:-3px}\n.ds-button:disabled {opacity:.5;pointer-events:none}"
     },
     {
       "name": "普通操作",
       "kind": "button",
       "refersTo": "button-outline",
-      "description": "outline / sm；28px，普通命令。",
+      "description": "打开模型定价。",
       "html": "<button type=\"button\" class=\"ds-button\">管理定价…</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border-radius:6px;border:1px solid var(--border, #dedfe2);font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:28px;padding:3px 10px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--background, #fafafa);color:var(--foreground, #252629);font-size:12px;box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05)}.ds-button:hover{background:var(--accent, #e6e9ed);}.ds-button:focus-visible{outline: 2px solid var(--primary, #286fae); outline-offset: -2px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "css": ":host { color-scheme: light dark; }\n.ds-button {display:inline-flex;align-items:center;justify-content:center;height:28px;padding:3px 10px;border:0;border-radius:6px;font:500 12px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;cursor:pointer;background:var(--background, light-dark(#fafafa, #18191c));color:var(--foreground, light-dark(#252629, #e9eaed));border:1px solid var(--border, light-dark(#dedfe2, #34363d));box-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05)}\n.ds-button:hover {background:var(--accent, light-dark(#e6e9ed, #32353b))}\n.ds-button:focus-visible {outline:2px solid var(--primary, light-dark(#286fae, #3178b7));outline-offset:-2px}\n.ds-button:disabled {opacity:.5;pointer-events:none}\n@media (prefers-color-scheme: dark) {.ds-button {background:color-mix(in srgb,var(--input, light-dark(#d7d9dd, #424650)) 30%,transparent);border-color:var(--input, light-dark(#d7d9dd, #424650))}.ds-button:hover {background:color-mix(in srgb,var(--input, light-dark(#d7d9dd, #424650)) 50%,transparent)}}"
     },
     {
-      "name": "返回图表",
+      "name": "行内操作",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "用量趋势的日 / 小时柱和当前筛选内的热力图日期可进入全局逐条记录，沿用服务与模型筛选，清空搜索，并将所点时段与原统计范围取交集。时间控件保留自动带入的秒及毫秒边界，来源行显示实际范围；右侧使用 ghost / sm“返回图表”按钮。返回按钮与侧栏“用量”共用恢复逻辑，恢复原服务、模型、时间和图表筛选，明细筛选不覆盖返回状态。",
-      "html": "<button type=\"button\" class=\"ds-button\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m15 18-6-6 6-6\" /></svg>返回图表</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:28px;padding:3px 10px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:transparent;color:var(--foreground, #252629);font-size:12px}.ds-button:hover{background:var(--accent, #e6e9ed);}.ds-button:focus-visible{outline: 2px solid var(--primary, #286fae); outline-offset: -2px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}.ds-button svg{flex-shrink:0;pointer-events:none}"
+      "description": "在定价列表中编辑一行。",
+      "html": "<button type=\"button\" class=\"ds-button\">编辑…</button>",
+      "css": ":host { color-scheme: light dark; }\n.ds-button {display:inline-flex;align-items:center;justify-content:center;height:28px;padding:3px 10px;border:0;border-radius:6px;font:500 12px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;cursor:pointer;background:transparent;color:var(--foreground, light-dark(#252629, #e9eaed))}\n.ds-button:hover {background:var(--accent, light-dark(#e6e9ed, #32353b))}\n.ds-button:focus-visible {outline:2px solid var(--primary, light-dark(#286fae, #3178b7));outline-offset:-2px}\n.ds-button:disabled {opacity:.5;pointer-events:none}"
     },
     {
-      "name": "删除确认",
+      "name": "确认清除",
       "kind": "button",
       "refersTo": "button-destructive",
-      "description": "destructive；32px，已确认的破坏性操作。",
+      "description": "在确认弹窗中清除所选服务的历史。",
       "html": "<button type=\"button\" class=\"ds-button\">清除历史</button>",
-      "css": ".ds-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;border-radius:6px;border:0;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;height:32px;padding:4px 12px;cursor:pointer;transition:all 150ms cubic-bezier(0.4, 0, 0.2, 1);background:var(--destructive, #bd354b);color:var(--primary-foreground, #fff)}.ds-button:hover{background:color-mix(in srgb,var(--destructive, #bd354b) 90%,transparent);}.ds-button:focus-visible{outline: 2px solid var(--primary-foreground, #fff); outline-offset: -3px;}.ds-button:disabled{opacity:.5;pointer-events:none}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "css": ":host { color-scheme: light dark; }\n.ds-button {display:inline-flex;align-items:center;justify-content:center;height:32px;padding:4px 12px;border:0;border-radius:6px;font:500 13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;cursor:pointer;background:var(--destructive, light-dark(#bd354b, #e47786));color:var(--primary-foreground, #fff)}\n.ds-button:hover {background:color-mix(in srgb, var(--destructive, light-dark(#bd354b, #e47786)) 90%, transparent)}\n.ds-button:focus-visible {outline:2px solid var(--primary-foreground, #fff);outline-offset:-3px}\n.ds-button:disabled {opacity:.5;pointer-events:none}\n@media (prefers-color-scheme: dark) {.ds-button {background:color-mix(in srgb,var(--destructive, light-dark(#bd354b, #e47786)) 60%,transparent)}.ds-button:hover {background:color-mix(in srgb,var(--destructive, light-dark(#bd354b, #e47786)) 90%,transparent)}}"
     },
     {
-      "name": "数字输入",
+      "name": "刷新间隔",
       "kind": "input",
       "refersTo": "input",
-      "description": "刷新间隔数字输入；32px，原生步进及内侧焦点。",
-      "html": "<label class=\"ds-field\">刷新间隔（秒）<input class=\"ds-input\" type=\"number\" min=\"30\" value=\"60\" /></label>",
-      "css": ".ds-field{display:grid;gap:7px;font:12px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;color:var(--foreground, #252629)}.ds-input{border: 1px solid var(--input, #d7d9dd); background: var(--card, #fff); color: var(--foreground, #252629); border-radius: 6px; height: 32px; padding: 4px 9px; line-height: 20px;font:13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;caret-color:var(--primary, #286fae)}.ds-input:focus-visible{border-color:var(--primary, #286fae);outline:2px solid var(--primary, #286fae);outline-offset:-2px}.ds-input:disabled{opacity:.5;cursor:default}"
+      "description": "原生数字输入保留步进和内侧焦点。",
+      "html": "<label class=\"ds-field\">刷新间隔（秒）<input class=\"ds-input\" type=\"number\" min=\"30\" value=\"60\"></label>",
+      "css": ":host { color-scheme: light dark; }\n.ds-field {display:grid;gap:7px;color:var(--foreground, light-dark(#252629, #e9eaed));font:12px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}\n.ds-input {height:32px;padding:4px 9px;border:1px solid var(--input, light-dark(#d7d9dd, #424650));border-radius:6px;background:var(--card, light-dark(#fff, #202125));color:var(--foreground, light-dark(#252629, #e9eaed));font:13px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}\n.ds-input:focus-visible {outline:2px solid var(--primary, light-dark(#286fae, #3178b7));outline-offset:-2px;border-color:var(--primary, light-dark(#286fae, #3178b7))}"
     },
     {
-      "name": "侧栏导航",
+      "name": "主导航",
       "kind": "nav",
       "refersTo": "sidebar-item",
-      "description": "四入口：用量、明细、额度、设置。片段展示默认选中态；应用使用 SlidingSelection。",
-      "html": "<nav class=\"ds-nav\" aria-label=\"主导航\"><button class=\"ds-nav-item\" aria-current=\"page\">用量</button><button class=\"ds-nav-item\">明细</button><button class=\"ds-nav-item\">额度</button><button class=\"ds-nav-item ds-settings\">设置</button></nav>",
-      "css": ".ds-nav{display:grid;gap:3px;width:168px;padding:12px;background:var(--sidebar, #f2f3f4);font:13px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}.ds-nav-item{display: flex; align-items: center; width: 100%; min-height: 36px; gap: 10px; padding: 0 10px; border-radius: 6px; color: var(--foreground, #252629); text-align: left; transition: background-color .16s, color .16s;border:0;background:transparent;font:inherit;cursor:pointer}.ds-nav-item:hover{background: var(--accent, #e6e9ed);}.ds-nav-item[aria-current=page]{background:var(--primary, #286fae);color:var(--primary-foreground, #fff);font-weight:600}.ds-settings{margin-top: 12px;}.ds-nav-item:focus-visible{outline:2px solid var(--primary, #286fae);outline-offset:-2px}.ds-nav-item[aria-current=page]:focus-visible{outline-color:var(--primary-foreground, #fff)}@media(prefers-reduced-motion:reduce){.ds-button,.ds-nav-item{transition:none}}"
+      "description": "当前页使用蓝底白字，设置与三个数据入口分隔。",
+      "html": "<nav class=\"ds-nav\" aria-label=\"主导航\"><button type=\"button\" class=\"ds-nav-item\" aria-current=\"page\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 16v5\"></path><path d=\"M16 14.639V21\"></path><path d=\"M20 10.656V21\"></path><path d=\"m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15\"></path><path d=\"M4 18.463V21\"></path><path d=\"M8 14.656V21\"></path></svg>用量</button><button type=\"button\" class=\"ds-nav-item\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 5h.01\"></path><path d=\"M3 12h.01\"></path><path d=\"M3 19h.01\"></path><path d=\"M8 5h13\"></path><path d=\"M8 12h13\"></path><path d=\"M8 19h13\"></path></svg>明细</button><button type=\"button\" class=\"ds-nav-item\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z\"></path><path d=\"M21.21 15.89A10 10 0 1 1 8 2.83\"></path></svg>额度</button><button type=\"button\" class=\"ds-nav-item\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle></svg>设置</button></nav>",
+      "css": ":host { color-scheme: light dark; }\n.ds-nav {display:grid;gap:3px;width:168px;padding:12px;background:var(--sidebar, light-dark(#f2f3f4, #131417))}\n.ds-nav-item {display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--foreground, light-dark(#252629, #e9eaed));font:400 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;cursor:pointer}\n.ds-nav-item:last-child {margin-top:12px}\n.ds-nav-item:hover {background:var(--accent, light-dark(#e6e9ed, #32353b))}\n.ds-nav-item[aria-current] {background:var(--primary, light-dark(#286fae, #3178b7));color:var(--primary-foreground, #fff);font-weight:600}\n.ds-nav-item:focus-visible {outline:2px solid var(--primary, light-dark(#286fae, #3178b7));outline-offset:-2px}\n.ds-nav-item[aria-current]:focus-visible {outline-color:var(--primary-foreground, #fff)}"
     },
     {
-      "name": "内容表面",
-      "kind": "card",
-      "refersTo": "surface",
-      "description": "卡片使用单层细边框、10px 圆角和18px内边距。",
-      "html": "<section class=\"ds-surface\"><h2 class=\"ds-heading\">额度监测</h2><p class=\"ds-copy\">Codex</p></section>",
-      "css": ".ds-surface{border: 1px solid var(--border, #dedfe2); border-radius: 10px; background: var(--card, #fff); padding: 18px; min-width: 0;color:var(--foreground, #252629);font:13px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}.ds-heading{font-size:13px;font-weight:600;margin:0 0 14px}.ds-copy{margin:0}"
-    },
-    {
-      "name": "等宽时段选择",
+      "name": "额度趋势时段",
       "kind": "custom",
       "refersTo": "segmented",
-      "description": "额度趋势的两个选项等宽；原生 radio 支持 Tab 与方向键，应用叠加160ms滑动高亮。",
-      "html": "<div class=\"ds-segments\" role=\"group\" aria-label=\"额度趋势时间范围\"><label class=\"ds-segment\"><input type=\"radio\" name=\"ds-quota-period\" value=\"24\" checked />24 小时</label><label class=\"ds-segment\"><input type=\"radio\" name=\"ds-quota-period\" value=\"168\" />7 天</label></div>",
-      "css": ".ds-segments{display:inline-grid;grid-template-columns:repeat(2,1fr);padding:3px;border-radius:7px;background:var(--secondary, #eceef0);font:12px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}.ds-segment{position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; min-height: 22px; padding: 2px 10px; line-height: 18px; white-space: nowrap; border-radius: 5px; color: var(--muted, #686c72); font-size: 12px;}.ds-segment input{position:absolute;width:1px;height:1px;padding:0;border:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.ds-segment:hover{color:var(--foreground, #252629)}.ds-segment:has(input:checked){background:var(--primary, #286fae);color:var(--primary-foreground, #fff);font-weight:500}.ds-segment:has(input:focus-visible){outline:2px solid var(--primary, #286fae);outline-offset:-2px}.ds-segment:has(input:checked:focus-visible){outline-color:var(--primary-foreground, #fff)}"
+      "description": "等宽的时段选项支持 Tab 和方向键。",
+      "html": "<div class=\"ds-segments\" role=\"group\" aria-label=\"额度趋势时间范围\"><label class=\"ds-option\"><input type=\"radio\" name=\"period\" checked>24 小时</label><label class=\"ds-option\"><input type=\"radio\" name=\"period\">7 天</label></div>",
+      "css": ":host { color-scheme: light dark; }\n.ds-segments {display:inline-grid;grid-template-columns:repeat(2,1fr);padding:3px;border-radius:7px;background:var(--secondary, light-dark(#eceef0, #2a2c31));font:12px/18px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}\n.ds-option {position:relative;display:grid;place-items:center;min-height:22px;padding:2px 10px;border-radius:5px;color:var(--muted, light-dark(#686c72, #a3a7af));cursor:pointer}\n.ds-option input {position:absolute;width:1px;height:1px;clip-path:inset(50%)}\n.ds-option:hover {color:var(--foreground, light-dark(#252629, #e9eaed))}\n.ds-option:has(:checked) {font-weight:500;color:var(--primary-foreground, #fff);background:var(--primary, light-dark(#286fae, #3178b7))}\n.ds-option:has(:focus-visible) {outline:2px solid var(--primary, light-dark(#286fae, #3178b7));outline-offset:-2px}\n.ds-option:has(:checked:focus-visible) {outline-color:var(--primary-foreground, #fff)}"
     },
     {
-      "name": "日志范围提示",
+      "name": "额度窗口",
+      "kind": "card",
+      "refersTo": "quota-window",
+      "description": "右侧读剩余比例，条下读重置时间。",
+      "html": "<section class=\"ds-quota\"><div class=\"ds-row\"><span>5 小时额度</span><strong class=\"ds-reading\">72%</strong></div><div class=\"ds-track\" aria-hidden=\"true\"><span></span></div><div class=\"ds-times\"><span class=\"ds-count\"><b>3</b> 小时 <b>30</b> 分</span><span>重置 · 11/28 14:33</span></div></section>",
+      "css": ":host { color-scheme: light dark; }\n.ds-quota {padding:18px;border:1px solid var(--border, light-dark(#dedfe2, #34363d));border-radius:10px;background:var(--card, light-dark(#fff, #202125));color:var(--foreground, light-dark(#252629, #e9eaed));font:13px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;font-variant-numeric:tabular-nums}\n.ds-row,.ds-times {display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}\n.ds-reading {font-size:22px;font-weight:600;color:var(--quota-normal, light-dark(#63798c, #96adbf))}\n.ds-track {height:6px;background:var(--secondary, light-dark(#eceef0, #2a2c31));border-radius:3px;overflow:hidden;margin:8px 0}\n.ds-track span {display:block;width:72%;height:100%;border-radius:inherit;background:var(--quota-normal, light-dark(#63798c, #96adbf))}\n.ds-times {font-size:12px;color:var(--muted, light-dark(#686c72, #a3a7af))}\n.ds-count {color:var(--deadline-urgent, light-dark(#b45214, #efa063))}\n.ds-count b {font-weight:600}"
+    },
+    {
+      "name": "模型占比",
       "kind": "custom",
-      "refersTo": "source-tooltip",
-      "description": "ghost / icon-xs 帮助入口；显示本地时区与包含开始、不包含结束的统计口径。片段展示 hover/focus，实际应用由 Reka Tooltip 管理延迟、Esc 与浮层定位。",
-      "html": "<div class=\"ds-source\"><span>本机日志</span><button class=\"ds-help\" aria-label=\"统计范围说明\" aria-describedby=\"ds-source-tip\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3\"/><path d=\"M12 17h.01\"/></svg></button><span class=\"ds-tip\" role=\"tooltip\" id=\"ds-source-tip\">包含本机已采集历史，可能来自多个账号；不代表当前账号或其他设备的全部用量。时间按本地时区计算，包含开始、不包含结束。</span></div>",
-      "css": ".ds-source{display:flex;align-items:center;gap:2px;position:relative;color:var(--muted, #686c72);font:12px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif}.ds-help{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:0;border-radius:6px;background:transparent;color:inherit;cursor:help}.ds-help:hover{background:var(--accent, #e6e9ed);color:var(--foreground, #252629)}.ds-help:focus-visible{outline:2px solid var(--primary, #286fae);outline-offset:-2px}.ds-tip{z-index: 50; max-width: 280px; padding: 10px 12px; border: 1px solid var(--border, #dedfe2); border-radius: 6px; background: var(--popover, #fff); color: var(--foreground, #252629); font-size: 12px; line-height: 1.6;position:absolute;left:0;top:calc(100% + 6px);width:256px;visibility:hidden}.ds-source:has(.ds-help:hover) .ds-tip,.ds-source:has(.ds-help:focus-visible) .ds-tip,.ds-tip:hover{visibility:visible}"
+      "refersTo": "model-share",
+      "description": "Tokens 与费用使用相同的百分比尺度，数字与列标题右对齐。",
+      "html": "<table class=\"ds-shares\"><thead><tr><th>Tokens 占比</th><th>费用占比</th></tr></thead><tbody><tr><td><span class=\"ds-share\" style=\"--ds-share:85.9%\">85.9%</span></td><td><span class=\"ds-share\" style=\"--ds-share:98.7%\">98.7%</span></td></tr></tbody></table>",
+      "css": ":host { color-scheme: light dark; }\n.ds-shares {border-collapse:collapse;color:var(--foreground, light-dark(#252629, #e9eaed));background:var(--card, light-dark(#fff, #202125));font:12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;font-variant-numeric:tabular-nums}\n.ds-shares th {padding:10px 13px;text-align:right;color:var(--muted, light-dark(#686c72, #a3a7af));font-weight:500;border-bottom:1px solid var(--border, light-dark(#dedfe2, #34363d))}\n.ds-shares td {width:100px;padding:10px 4px;text-align:right}\n.ds-share {display:block;position:relative;isolation:isolate;border-radius:2px;overflow:hidden;line-height:26px;padding-right:9px;background:color-mix(in srgb,var(--muted, light-dark(#686c72, #a3a7af)) 6%,transparent)}\n.ds-share::before {content:\"\";position:absolute;inset:0 auto 0 0;width:var(--ds-share, 0%);background:color-mix(in srgb,var(--primary, light-dark(#286fae, #3178b7)) 29%,transparent);z-index:-1}"
     },
     {
-      "name": "日期时间输入",
-      "kind": "input",
-      "description": "自定义范围使用 28px 原生 datetime-local 输入，包含开始、不包含结束；图表跳转保留秒及毫秒边界。片段展示开始时间。",
-      "html": "<label class=\"ds-date-field\">开始 <input type=\"datetime-local\" step=\"any\" value=\"2026-11-12T15:05:30.125\" max=\"2026-11-12T16:00\" required /></label>",
-      "css": ".ds-date-field{display: flex; align-items: center; gap: 8px;font:13px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;color:var(--foreground, #252629)}.ds-date-field input{border:1px solid var(--input, #d7d9dd);background:var(--card, #fff);color:var(--foreground, #252629);border-radius:6px;height:28px;padding:3px 9px;line-height:20px;font-size:12px;font-variant-numeric:tabular-nums;font-family:inherit;caret-color:var(--primary, #286fae)}.ds-date-field input:focus-visible{outline: 2px solid var(--primary, #286fae); outline-offset: -2px;border-color:var(--primary, #286fae)}"
+      "name": "公告来源",
+      "kind": "chip",
+      "refersTo": "source-badge",
+      "description": "公开重置动态标题旁的来源标签。",
+      "html": "<span class=\"ds-tag\">AIHOT</span>",
+      "css": ":host { color-scheme: light dark; }\n.ds-tag {display:inline-block;padding:1px 6px;border-radius:4px;background:var(--secondary, light-dark(#eceef0, #2a2c31));color:var(--muted, light-dark(#686c72, #a3a7af));font:500 10px/14px -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;letter-spacing:.02em}"
     }
   ],
   "narrative": {
-    "northStar": "克制、清晰、紧凑的跨平台桌面仪表盘",
-    "overview": "沿用现有桌面工具的视觉秩序：稳定的侧栏、紧凑的数字、清晰的表格和图表。主界面由 Tauri WebView 内的 Vue 3、shadcn-vue 与 Apache ECharts 实现，采用用量、明细、额度、设置四个入口。以系统字体、明确分组和原生控件支持查看额度与比较用量，不引入装饰性品牌重设计。\n\n实际样式源为 `src/style.css`，交互源为 `src/App.vue` 与 `src/components/`。`src/components/ui/` 由 shadcn-vue CLI 生成；使用其 size、variant 接口和主题变量，覆盖放在调用层或样式源中，不手改生成组件。图标采用当前官方 `@lucide/vue` 包，统一线性图标。",
+    "northStar": "紧凑的桌面仪表盘",
+    "overview": "在 Codex Quota 的桌面主窗口里，开发者既能快速判断还剩多少额度，也能查到哪个模型或项目消耗最多。额度页把剩余比例和重置时间放在同一视线内。用量页先给出总数，再让人沿着趋势、模型和单条记录核对消耗。\n\n侧栏和页头提供稳定的位置。最大的字留给读数。期间、单位和数据来源贴近对应数字。控件使用简短中文名称，Codex、Antigravity 和模型名保留原文。",
     "keyCharacteristics": [
-      "四入口侧栏与紧凑桌面布局。",
-      "跟随系统浅深色，使用系统字体与等宽数字。",
-      "Tokens 与费用并列展示，保留缺失、未定价与估算标识。",
-      "简短中文控件名称、原生键盘行为与内侧焦点。"
+      "用量、明细、额度、设置四个入口共用一个桌面窗口。",
+      "跟随系统浅深色，以系统字体和等宽数字呈现密集数据。",
+      "颜色分别表达所选项、服务、额度状态和剩余时间。",
+      "未知、未定价、过期和真实零值各有对应的显示方式。"
     ],
     "rules": [],
     "dos": [
-      "Do 复用组件的 size、variant 和主题变量，保留表单标签、键盘操作与可见内侧焦点。",
-      "Do 让数值、单位、正负号与状态色共同表达信息；保留完整值的查看入口。",
-      "Do 让明细筛选和标题行保持自身高度，仅由表格内容区承担剩余高度与滚动。",
-      "Do 区分缺失、未定价、真实零值与估算，保留数据来源及过期状态。"
+      "Do 让数字与其单位、时段和来源靠近。紧凑显示的计数提供查看完整值的入口。",
+      "Do 使用当前主题和控件已有的尺寸、变体，保留原生选择、键盘操作与内侧焦点。",
+      "Do 用文字、符号或图例与颜色共同表达服务、状态和变化。"
     ],
     "donts": [
-      "Don't 手改生成组件或生成索引；修改源头后重新生成。",
-      "Don't 用负边距、固定偏移或外扩焦点掩盖布局问题。",
-      "Don't 添加重复解释布局的文案、无关装饰或未经确认的展示字体。",
-      "Don't 把离线示例、源码支持或编译通过写成真实服务与系统交互验收通过。"
+      "Don't 用 0% 或满格进度条填补未知额度，将缺失定价显示为免费，或将过期快照显示为刚刚读取。",
+      "Don't 为解释布局重复写标题、提示或状态标签。保留能帮助用户选择、核对或处理错误的文字。"
     ]
   }
 }

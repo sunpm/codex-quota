@@ -1,130 +1,119 @@
 ---
-name: Codex Quota
-description: 简洁、紧凑的 macOS 与 Windows 额度和用量工具。
+name: "Codex Quota"
+description: "查看 Codex 与 Antigravity 剩余额度和本地用量的桌面仪表盘。"
 colors:
   background-light: "#fafafa"
-  foreground-light: "#252629"
-  card-light: "#fff"
-  popover-light: "#fff"
-  sidebar-light: "#f2f3f4"
-  primary-light: "#286fae"
-  primary-foreground-light: "#fff"
-  secondary-light: "#eceef0"
-  accent-light: "#e6e9ed"
-  muted-light: "#686c72"
-  border-light: "#dedfe2"
-  input-light: "#d7d9dd"
-  destructive-light: "#bd354b"
-  usage-increase-light: "#bd354b"
-  usage-decrease-light: "#287448"
-  chart-text-light: "#666b72"
-  quota-normal-light: "#63798c"
-  quota-warning-light: "#ae661f"
-  quota-exhausted-light: "#bd354b"
-  deadline-normal-light: "#287448"
-  deadline-warning-light: "#866a08"
-  deadline-urgent-light: "#b45214"
-  deadline-critical-light: "#bd354b"
-  warning-surface-light: "#fff7ec"
-  warning-text-light: "#86531e"
   background-dark: "#18191c"
+  foreground-light: "#252629"
   foreground-dark: "#e9eaed"
-  card-dark: "#202125"
-  popover-dark: "#27292e"
+  sidebar-light: "#f2f3f4"
   sidebar-dark: "#131417"
-  primary-dark: "#3178b7"
-  primary-foreground-dark: "#fff"
-  secondary-dark: "#2a2c31"
-  accent-dark: "#32353b"
-  muted-dark: "#a3a7af"
+  card-light: "#fff"
+  card-dark: "#202125"
+  popover-light: "#fff"
+  popover-dark: "#27292e"
+  border-light: "#dedfe2"
   border-dark: "#34363d"
+  input-light: "#d7d9dd"
   input-dark: "#424650"
+  secondary-light: "#eceef0"
+  secondary-dark: "#2a2c31"
+  muted-light: "#686c72"
+  muted-dark: "#a3a7af"
+  accent-light: "#e6e9ed"
+  accent-dark: "#32353b"
+  primary-light: "#286fae"
+  primary-dark: "#3178b7"
+  primary-foreground-light: "#fff"
+  primary-foreground-dark: "#fff"
+  destructive-light: "#bd354b"
   destructive-dark: "#e47786"
+  usage-increase-light: "#bd354b"
   usage-increase-dark: "#e47786"
+  usage-decrease-light: "#287448"
   usage-decrease-dark: "#78c99a"
+  chart-text-light: "#666b72"
   chart-text-dark: "#a3a7af"
+  quota-normal-light: "#63798c"
   quota-normal-dark: "#96adbf"
+  quota-warning-light: "#ae661f"
   quota-warning-dark: "#e5a05b"
+  quota-exhausted-light: "#bd354b"
   quota-exhausted-dark: "#e47786"
+  deadline-normal-light: "#287448"
   deadline-normal-dark: "#78c99a"
+  deadline-warning-light: "#866a08"
   deadline-warning-dark: "#dfc55b"
+  deadline-urgent-light: "#b45214"
   deadline-urgent-dark: "#efa063"
+  deadline-critical-light: "#bd354b"
   deadline-critical-dark: "#e47786"
+  unpriced-light: "#ab743e"
+  unpriced-dark: "#e5a05b"
+  warning-surface-light: "#fff7ec"
   warning-surface-dark: "#2d2620"
+  warning-text-light: "#86531e"
   warning-text-dark: "#e5b983"
-  chart-blue: "#3279bd"
-  chart-teal: "#448d86"
-  chart-amber: "#ad8044"
-  chart-purple: "#9e6686"
-  chart-grid: "#88888820"
-  chart-calendar-label: "#888"
-  heatmap-empty: "{colors.secondary-light}"
-  composition: "#5d8b9e"
+  service-codex: "#3279bd"
+  service-antigravity: "#448d86"
   heatmap-low: "#a3d1ca"
   heatmap-mid: "#679e94"
   heatmap-high: "#33786c"
   chart-quota-normal: "#647d93"
   chart-quota-warning: "#b87530"
   chart-quota-exhausted: "#c33f53"
-  unpriced: "#ab743e"
 typography:
-  caption:
+  usage-value:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "10px"
-    fontWeight: 400
-  small:
+    fontSize: "30px"
+    fontWeight: 600
+    lineHeight: 1.15
+    letterSpacing: "-0.025em"
+  quota-value:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "11px"
-    fontWeight: 400
-  monospace:
-    fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace"
-    fontSize: "11px"
-    fontWeight: 400
-  detail:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "12px"
-    fontWeight: 400
-  control:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "13px"
-    fontWeight: 400
-  dialog-title:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "16px"
+    fontSize: "22px"
     fontWeight: 600
   page-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
     fontSize: "18px"
     fontWeight: 600
-  compact-value:
+    letterSpacing: "-0.2px"
+  dialog-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "13px"
+    fontSize: "16px"
     fontWeight: 600
   summary-detail:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
     fontSize: "14px"
     fontWeight: 600
-  responsive-value:
+  section-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "23px"
+    fontSize: "13px"
     fontWeight: 600
-  quota-value:
+  body:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "24px"
-    fontWeight: 600
-  usage-value:
+    fontSize: "13px"
+    fontWeight: 400
+  detail:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
-    fontSize: "30px"
-    fontWeight: 600
+    fontSize: "12px"
+    fontWeight: 400
+  monospace:
+    fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace"
+    fontSize: "11px"
+    fontWeight: 400
+  caption:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif"
+    fontSize: "10px"
+    fontWeight: 500
 rounded:
   cell: "2px"
   progress: "3px"
-  control-small: "4px"
+  tag: "4px"
   selection: "5px"
   control: "6px"
   selection-track: "7px"
   card: "10px"
-  large: "12px"
 spacing:
   tight: "4px"
   related: "8px"
@@ -137,44 +126,60 @@ components:
     backgroundColor: "{colors.primary-light}"
     textColor: "{colors.primary-foreground-light}"
     rounded: "{rounded.control}"
-    padding: "4px 12px"
     height: "32px"
+    padding: "4px 12px"
   button-outline:
     backgroundColor: "{colors.background-light}"
     textColor: "{colors.foreground-light}"
     rounded: "{rounded.control}"
-    padding: "3px 10px"
     height: "28px"
+    padding: "3px 10px"
   button-ghost:
+    textColor: "{colors.foreground-light}"
     rounded: "{rounded.control}"
-    padding: "3px 10px"
     height: "28px"
+    padding: "3px 10px"
   button-destructive:
     backgroundColor: "{colors.destructive-light}"
     textColor: "{colors.primary-foreground-light}"
     rounded: "{rounded.control}"
+    height: "32px"
     padding: "4px 12px"
-    height: "32px"
   input:
+    backgroundColor: "{colors.card-light}"
+    textColor: "{colors.foreground-light}"
     rounded: "{rounded.control}"
-    typography: "{typography.control}"
-    padding: "4px 9px"
+    typography: "{typography.body}"
     height: "32px"
-  segmented:
-    rounded: "{rounded.selection-track}"
-    padding: "3px"
-    height: "28px"
-  source-tooltip:
-    rounded: "{rounded.control}"
-    typography: "{typography.detail}"
-    padding: "10px 12px"
-  surface:
-    rounded: "{rounded.card}"
-    padding: "{spacing.surface}"
+    padding: "4px 9px"
   sidebar-item:
     rounded: "{rounded.control}"
-    typography: "{typography.control}"
+    typography: "{typography.body}"
     height: "36px"
+    padding: "0 10px"
+  segmented:
+    backgroundColor: "{colors.secondary-light}"
+    rounded: "{rounded.selection-track}"
+    height: "28px"
+    padding: "3px"
+  quota-window:
+    textColor: "{colors.quota-normal-light}"
+    typography: "{typography.quota-value}"
+  model-share:
+    textColor: "{colors.foreground-light}"
+    rounded: "{rounded.cell}"
+    typography: "{typography.detail}"
+    height: "26px"
+  source-badge:
+    backgroundColor: "{colors.secondary-light}"
+    textColor: "{colors.muted-light}"
+    rounded: "{rounded.tag}"
+    typography: "{typography.caption}"
+    padding: "1px 6px"
+  surface:
+    backgroundColor: "{colors.card-light}"
+    rounded: "{rounded.card}"
+    padding: "{spacing.surface}"
   metric-value:
     typography: "{typography.usage-value}"
 ---
@@ -183,127 +188,116 @@ components:
 
 ## Overview
 
-**Creative North Star: "克制、清晰、紧凑的跨平台桌面仪表盘"**
+**Creative North Star: "紧凑的桌面仪表盘"**
 
-沿用现有桌面工具的视觉秩序：稳定的侧栏、紧凑的数字、清晰的表格和图表。主界面由 Tauri WebView 内的 Vue 3、shadcn-vue 与 Apache ECharts 实现，采用用量、明细、额度、设置四个入口。以系统字体、明确分组和原生控件支持查看额度与比较用量，不引入装饰性品牌重设计。
+在 Codex Quota 的桌面主窗口里，开发者既能快速判断还剩多少额度，也能查到哪个模型或项目消耗最多。额度页把剩余比例和重置时间放在同一视线内。用量页先给出总数，再让人沿着趋势、模型和单条记录核对消耗。
 
-实际样式源为 `src/style.css`，交互源为 `src/App.vue` 与 `src/components/`。`src/components/ui/` 由 shadcn-vue CLI 生成；使用其 size、variant 接口和主题变量，覆盖放在调用层或样式源中，不手改生成组件。图标采用当前官方 `@lucide/vue` 包，统一线性图标。
+侧栏和页头提供稳定的位置。最大的字留给读数。期间、单位和数据来源贴近对应数字。控件使用简短中文名称，Codex、Antigravity 和模型名保留原文。
 
 **Key Characteristics:**
 
-- 四入口侧栏与紧凑桌面布局。
-- 跟随系统浅深色，使用系统字体与等宽数字。
-- Tokens 与费用并列展示，保留缺失、未定价与估算标识。
-- 简短中文控件名称、原生键盘行为与内侧焦点。
+- 用量、明细、额度、设置四个入口共用一个桌面窗口。
+- 跟随系统浅深色，以系统字体和等宽数字呈现密集数据。
+- 颜色分别表达所选项、服务、额度状态和剩余时间。
+- 未知、未定价、过期和真实零值各有对应的显示方式。
 
 ## Colors
 
-界面跟随操作系统浅深色。深色主题以近黑的侧栏和主背景承托逐层提亮的卡片、浮层，降低大面积灰感并保留文字对比度。背景、内容表面、侧栏、边框、主文字和次要文字分别使用语义变量。蓝色用于选中导航、单选项与提交动作；额度的正常、预警、耗尽状态独立使用灰蓝、橙和红，并保留实际数字。颜色不能把未知数据伪装为正常。
+按要回答的问题选色。下表的变量来自桌面主题。浅深值按列内的用途顺序排列。[主题样式](src/style.css)
 
-图表按需引入 ECharts 模块。热力图用低至高的青绿色量阶表示每日 Tokens 用量，费用与未定价记录保留在悬停提示中；金额缺失不显示为零。系统字体和图表字体遵循系统外观，不加载远程字体。
+| 用途 | 浅色 | 深色 | 组件与用法 |
+| --- | --- | --- | --- |
+| 当前选项、主要操作（`--primary`） | `#286fae` | `#3178b7` | 侧栏选中行、分段选项和保存按钮用蓝底白字。链接、键盘焦点和缓存命中率进度也用主色。 |
+| 服务识别 | Codex `#3279bd`、Antigravity `#448d86` | 同浅色 | 用量趋势按服务堆叠，切换到单服务时仍用原色。两项服务的公开动态混排时，标签沿用图例色。 |
+| 剩余额度（`--quota-*`） | `#63798c`、`#ae661f`、`#bd354b` | `#96adbf`、`#e5a05b`、`#e47786` | 正常用灰蓝，剩余大于 0% 且不超过 20% 用橙，耗尽用红。百分比和进度条同色，按实际读数判定。 |
+| Codex 重置或到期倒计时（`--deadline-*`） | `#287448`、`#866a08`、`#b45214`、`#bd354b` | `#78c99a`、`#dfc55b`、`#efa063`、`#e47786` | 余时超过 24 小时用绿，6 小时 < 余时 ≤ 24 小时用黄，1 小时 < 余时 ≤ 6 小时用橙，1 小时以内用红。绝对日期和 Antigravity 的倒计时使用次要文字色。 |
+| 与上期比较（`--usage-increase`、`--usage-decrease`） | `#bd354b`、`#287448` | `#e47786`、`#78c99a` | 消耗增加配红色和加号，减少配绿色和减号。持平用次要文字。上期为零时只给增减量。 |
+| 每日 Tokens | `#a3d1ca` → `#679e94` → `#33786c` | 同浅色 | 热力图的青绿深浅表示数量。无用量和范围外日期均使用当前主题的 `--secondary`，仅范围内日期能打开明细。 |
+| 未定价（`--unpriced`） | `#ab743e` | `#e5a05b` | 费用缺价时配「未定价」文字。读取失败的提示另用 `--warning-surface` 和 `--warning-text`。 |
 
-热力图保持至少 53 周的全年网格，较早的所选历史会扩展网格。所有日期都保留格子，所选时间范围外及范围内无记录日期使用主题的 secondary 灰色，格子之间以卡片底色分隔；有用量的日期使用青绿色量阶。范围外的格子仅作为日历背景，不计为零用量，也不响应明细跳转；所选范围内的日期保留悬停与点击明细。已扫描但所选范围无记录时仍显示灰色网格。
-
-用量同期比较的 `usage-increase-*` 为红色，配合加号；`usage-decrease-*` 为绿色，配合减号；持平使用中性色。它们与额度状态、倒计时紧迫程度分别命名，不能交换语义。组件 token 中的颜色引用记录浅色默认值，实际组件通过同名 CSS 语义变量跟随深色主题；派生色阶仅供设计面板参考，不替换产品配色。
-
-额度重置与重置卡到期倒计时使用独立的 `--deadline-*` 时间状态色：剩余时间超过 24 小时为绿，超过 6 小时至 24 小时为黄，超过 1 小时至 6 小时为橙，1 小时以内为红。仅倒计时文字着色，保留具体时长与中性色绝对日期；额度窗口的倒计时与日期分列两端，重置卡的剩余时长和日期整体靠右；未知时间不着状态色。每张尚未到期且在七天内到期的重置卡都显示倒计时，数量仍以接口快照为准。缓存命中率进度条通过 `--quota-color` 使用主题主色，与额度状态色分开。
+中性色按层级使用。侧栏、页面、卡片在浅色中依次为冷灰、近白和白色，在深色中依次为近黑和两级深灰。正文用 `--foreground`，时间、单位、图例用次要文字色。表格分隔线用 `--border`，可输入边界用 `--input`。悬停用 `--accent`，选中用 `--primary`。
 
 ## Typography
 
-主界面沿用 `src/style.css` 中的系统字体栈，图表使用 `system-ui, sans-serif`；不引入独立展示字体。短 ID 与模型名使用等宽字体，只有数值采用等宽数字特性。
+界面沿用系统字体栈，macOS 优先系统字体，Windows 优先 Segoe UI 和 Microsoft YaHei。ECharts 使用 `system-ui, sans-serif`。模型名和短 ID 使用等宽字体。金额、百分比、时间与表格数值使用等宽数字，让刷新前后的位数容易对照。
 
-主界面倒计时数字使用 600 字重，中文单位保留原字号与常规字重；数字和单位沿用同一现有颜色，不增加额外标签。
-
-基础字号 13px，表格与辅助信息 12px，页标题 18px。用量概览的总 Tokens、估算费用和缓存命中率使用 30px 半粗体，Token 分项、对话数与记录数使用 14px 半粗体。明细页使用 13px 行内汇总，保留表格的空间。用量与明细页顶部的总 Tokens 和模型、对话、项目汇总表的 Tokens 均显示带千位分隔符的完整数字；逐条明细的输入、输出、缓存等 Token 列保留简写，悬停显示完整值。额度值 24px。较小字号只用于短 ID、图例和版本。数据、金额、百分比、时间使用 tabular-nums；模型与短 ID 使用等宽字体。正文、按钮和导航不使用技术装饰字体。
+| 用途 | 字号 / 字重 | 排版 |
+| --- | --- | --- |
+| 用量概览主读数 | 30px / 600 | 左对齐，行高 1.15。总 Tokens 带千位分隔符。 |
+| 剩余额度 | 22px / 600 | 与窗口名称同一行，靠右。进度条紧随其下。 |
+| 页标题、弹窗标题 | 18px、16px / 600 | 页标题置于固定页头。弹窗标题右侧为关闭按钮留位。 |
+| 分项与明细行内汇总 | 14px / 600 | 主数值高于相邻的 12px 标签，金额和单位保持相邻。 |
+| 正文、分组标题 | 13px / 400、600 | 设置标签和导航使用正文字号，分组标题通过字重区分。 |
+| 表格、紧凑控件、倒计时 | 12px | 数值列右对齐。倒计时的数字用 600 字重，中文单位用常规字重。 |
+| 辅助信息 | 10–11px | 用于短 ID、模型名、版本、图例和次行说明。 |
 
 ## Layout
 
-切换侧栏菜单后，页面主内容与用量明细表的横纵滚动位置均回到起点。明细页在表格上方以“按记录 / 按对话 / 按项目”切换逐条记录或汇总，共用日期范围、模型、自定义日期和表格排序指标。切换视图清空搜索词，表格横纵滚动回到起点；切换侧栏页面和重启后恢复当前视图及筛选、搜索状态。沿用原对话页的存储键和筛选偏好；相对日期范围按当前日期重新计算。偏好通过现有 VueUse 的 `useLocalStorage` 保存，读取入口统一校验，页面内使用类型化状态；已选模型暂无记录时保留选项并显示空结果。用量概览在会话内保持独立的临时筛选与分组状态，并可从项目或对话汇总一键将当前日期、模型与排序指标同步跳转至明细页。
+主窗口默认 1140 × 760px，最小 860 × 560px。左侧栏初始宽 168px，可拖动分隔线或按左右方向键调至 300px。导航在顶部，用户选定的今日指标固定在底部。右侧页头高 56px，标题居左，页面级操作居右。[窗口配置](src-tauri/tauri.conf.json) · [窗口与导航](src/App.vue)
 
-主窗口初始为 1140×760px，最小为 860×560px，沿用旧版桌面比例。初始侧栏 168px，可通过分隔线拖动或方向键调至 168–300px；导航从顶部开始，不重复窗口中的产品名。页面标题区高 56px，内容边距 24px，960px 以下收为 18px。侧栏今日指标固定底部。
+| 尺寸条件 | 布局变化 |
+| --- | --- |
+| 常规窗口 | 页面内边距 24px。概览区块间距 18px，三张汇总卡间距 12px，Tokens 卡最宽。额度和设置分组间距 16px。 |
+| **窗口**宽 ≤ 960px | 页头水平内边距、内容内边距收至 18px。筛选项更紧凑。汇总表隐藏次要列。 |
+| **概览内容区**宽 ≤ 780px | Tokens 卡独占首行，四项构成移到总量右侧。估算费用和缓存命中率并排在下一行。拖宽侧栏也能触发。 |
+| **概览表格容器**宽 ≤ 800px | 模型表压缩水平内边距和数值列宽，保留 Tokens 与费用两列占比。 |
+| **视口**宽 ≤ 820px | 额度窗口改为一列。这条样式断点低于桌面主窗口允许的最小宽度。 |
 
-Antigravity 按接口分组展示额度。所有分组都只有一项额度时，分组在宽窗口中两列并排，820px 及以下改为上下排列；存在多额度组时，各组保持上下排列，组内额度沿用两列布局。单组或组内单项占满对应网格的可用宽度，不保留空列。
-
-额度窗口按实际返回的数据排列；单窗口或奇数窗口的末项占满整行，不为未返回的五小时等窗口保留空列。
-
-筛选与日志来源间隔 8px，概览主要内容间隔 18px。三张汇总卡片间隔 12px，标题与主数字左对齐，数值下方显示同期变化或缓存命中率进度条。卡片底部以浅淡底色区分 Token 构成、费用口径与上期范围、对话数与记录数。内容区宽度不超过 780px 时，Tokens 卡片独占一行，四项构成排在总量右侧，费用与命中率并排在下一行。用量趋势绘图区高 210px，额度趋势每个绘图区高 120px；趋势后接同一区域内按模型 / 项目 / 对话切换的完整汇总表（最大滚动高度 420px），对话维度直接按表头查看高消耗排序，不再另设前五项卡片。概览页纵向滚动；明细页的筛选、汇总和表格标题行不参与高度压缩，表格内容区填满剩余高度并独立滚动，按对话 / 按项目切换不改变外框和控件位置。960px 以下隐藏表格次要目录/时间列，完整值保留悬停入口；详情表格可横向滚动，表头分隔线支持拖动和左右方向键调整列宽。汇总表按列职责分宽：记录数 80px、占比 100px，费用 120px，缓存命中率 104px，最近用量 140px；Tokens 按当前汇总数字的最大位数留足宽度，至少容纳 14 个等宽字符及单元格内边距。项目名列为 144px，目录承接剩余空间且至少为 208px；隐藏目录的窄窗口中，项目名重新承接剩余空间。对话、模型名称列保留弹性，空间不足时允许横向滚动。定价表的数值和操作列按内容收紧，模型列承接剩余空间。明细表初始由模型列吸收剩余宽度，拖拽或键盘调宽时固定实际列宽，避免再次均摊。详情的总量、完整会话 ID、可展开的工作目录与主仓库映射位于表格上方；多档位时显示分档汇总，单档位不占用额外区域。ID 与路径可选择复制。
+概览随页面纵向滚动，汇总表在 420px 高度内滚动。明细页让筛选、行内汇总和分页各占所需高度，把剩余空间交给表格。表头保持可见。长名称列可收窄，数字列保留可读宽度，空间不足时横向滚动。额度窗口通常两列并排，奇数个窗口的末项占满一行。
 
 ## Elevation & Depth
 
-页面和卡片主要通过背景明度、单层细边框与间距区分层级。普通 outline 按钮和文本输入保留组件库的微弱 `shadow-xs`；NativeSelect 在主题层去掉阴影。Popover 使用 `shadow-md`，Dialog 使用 `shadow-lg` 与背景遮罩。本机日志 Tooltip 使用细边框而不加阴影。阴影值从锁定的 Tailwind 主题提取至配套索引，焦点使用内侧 ring 或描边，不作为浮起效果。
+内容卡用一层细边框和底色划分区域。卡片底部的 Token 分项和费用口径用一层淡底衬托。常规按钮的 outline 样式和文本输入保留 `shadow-xs`，原生选择框保持平面。本机日志的范围提示使用细边框。多选和间隔编辑使用 `shadow-md` 浮层。对话框使用 `shadow-lg` 与黑色遮罩。深色浮层（`#27292e`）比卡片（`#202125`）略亮。
 
 ## Shapes
 
-控件与导航使用轻微圆角，选中滑块的圆角略小于背景轨道；卡片和 Dialog 使用更柔和的圆角。进度条和热力图单元格保留较小圆角。具体值由 `rounded` token 给出；沿用一层容器边框，滑动高亮通过裁剪区域跟随实际选项尺寸。
+按钮、输入框和导航项采用 6px 圆角。分段选择器的轨道为 7px，内侧选中块为 5px，四周留 3px。卡片与对话框为 10px。占比横条末端为 2px，额度进度条为 3px。短条仍能分辨起止位置。
+
+键盘焦点用 2px 内侧描边。普通控件用主色，主色选中项用白色。输入框同时改变边框色。聚焦前后保持相同的高度与间距，分段选项的焦点绘制在滑动高亮之上。
 
 ## Components
 
-### 操作与输入
+### 执行动作与选择范围
 
-普通操作使用 shadcn-vue `Button` 的 outline、ghost 和 sm；小按钮、下拉框、日期、分段选择器与搜索框统一为 28px，文字 12px，小按钮图标 14px。保存、完成使用默认强调样式，清除确认使用 destructive；默认按钮与文本、数字编辑框为 32px，文字 13px。优先复用组件库及其 size、variant、主题接口；尺寸与必要的主题适配集中在应用样式层，不修改生成组件，不以手写 CSS 重造控件。聚焦使用边框变色与 2px 内侧 ring / 描边，不改变控件外轮廓和高度；滑动高亮上方保留可见的内侧焦点标识。
+| 用途 | 控件 | 状态与尺寸 |
+| --- | --- | --- |
+| 保存、完成 | 默认按钮 | 主色底，常规高度 32px。紧凑操作行可用 28px。禁用时降低不透明度。 |
+| 刷新、管理定价 | outline 按钮 | 工具栏使用 28px 小按钮和 14px 图标。刷新中显示进行中的动作，并暂时禁用入口。 |
+| 返回图表、行内编辑 | ghost 按钮 | 默认透明，悬停显示底色。纯图标入口保留可访问名称。 |
+| 清除历史 | destructive 按钮 | 确认弹窗写明所选服务和清除范围，最终确认使用危险色。 |
+| 服务、期间和趋势指标 | 单选分段 | 原生 radio 负责键盘选择，蓝色选中块跟随选项。额度趋势的「24 小时」「7 天」等宽。 |
+| 模型、日期时间、数值 | 原生选择框和输入框 | 工具栏为 28px，编辑字段为 32px。自定义期间有「开始」「结束」两个日期时间字段。错误文字紧贴字段组。 |
+| 开关、依赖设置和多选 | Switch、Popover、Checkbox | 设置名在左，控件在右。子项以左细线和 16px 缩进关联主开关，停用时整组淡化。多选入口直接显示所选名称。空选显示「不显示」。 |
 
-服务图标筛选、日期范围、汇总分组、趋势指标、明细分组和额度趋势范围使用原生 radio 加滑动选中背景，支持 Tab 与方向键；额度趋势的 24 小时与 7 天选项等宽。模型、刷新间隔和提醒时间单位使用 shadcn-vue `NativeSelect` 与 `NativeSelectOption`，沿用组件的原生选择行为、箭头和状态管理；主题层统一尺寸并去掉控件阴影。提醒时间单位与相邻数字输入框保持 32px 高，其余选择框为 28px。自定义日期使用原生 date 输入；自定义刷新间隔使用带原生 number 输入的 Popover，最小 30 秒，保存生效，取消和 Esc 放弃。
+侧栏选中项高至少 36px，图标和文字相距 10px。普通行悬停出现底色，当前页使用主色底和半粗白字。设置与前三个数据入口间隔 12px。[滑动选择](src/components/SlidingSelection.vue) · [设置](src/components/SettingsPanel.vue)
 
-按钮与输入沿用组件库的 hover、disabled、invalid 状态；禁用时降低不透明度并阻止操作。导航和分段选项悬停改变文字或背景，选中态使用主色底与白色文字；原生 radio 保留 Tab 与方向键，实际控件上方绘制内侧焦点。
+### 查看用量与核对记录
 
-### 设置与弹窗
+- **用量卡。** 三项主读数为总 Tokens、估算费用和缓存命中率。Token 构成、上期范围、对话数与记录数放在各自卡片底部。已知零值直接显示，缺失计数用「—」，无定价的费用用「未定价」。明细页将同类指标收为行内汇总。
+- **趋势与热力图。** 用量趋势高 210px，一次显示 Tokens 或费用。悬停读数列出两项指标并突出当前指标。未定价时段保留缺价信息。「今天」标出当前时刻，未来仅留时间轴。热力图至少铺满 53 周，始终按每日 Tokens 着色。点击有效时段进入逐条记录，「返回图表」恢复原来的范围。
+- **占比。** 模型表将 Tokens 和费用占比并列放在各自的右对齐列。26px 高的单元格底条从左向右填充，主色以 29% 不透明度铺在等宽百分比后方。项目和对话则使用 4px 横条，数值在条外右侧。两者都按当前筛选的全部汇总项计算，真实零占比保留为 0.0%，分母为零或费用未知时显示「—」。
+- **逐条明细。** 表头提供排序，表尾提供每页 20 / 50 / 100 条、翻页和页码跳转。可选列入口放在记录表旁。点记录时间打开费用拆分，金额列右对齐、合计在底部。分组详情中的二级弹窗只响应最上层的 Esc，关闭后焦点回到入口。
 
-设置分组内边距 16px，设置行最小高度 32px，相邻行间隔 8px，保持左侧标签、右侧控件。额度监测标题与主开关共用一行，其依赖设置缩进 12px。开关只通过点击控件本体或聚焦后的键盘操作切换，左侧文字不触发切换；通过 aria-labelledby 保留可访问名称。额度监测关闭时，依赖设置一起禁用和淡化，菜单栏/托盘、登录启动与用量扫描保持独立。多选指标和列选项采用 Popover + Checkbox + Button，按钮按选项顺序直接显示已选名称，空选显示“不显示”，连续选择立即保存。对话明细、价格编辑与清除确认使用 Dialog，保留标题、说明和完成/取消动作。定价弹窗按服务与模型范围筛选，含未定价记录和有用量的模型优先显示；标准单价、速度倍率和长上下文通过 fieldset 分组，底部操作固定在滚动内容之外。已有模型名称只读，编辑态 Esc 返回列表并恢复焦点；列表显示更新错误、官方来源与快照日期。
+[用量与汇总表](src/components/UsagePanel.vue) · [逐条记录](src/components/UsageRecordTable.vue) · [分页](src/components/TablePagination.vue)
 
-### 数据、图表与提示
+### 判断额度与读取状态
 
-本机扫描时间由页头刷新按钮以相对时间显示，悬停提供准确时间；当前生效的统计起止日期与来源在筛选下方显示，来源旁的帮助按钮使用 ghost / icon-xs、CircleHelp 与 help 光标，复用 Reka Tooltip 在悬停或键盘聚焦时展示统计范围，移出、失焦或 Esc 关闭；警告放在汇总前。API 等价费用不代表订阅账单；汇总沿用统一“估算费用”标签并累加已定价记录，全无定价显示“未定价”；费用占比基于已定价金额。单条详情保留 `--unpriced` 未定价状态；分组表保留缓存命中率，明细搜索同步更新顶部行内汇总与占比基数。旧历史 Standard 未明确报告档位时显示“估算”，费用悬停保留未舍入值。定价列表由后端合并目录与日志模型，未知模型直接显示未定价。前端只聚合 Rust 返回的十进制费用字符串，不重新实现定价规则。同期比较仅在概览显示；当前未结束的时间范围按本地时刻对齐上期。
+每项服务各有刷新入口、读取状态和上次成功时间。窗口名称和剩余百分比在第一行，6px 的进度条表示剩余量，下一行分别放相对时间和绝对重置日期。Codex 的「今日已用」紧跟窗口名称。趋势折线画已用比例，按采样时的状态分色，遇到采样中断就断开。超过七天只列绝对日期，七天内按余时显示天与小时、小时与分钟或分秒。重置倒计时归零时显示「等待实际重置」。
 
-额度卡各自提供刷新按钮、读取状态和精确到秒的成功读取时间；切换进入页面仍刷新已启用服务，读取失败保留已有读数及时间并标为过期。倒计时本地计算，归零显示等待实际重置。额度折线按后端 segment 分段，重置或观测中断处不连线，实测点始终可见；颜色由历史已用百分比决定，不足 80% 为灰蓝，80% 至不足 100% 为橙，耗尽为红，不随当前读数整体变色。悬停在图表标题行显示时间与读数，横向 12px 内没有采样则显示“无采样”。公开重置动态与个人额度分开，最多展示最近三条，展示适用范围，预告与 AIHOT 估计分别标注；链接经 Rust 检查后打开。重置卡本地到期后显示“已到期”，数量保持接口值。Codex 窗口标题旁以次要文字显示今日已用比例，右侧大数字保留剩余比例。原生菜单将额度名称、剩余百分比与本地重置倒计时放在同一条带进度条的菜单项中，具体日期保留在悬停提示和主面板；未启用的额度只显示状态，重置卡仍按到期时间逐张列出倒计时和日期。使用系统菜单文字样式，倒计时原位更新，不重建菜单。
+Antigravity 按来源返回的分组、模型与窗口排列。只报告一个窗口时占满可用列。未知额度显示「未知」，服务禁用的额度显示「未启用」。读取失败时保留上次成功的数值、时间，并提示过期。AIHOT 公开重置动态单列来源和适用服务。[Codex 额度](src/components/QuotaPanel.vue) · [Antigravity 额度](src/components/AntigravityPanel.vue)
 
-同期对比在 Tokens 与费用卡片内分别以“增减量（百分比）”展示，每项只在增减量前保留一个正负号；增加用红色与加号，减少用绿色与减号，持平保持中性色；上期为零时仅显示增加量，上期数值放在悬停提示中。用量趋势通过「Tokens / 费用」切换单一指标，以 Codex 蓝色、Antigravity 绿色分色堆叠柱形，保留服务图例与轴单位，单服务筛选保持对应颜色；完全未定价的服务时段不画费用值，部分缺价显示未定价数量，全部缺价显示明确空态。浮层顶部并列两种指标，加重当前指标。双服务分行展示，单服务名称并入合计行。底部按当前指标列出时段前三个模型及其占整个时段的比例，同名模型附服务名；单模型筛选省略排名，完全未定价的模型不参与费用排名。
+菜单栏或托盘菜单将窗口名称、剩余比例和倒计时排在同一行，保留进度条。具体日期放在悬停提示和主面板。macOS 菜单栏标题使用系统等宽数字，服务图标与文字由系统共同居中。[系统入口](docs/usage.md)
 
-「今天」使用完整本地自然日时间轴，以细竖线标记当前分钟。当前小时的柱和悬停区域止于此刻，已扫描的空小时可以悬停查看零值，未来区域仅保留刻度。未读取日志时优先显示空态。其他范围沿用各自的日或小时分组。热力图颜色深浅固定表示每日 Tokens 用量，悬停同时显示 Tokens 与费用。
+### 浮层、键盘与动效
 
-模型表并列显示 Tokens 占比与费用占比。两列均在单元格内以淡蓝色背景从左向右填充，等宽百分比叠在上方，与表头右对齐。项目和对话表按最近选择的消耗指标显示占比，横条在左、数字在右。占比以当前筛选的全部汇总项为基数，使用 0–100% 尺度。零占比保留数字，分母为零或费用完全未定价时，仅显示「—」。长排序表头在既有列宽内自然换行。
+统计范围说明可通过悬停或聚焦打开。Popover 贴近触发控件，用于多选或少量字段编辑。涉及确认、定价或费用明细时使用 Dialog。费用明细最宽 760px，定价最宽 820px。长表与字段区自行滚动，底部操作保持可达。
 
-通知设置区分持续、临时横幅、未开启桌面提醒和无法确认的样式；首次授权后的持久通知引导与手动入口共用 Dialog，自动引导按已显示记录去重，与版本说明依次展示。
-
-更新说明共用 Markdown 组件，正文 12px、标题 14px，保留标题、列表、链接与原生折叠说明，HTML 注释隐藏；设置页超过 220px 滚动，版本首次打开使用独立 Dialog，关闭后按版本记录。HTML 经统一清理后仅保留排版标签与必要属性，不加载图片或执行脚本。
-
-汇总表与逐条记录使用同一分页条：shadcn-vue Pagination 负责总页数、上一页 / 下一页及首尾页禁用状态，组合 NativeSelect 选择每页条数（20 / 50 / 100）和 Input 输入页码跳转，保留总条数。控件统一 28px，继承主题内侧焦点；页码输入与总页数保持 8px 间距并作为一组不换行。分页条位于滚动区外，表头与页脚保持可见。筛选或排序改变回第一页，定期刷新保留仍有效的页码，统计总量不受分页影响。明细页保存排序字段和方向；每页条数按汇总、逐条两类保存。缺失值在两个排序方向均置后。逐条表格旁直接提供“可选列”入口，复用设置中的名称列表与保存逻辑，Esc 只关闭列菜单。
-
-全局逐条记录与分组详情复用 `UsageRecordTable`，共享时间、模型、Token、费用和可选列的显示、排序、分页与列宽；表格显示服务名，全局表额外显示会话标题和项目，在表格标题栏直接设置可选列。Codex 会话标题优先使用本地元数据，缺失时保留项目名与短 ID；已有标题的分组行在次行展示项目与短 ID，悬停可查看完整显示标题与 ID。
-
-用量趋势的日 / 小时柱和当前筛选内的热力图日期可进入全局逐条记录，沿用服务与模型筛选，清空搜索，并将所点时段与原统计范围取交集。时间控件保留自动带入的秒及毫秒边界，来源行显示实际范围；右侧使用 ghost / sm“返回图表”按钮。返回按钮与侧栏“用量”共用恢复逻辑，恢复原服务、模型、时间和图表筛选，明细筛选不覆盖返回状态。
-
-记录时间使用可聚焦的文字按钮打开费用详情。费用弹窗宽度由全局弹窗主题规则控制，最多 760px，内容区可滚动；四列分别为用量、Tokens、每百万 Tokens 单价及费用，金额右对齐，底部展示后端合计。计价模型、档位、倍率和长上下文条件仅显示实际有据的数据；未定价、未报告与零值分开。弹窗可从分组明细内打开，Esc 仅关闭最上层弹窗并返回原入口。详情通过 `usage_cost_detail` 按需读取，加载与失败反馈位于费用区，失败可重试；前端不重算单条价格。
-
-### 动效与可访问性
-
-侧栏和分段选择器共用 `SlidingSelection`，选中块采用 160ms ease-out 过渡；白色文字与加粗仅在滑块覆盖范围内显示，未覆盖处保留普通文字。高亮副本只包含展示元素，使用 aria-hidden、inert 和 pointer-events 隔离，实际按钮和原生 radio 保留唯一的键盘与表单行为。尺寸变化时按实际选项位置更新裁剪区域。
-
-图表动画 220ms，用量概览三张卡片的主读数与额度卡片的剩余百分比使用 240ms 数字滚动。表格、倒计时与辅助数字直接更新。关闭“动画特性”、开启系统减少动态效果或 WebView 不支持数字滚动时，读数直接更新。滑块同样遵循应用及系统的动效设置。系统浅深色变化会重新应用 ECharts 主题，图表容器通过 ResizeObserver 调整尺寸并在卸载时释放。
-
-原生表单控件保留标签、键盘行为及焦点样式。图标动作保留名称；图表具有文字辅助说明和对应汇总数字。页面支持平台常用刷新与设置快捷键，原生菜单事件与页面动作共用业务命令。macOS 菜单栏使用系统菜单栏字号的等宽数字字体，图标沿用 tray-icon 的 18pt 逻辑高度与完整图像对齐区域，不将 alignmentRect 缩小到字体 cap height，以免较矮菜单栏裁切图标；图标与文字由系统作为一个整体布局。
+侧栏和分段选择器的高亮滑动为 160ms ease-out。图表入场为 220ms，概览主读数与剩余额度的数字滚动为 240ms ease-out。表格、倒计时及辅助读数直接更新。关闭应用动画或启用系统减少动态效果时，直接呈现相应终态。[图表](src/components/Chart.vue) · [数字读数](src/components/AnimatedNumber.vue)
 
 ## Do's and Don'ts
 
-### Do
-
-- **Do** 复用组件的 size、variant 和主题变量，保留表单标签、键盘操作与可见内侧焦点。
-- **Do** 让数值、单位、正负号与状态色共同表达信息；保留完整值的查看入口。
-- **Do** 让明细筛选和标题行保持自身高度，仅由表格内容区承担剩余高度与滚动。
-- **Do** 区分缺失、未定价、真实零值与估算，保留数据来源及过期状态。
-
-### Don't
-
-- **Don't** 手改生成组件或生成索引；修改源头后重新生成。
-- **Don't** 用负边距、固定偏移或外扩焦点掩盖布局问题。
-- **Don't** 添加重复解释布局的文案、无关装饰或未经确认的展示字体。
-- **Don't** 把离线示例、源码支持或编译通过写成真实服务与系统交互验收通过。
-
-### 依据与验收边界
-
-迁移依据为 Git 历史中的 Swift 源码、README、PRODUCT 和旧版额度/设置截图。历史截图不作为当前交互依据。`?preview` 使用明确标注的匿名离线示例，仅用于界面验收；普通浏览器环境不会尝试读取本机凭据或伪造服务成功。
-
-本次记录以当前源码、组件 variant 和锁定的 Tailwind 主题为准。前一轮类型检查、前端构建、Rust 编译检查及已有 Swift 检查通过；Chrome 控制入口受工具限制，系统菜单栏未取得可判断的截图，因此新增界面状态与原生对齐尚未完成视觉验收，Windows 也未进行实机检查。
-
-文档结构遵循 [DESIGN.md 格式](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md)。配套 `.impeccable/design.json` 仅保存色彩元数据、阴影、动效、断点、组件展示片段和本文叙述，基础 token 以本文件为准。
-
-合并验收：前端构建与 Rust 编译检查通过；Chrome 离线预览检查双服务筛选和分页、Codex 标题、两项服务的代表费用记录及缺失值、嵌套弹窗键盘焦点、额度刷新与更新时间。保留远端既有的汇总费用展示方式。未连接真实服务或验收原生托盘。
+- **Do** 让数字与其单位、时段和来源靠近。紧凑显示的计数提供查看完整值的入口。
+- **Do** 使用当前主题和控件已有的尺寸、变体，保留原生选择、键盘操作与内侧焦点。
+- **Do** 用文字、符号或图例与颜色共同表达服务、状态和变化。
+- **Don't** 用 0% 或满格进度条填补未知额度，将缺失定价显示为免费，或将过期快照显示为刚刚读取。
+- **Don't** 为解释布局重复写标题、提示或状态标签。保留能帮助用户选择、核对或处理错误的文字。
