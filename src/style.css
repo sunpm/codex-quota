@@ -220,6 +220,7 @@ number-flow-vue { font-variant-numeric: tabular-nums; --number-flow-mask-height:
 .search-box input:focus-visible { outline: none; }
 .search-box:focus-within { border-color: var(--primary); outline: 2px solid var(--primary); outline-offset: -2px; }
 .table-scroll { overflow: auto; min-height: 0; }
+.overview-table > .table-scroll { container-type: inline-size; }
 table { border-collapse: collapse; width: 100%; font-size: 12px; }
 th { position: sticky; top: 0; z-index: 1; background: var(--card); color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); white-space: nowrap; }
 th, td { padding: 10px 13px; text-align: left; vertical-align: middle; }
@@ -239,10 +240,15 @@ th svg { display: inline; vertical-align: middle; }
 .usage-table.project-table .name-column { width: 144px; }
 .usage-table .count-column { width: 80px; }
 .usage-table .share-column { width: 100px; }
-.usage-share { display: grid; grid-template-columns: minmax(0, 1fr) 6.5ch; align-items: center; gap: 5px; }
-.usage-share > :last-child { grid-column: 2; }
-.usage-share-track { height: 4px; border-radius: 2px; overflow: hidden; background: var(--secondary); }
+.usage-share { display: grid; grid-template: "track value" auto / minmax(0, 1fr) 6.5ch; align-items: center; gap: 5px; }
+.usage-share-value { grid-area: value; }
+.usage-share-track { grid-area: track; height: 4px; border-radius: 2px; overflow: hidden; background: var(--secondary); }
 .usage-share-track > span { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--muted) 60%, transparent); }
+.model-table .share-cell { padding-inline: 4px; }
+.model-table .usage-share { grid-template: "value" 26px / minmax(0, 1fr); gap: 0; isolation: isolate; }
+.model-table .usage-share-value { z-index: 1; padding-inline-end: 9px; color: var(--foreground); }
+.model-table .usage-share-track { grid-area: value; height: 100%; background: color-mix(in srgb, var(--muted) 6%, transparent); }
+.model-table .usage-share-track > span { border-radius: 0; background: color-mix(in srgb, var(--primary) 29%, transparent); }
 .usage-table .tokens-column { width: var(--tokens-column-width); }
 .usage-table .cost-column { width: 120px; }
 .usage-table .cache-column { width: 104px; }
@@ -383,6 +389,17 @@ th svg { display: inline; vertical-align: middle; }
   .tokens-card .summary-footer { border-top: 0; border-left: 1px solid var(--border); }
 }
 @media (max-width: 960px) { .page-content { padding: 18px; } .page-header { padding: 0 18px; } .filter-bar { gap: 8px; } .segment-option { padding-left: 9px; padding-right: 9px; } [data-slot=native-select-wrapper] { max-width: 165px; } .secondary-column { display: none; } .usage-table:has(.secondary-column), .usage-table.project-table { min-width: calc(564px + var(--tokens-column-width)); } .usage-table.project-table .name-column { width: auto; } }
+@container (max-width: 800px) {
+  .model-table { min-width: calc(500px + var(--tokens-column-width)); }
+  .model-table :is(th, td) { padding-inline: 6px; }
+  .model-table .count-column { width: 64px; }
+  .model-table .tokens-column { width: calc(var(--tokens-column-width) - 14px); }
+  .model-table .cost-column { width: 76px; }
+  .model-table .cache-column { width: 88px; }
+  .model-table .share-column { width: 82px; }
+  .model-table .share-cell { padding-inline: 3px; }
+  .model-table .usage-share-value { padding-inline-end: 3px; }
+}
 
 /* Draw focus above the presentation-only sliding highlight without moving its text. */
 .sliding-selection :is(.nav-item:focus-visible, label:has(input:focus-visible)) { position: relative; outline: none; }
