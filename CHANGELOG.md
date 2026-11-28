@@ -2,6 +2,19 @@
 
 以下按仓库 Git 标签和提交记录整理。各版本安装包与发布说明见 [GitHub Releases](https://github.com/sunpm/codex-quota/releases)。旧版本提及的其他服务属于历史功能，当前应用仅接入和展示 Codex 与 Antigravity。
 
+## [0.28.2](https://github.com/sunpm/codex-quota/releases/tag/v0.28.2)
+
+<!-- Release notes generated using configuration in .github/release.yml at 4caf3a8255b21d59fd97acbbd524be4475b0e382 -->
+
+### What's Changed
+#### 更新内容
+* feat(用量): 在模型表并列展示 Tokens 和费用占比 by @sunpm in https://github.com/sunpm/codex-quota/pull/59
+* docs(设计): 重写桌面界面设计规范并同步组件示例 by @sunpm in https://github.com/sunpm/codex-quota/pull/60
+* fix(用量): 降低额度刷新与历史扫描的内存占用 by @sunpm in https://github.com/sunpm/codex-quota/pull/61
+
+
+**Full Changelog**: https://github.com/sunpm/codex-quota/compare/v0.28.1...v0.28.2
+
 ## [0.28.1](https://github.com/sunpm/codex-quota/releases/tag/v0.28.1)
 
 <!-- Release notes generated using configuration in .github/release.yml at d3b26728b4989a58c317e97d50dcb625352fe6d7 -->
